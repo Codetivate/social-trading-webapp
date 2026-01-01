@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("PRISMA_ACCELERATE_URL") // Optional: Use this if accessing via Prisma Accelerate
+}
+
+// Enums matching src/types/index.ts
+enum UserRole {
+  FOLLOWER
+  MASTER
+}
+
+enum AccountStatus {
+  CONNECTED
+  ERROR
+}
+
+enum SessionType {
+  DAILY
+  TRIAL_7DAY
+  GOLDEN
+  PAID
+  VIP
+}
+
+enum MasterTier {
+  ROOKIE
+  PRO
+  TYCOON
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  EARNING
+  SUBSCRIPTION_PAYMENT
+}
+
+enum TransactionStatus {
+  LOCKED
+  AVAILABLE
+  WITHDRAWN
+  PENDING
+  FAILED
+}
+
+model User {
+  id     String   @id @default(uuid())
+  email  String   @unique
+  name   String?
+  avatar String?
+  role   UserRole @default(FOLLOWER) // Primary View Mode
+
+  // 🎫 Feature Flags & Quotas
+  isVip              Boolean   @default(false)
+  goldenTickets      Int       @default(0)
+  goldenTicketExpiry DateTime? // If VIP or Golden Ticket active
+
+  // 💰 Wallet
+  walletBalance Float         @default(0)
+  transactions  Transaction[]
+
+  // 🏦 Broker Accounts (One User -> Many Brokers)
+  brokerAccounts BrokerAccount[]
+
+  // 🎭 Profiles (Dual Identity)
+  masterProfile   MasterProfile?
+  followerProfile FollowerProfile?
+
+  // 🔗 Relationships (Copy Trading)
+  // A User (as follower) copying many masters
+  copyingSessions Session[] @relation("FollowerSessions")
+
+  // A User (as master) being copied by many
+  followers Session[] @relation("MasterSessions")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BrokerAccount {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  // MT5 Credentials
+  login  String
+  server String
+  // password String // encrypted
+
+  // State
+  balance  Float         @default(0)
+  equity   Float         @default(0)
+  leverage Int           @default(500)
+  status   AccountStatus @default(CONNECTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MasterProfile {
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  // Public Info
+  name   String // Display Name (can differentiate from User.name)
+  desc   String?
+  avatar String?
+  tags   String[]
+
+  // 📊 Stats (Updated by Bridge Worker)
+  roi       Float @default(0)
+  winRate   Float @default(0)
+  drawdown  Float @default(0)
+  riskScore Float @default(0)
+  aum       Float @default(0) // Assets Under Management
+
+  // ⚙️ Configuration
+  monthlyFee Float      @default(0)
+  minDeposit Float      @default(100)
+  tier       MasterTier @default(ROOKIE)
+  isVip      Boolean    @default(false) // Kept for backward compat / pure display
+  isPremium  Boolean    @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model FollowerProfile {
+  id     Int    @id @default(autoincrement())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  name     String
+  equity   Float    @default(0)
+  pnl      String?
+  avatar   String?
+  joinedAt DateTime @default(now())
+}
+
+model Session {
+  id Int @id @default(autoincrement())
+
+  followerId String
+  follower   User   @relation("FollowerSessions", fields: [followerId], references: [id])
+
+  masterId String
+  master   User   @relation("MasterSessions", fields: [masterId], references: [id])
+
+  // Settings
+  allocation Float // $ Amount allocated
+  risk       String // e.g. "Low", "High" or numbers as string
+
+  // Type
+  type    SessionType
+  isTrial Boolean     @default(false)
+  expiry  DateTime? // For Trial/Golden
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  amount Float
+  type   TransactionType // DEPOSIT, WITHDRAWAL, EARNING_FEE
+  status TransactionStatus @default(AVAILABLE)
+
+  description String?
+
+  // 🔐 Escrow Logic
+  lockedUntil DateTime? // If set, funds are LOCKED until this date
+
+  createdAt DateTime @default(now())
+}
