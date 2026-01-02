@@ -5,18 +5,22 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  // directUrl = env("PRISMA_ACCELERATE_URL") // Optional: Use this if accessing via Prisma Accelerate
 }
 
-// Enums matching src/types/index.ts
+// 🏦 BANKING GRADE SCHEMA
+
+// --- Enums ---
 enum UserRole {
   FOLLOWER
   MASTER
+  ADMIN
+  SUPER_ADMIN
 }
 
 enum AccountStatus {
   CONNECTED
   ERROR
+  DISCONNECTED
 }
 
 enum SessionType {
@@ -33,99 +37,222 @@ enum MasterTier {
   TYCOON
 }
 
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExecutionType {
+  SELF_HOSTED // 🐍 Python "Hydra" Bridge (Free)
+  META_API // ☁️ Cloud API (Premium)
+  // Future: CTRADER, FIX_PROTOCOL (CME/Institutional)
+}
+
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
-  EARNING
+  EARNING_FEE
   SUBSCRIPTION_PAYMENT
+  REFUND
 }
 
 enum TransactionStatus {
-  LOCKED
-  AVAILABLE
-  WITHDRAWN
   PENDING
+  COMPLETED
   FAILED
+  CANCELLED
+  LOCKED // Escrow
+  FLAGGED // AI Risk High
 }
 
+// --- Core Identity ---
 model User {
   id     String   @id @default(uuid())
   email  String   @unique
   name   String?
-  avatar String?
-  role   UserRole @default(FOLLOWER) // Primary View Mode
+  avatar String? // Custom Avatar
+  image  String? // NextAuth standard
+  role   UserRole @default(FOLLOWER)
 
-  // 🎫 Feature Flags & Quotas
+  // 🔐 Security & KYC
+  emailVerified DateTime?
+  kycStatus     KycStatus @default(NOT_SUBMITTED)
+  kycData       UserKYC? // One-to-One sensitive data separation
+
+  // 🎫 Feature Flags
   isVip              Boolean   @default(false)
   goldenTickets      Int       @default(0)
-  goldenTicketExpiry DateTime? // If VIP or Golden Ticket active
+  goldenTicketExpiry DateTime?
 
-  // 💰 Wallet
-  walletBalance Float         @default(0)
+  // 💰 Wallet & Finance
+  walletBalance Float               @default(0)
   transactions  Transaction[]
+  bankAccounts  BankAccount[]
+  withdrawals   WithdrawalRequest[]
 
-  // 🏦 Broker Accounts (One User -> Many Brokers)
-  brokerAccounts BrokerAccount[]
-
-  // 🎭 Profiles (Dual Identity)
+  // 📈 Trading Identity
+  brokerAccounts  BrokerAccount[]
   masterProfile   MasterProfile?
   followerProfile FollowerProfile?
 
-  // 🔗 Relationships (Copy Trading)
-  // A User (as follower) copying many masters
-  copyingSessions Session[] @relation("FollowerSessions")
+  // 🔗 Social Graph
+  copyingSessions CopySession[] @relation("FollowerSessions")
+  followers       CopySession[] @relation("MasterSessions")
 
-  // A User (as master) being copied by many
-  followers Session[] @relation("MasterSessions")
+  // 🛡️ Audit
+  auditLogs AuditLog[] // Actions performed by this user
+
+  // NextAuth
+  accounts Account[]
+  sessions Session[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  userPromotions UserPromotion[] // 🎟️ Dynamic Promotions
+
+  @@index([email])
 }
 
+// 🎟️ DYNAMIC PROMOTIONS
+model UserPromotion {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type       String // "DAILY", "WELCOME", "VIP", "FUTURE_PROMO"
+  lastUsed   DateTime? // For frequency caps (e.g. Daily)
+  expiry     DateTime? // For duration access (e.g. VIP)
+  usageCount Int       @default(0) // For one-time/N-time limits
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, type]) // One record per promo type per user
+}
+
+// 🔐 NEXTAUTH MODELS
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// 🔐 SENSITIVE DATA (KYC)
+model UserKYC {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime
+  nationality String
+
+  // 🔒 ENCRYPTED FIELDS
+  idNumber     String // Encrypted
+  idImageFront String? // URL to secure bucket
+  idImageBack  String? // URL to secure bucket
+
+  status          KycStatus @default(PENDING)
+  reviewedBy      String? // Admin ID
+  reviewedAt      DateTime?
+  rejectionReason String?
+
+  updatedAt DateTime @updatedAt
+}
+
+// 📈 CONNECTED BROKERS
 model BrokerAccount {
   id     String @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // MT5 Credentials
-  login  String
-  server String
-  // password String // encrypted
+  login    String
+  server   String
+  password String // Store securely/encrypted
 
   // State
   balance  Float         @default(0)
   equity   Float         @default(0)
   leverage Int           @default(500)
+  currency String        @default("USD")
   status   AccountStatus @default(CONNECTED)
+
+  // ⚡ HYBRID EXECUTION ENGINE
+  executionMethod ExecutionType @default(SELF_HOSTED)
+  pid             Int? // Process ID if running on local Hydra
+  port            Int? // Port number for local ZMQ/Socket
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relation to Master Profile (If this account is used for broadcasting)
+  masterProfiles MasterProfile[]
+
+  @@index([userId])
+  @@index([login, server]) // Faster lookup for uniqueness check in app logic
 }
 
+// 🎭 PROFILES
 model MasterProfile {
   id     Int    @id @default(autoincrement())
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Public Info
-  name   String // Display Name (can differentiate from User.name)
-  desc   String?
-  avatar String?
-  tags   String[]
+  name     String
+  desc     String?
+  avatar   String?
+  tags     String[]
+  isPublic Boolean  @default(true) // ✅ Visibility Toggle
 
-  // 📊 Stats (Updated by Bridge Worker)
-  roi       Float @default(0)
-  winRate   Float @default(0)
-  drawdown  Float @default(0)
-  riskScore Float @default(0)
-  aum       Float @default(0) // Assets Under Management
+  // Metrics
+  roi            Float @default(0)
+  winRate        Float @default(0)
+  drawdown       Float @default(0)
+  riskScore      Float @default(0)
+  followersCount Int   @default(0)
+  aum            Float @default(0)
 
-  // ⚙️ Configuration
-  monthlyFee Float      @default(0)
-  minDeposit Float      @default(100)
-  tier       MasterTier @default(ROOKIE)
-  isVip      Boolean    @default(false) // Kept for backward compat / pure display
-  isPremium  Boolean    @default(false)
+  // Plan
+  monthlyFee Float @default(0)
+  minDeposit Float @default(100)
+
+  // 🔗 Linked Broker Account (Source of Signals)
+  brokerAccountId String?
+  brokerAccount   BrokerAccount? @relation(fields: [brokerAccountId], references: [id])
 
   createdAt DateTime @default(now())
 }
@@ -133,34 +260,74 @@ model MasterProfile {
 model FollowerProfile {
   id     Int    @id @default(autoincrement())
   userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name     String
   equity   Float    @default(0)
-  pnl      String?
-  avatar   String?
+  totalPnl Float    @default(0)
   joinedAt DateTime @default(now())
 }
 
-model Session {
-  id Int @id @default(autoincrement())
-
+// 🤝 COPY SESSIONS (Renamed from Session)
+model CopySession {
+  id         Int    @id @default(autoincrement())
   followerId String
-  follower   User   @relation("FollowerSessions", fields: [followerId], references: [id])
+  follower   User   @relation("FollowerSessions", fields: [followerId], references: [id], onDelete: Cascade)
+  masterId   String
+  master     User   @relation("MasterSessions", fields: [masterId], references: [id], onDelete: Cascade)
 
-  masterId String
-  master   User   @relation("MasterSessions", fields: [masterId], references: [id])
-
-  // Settings
-  allocation Float // $ Amount allocated
-  risk       String // e.g. "Low", "High" or numbers as string
+  allocation Float
+  riskFactor Float // 1.0 = 100%
 
   // Type
   type    SessionType
   isTrial Boolean     @default(false)
   expiry  DateTime? // For Trial/Golden
 
-  isActive Boolean @default(true)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([followerId])
+  @@index([masterId])
+}
+
+// 🏛️ BANKING & WITHDRAWALS
+model BankAccount {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bankName      String
+  accountName   String
+  // 🔒 ENCRYPTED FIELD
+  accountNumber String // Encrypted
+
+  isVerified Boolean @default(false)
+  isPrimary  Boolean @default(false)
+
+  withdrawalRequests WithdrawalRequest[]
+
+  createdAt DateTime @default(now())
+}
+
+model WithdrawalRequest {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccountId String
+  bankAccount   BankAccount @relation(fields: [bankAccountId], references: [id])
+
+  amount    Float
+  fee       Float @default(0)
+  netAmount Float
+
+  status TransactionStatus @default(PENDING)
+
+  // 🤖 AI Risk Analysis
+  riskScore  Int     @default(0) // 0-100
+  riskReason String?
+
+  adminNote   String?
+  processedAt DateTime?
 
   createdAt DateTime @default(now())
 }
@@ -168,16 +335,60 @@ model Session {
 model Transaction {
   id     String @id @default(uuid())
   userId String
-  user   User   @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  type   TransactionType
   amount Float
-  type   TransactionType // DEPOSIT, WITHDRAWAL, EARNING_FEE
-  status TransactionStatus @default(AVAILABLE)
+  status TransactionStatus @default(COMPLETED)
 
+  // Locks
+  lockedUntil DateTime? // For Escrow
   description String?
 
-  // 🔐 Escrow Logic
-  lockedUntil DateTime? // If set, funds are LOCKED until this date
+  createdAt DateTime @default(now())
+}
+
+// 🛡️ SECURITY AUDIT
+model AuditLog {
+  id     String  @id @default(uuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action    String // e.g. "USER_LOGIN", "WITHDRAWAL_REQUEST"
+  details   String? // JSON string
+  ipAddress String?
+
+  severity  String   @default("INFO") // INFO, WARN, CRITICAL
+  createdAt DateTime @default(now())
+}
+
+// 📡 SIGNAL QUEUE (Execution Engine)
+model Signal {
+  id String @id @default(uuid())
+
+  // Who is copying?
+  followerId String
+
+  // Who are they copying?
+  masterId String
+
+  // Trade Details
+  ticket String // Master Ticket ID (64-bit)
+  symbol String
+  action String // OPEN, CLOSE, MODIFY
+  type   String? // BUY, SELL
+  volume Float?
+  price  Float?
+  sl     Float?
+  tp     Float?
+
+  // Execution Status
+  status         String  @default("PENDING") // PENDING, EXECUTED, FAILED
+  executedTicket String? // Follower Ticket ID (after execution)
+  errorMessage   String?
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([followerId, status]) // Fast lookup for polling
 }

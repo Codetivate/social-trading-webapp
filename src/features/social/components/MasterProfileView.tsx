@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, Heart, Bot, Crown, BadgeCheck, AreaChart, PlayCircle, StopCircle, Ticket, Sparkles } from "lucide-react";
+import { ChevronLeft, Heart, Bot, Crown, BadgeCheck, AreaChart, PlayCircle, StopCircle, Ticket, Sparkles, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Master, SessionType, UserRole, AccountStatus } from "@/types";
 import { SafetyGuardModal } from "@/features/trading/components/SafetyGuardModal";
@@ -25,13 +25,15 @@ interface MasterProfileViewProps {
     hasUsed7DayTrial?: boolean;
     accountStatus?: AccountStatus;
     onOpenSettings?: () => void;
+    dailyTicketUsed?: boolean; // ✅ New Prop
 }
 
-export function MasterProfileView({ master, onBack, requireAuth, isPreview = false, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, isVip, isGoldenActive, hasUsed7DayTrial, userRole, onOpenVIP, goldenTickets = 0, accountStatus, onOpenSettings }: MasterProfileViewProps) {
+export function MasterProfileView({ master, onBack, requireAuth, isPreview = false, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, isVip, isGoldenActive, hasUsed7DayTrial, userRole, onOpenVIP, goldenTickets = 0, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
     const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
     const [allocation, setAllocation] = useState<number | string>(1000);
     const [selectedSessionType, setSelectedSessionType] = useState<SessionType>("DAILY");
+    const [useWelcomeTicket, setUseWelcomeTicket] = useState(false); // ✅ New State
 
     const isPremium = master.monthlyFee > 0;
     const hasTicket = goldenTickets > 0;
@@ -105,12 +107,20 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
 
             // 3. Free Master (Daily Pass)
             setSelectedSessionType("DAILY");
+
+            // ✅ Auto-Select Welcome Ticket if Daily is Used (and Welcome is available)
+            if (dailyTicketUsed && !hasUsed7DayTrial) {
+                setUseWelcomeTicket(true);
+            } else {
+                setUseWelcomeTicket(false);
+            }
+
             requireAuth(() => setSafetyModalOpen(true));
         }
     };
 
     return (
-        <div className={`fixed inset-0 bg-gray-950 z-50 overflow-y-auto pb-32 animate-in slide-in-from-right duration-300 ${isPreview ? "absolute rounded-3xl" : ""}`}>
+        <div className={`fixed inset-0 bg-void z-50 overflow-y-auto pb-32 ${isPreview ? "absolute rounded-3xl" : ""}`}>
 
             {/* Header Transparent */}
             <div className="sticky top-0 z-40 p-4 flex items-center justify-between pointer-events-none">
@@ -138,10 +148,10 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                 <div className="h-56 w-full bg-gradient-to-b from-indigo-900 via-purple-900 to-gray-950 opacity-80"></div>
                 <div className="absolute -bottom-14 left-0 right-0 flex justify-center">
                     <div className="relative">
-                        <div className="absolute inset-0 bg-blue-500 blur-xl opacity-40 rounded-full"></div>
-                        <img src={master.avatar} alt={master.name} className="w-32 h-32 rounded-full border-[6px] border-gray-950 bg-gray-800 shadow-2xl relative z-10" />
-                        {master.type === "AI_BOT" && <div className="absolute bottom-2 right-2 bg-blue-500 text-white p-1.5 rounded-full border-4 border-gray-950 z-20"><Bot size={16} /></div>}
-                        {isPremium && <div className="absolute top-1 right-1 bg-yellow-400 text-black p-1.5 rounded-full border-4 border-gray-950 shadow-lg z-20"><Crown size={14} fill="black" /></div>}
+                        <div className="absolute inset-0 bg-neon-purple blur-2xl opacity-40 rounded-full"></div>
+                        <img src={master.avatar} alt={master.name} className="w-32 h-32 rounded-full border-[6px] border-void bg-space shadow-2xl relative z-10" />
+                        {master.type === "AI_BOT" && <div className="absolute bottom-2 right-2 bg-neon-cyan text-black p-1.5 rounded-full border-4 border-void z-20"><Bot size={16} /></div>}
+                        {isPremium && <div className="absolute top-1 right-1 bg-yellow-400 text-black p-1.5 rounded-full border-4 border-void shadow-lg z-20"><Crown size={14} fill="black" /></div>}
                     </div>
                 </div>
             </div>
@@ -152,6 +162,11 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                     <h1 className="text-3xl font-bold text-white flex items-center justify-center gap-2 mb-1">
                         {master.name}
                         {master.isVip && <BadgeCheck className="text-blue-500" size={24} fill="currentColor" color="black" />}
+                        {!master.isPublic && (
+                            <div className="bg-red-500/20 border border-red-500/40 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <EyeOff size={12} /> PRIVATE
+                            </div>
+                        )}
                     </h1>
                     <p className="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">{master.desc}</p>
                 </div>
@@ -159,17 +174,17 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
 
                 {/* 📊 METRICS GRID */}
                 <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 text-center">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Total Profit</p>
-                        <p className="text-xl font-bold text-green-400">+{master.roi}%</p>
+                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-neon-cyan/50 transition-colors">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Profit</p>
+                        <p className="text-xl font-bold text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.5)]">+{master.roi}%</p>
                     </div>
-                    <div className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 text-center">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Max Drawdown</p>
-                        <p className="text-xl font-bold text-red-400">{master.drawdown}%</p>
+                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-red-500/50 transition-colors">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Max Drawdown</p>
+                        <p className="text-xl font-bold text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">{master.drawdown}%</p>
                     </div>
-                    <div className="bg-gray-900/50 p-4 rounded-2xl border border-gray-800 text-center">
-                        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-1">Total Investors</p>
-                        <p className="text-xl font-bold text-blue-400">{master.followers.toLocaleString()}</p>
+                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-neon-purple/50 transition-colors">
+                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Investors</p>
+                        <p className="text-xl font-bold text-neon-purple drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]">{master.followers.toLocaleString()}</p>
                     </div>
                 </div>
 
@@ -179,7 +194,8 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                 </div>
 
                 {/* Charts Area */}
-                <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-inner">
+                {/* Charts Area */}
+                <div className="bg-space/80 backdrop-blur-sm p-6 rounded-3xl border border-white/5 shadow-inner">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="font-bold text-sm flex items-center gap-2 text-white"><AreaChart size={18} className="text-purple-500" /> Performance</h3>
                         <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-1 rounded-lg">All Time</span>
@@ -200,7 +216,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
             {/* ✨ NEW FLOATING ACTION BAR (CENTERED & MODERN) */}
             {!isPreview && userRole !== "MASTER" && (
                 <div className="fixed bottom-6 left-0 w-full flex justify-center z-50 px-4 pointer-events-none">
-                    <div className="pointer-events-auto w-full max-w-sm bg-gray-900/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-2 pl-5 pr-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] flex items-center justify-between gap-4 transition-all transform hover:scale-[1.01] hover:border-white/20">
+                    <div className="pointer-events-auto w-full max-w-sm glass-panel rounded-[2rem] p-2 pl-5 pr-2 flex items-center justify-between gap-4 transition-all transform hover:scale-[1.01] hover:border-white/20">
 
                         {/* Left: Info */}
                         <div className="flex flex-col">
@@ -247,6 +263,8 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                         >
                             {isCopying ? (
                                 <><StopCircle size={20} /> Stop</>
+                            ) : !master.isPublic ? (
+                                <><EyeOff size={20} /> Private</>
                             ) : (
                                 <>{isGoldenActive ? <Ticket size={20} fill="black" /> : canUse7DayTrial ? <Sparkles size={20} /> : <PlayCircle size={20} fill="currentColor" />}
                                     <span className="text-base">
@@ -259,7 +277,28 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                 </div>
             )}
 
-            {safetyModalOpen && <SafetyGuardModal risk={aiGuardRisk} setRisk={setAiGuardRisk} allocation={allocation} setAllocation={setAllocation} onClose={() => setSafetyModalOpen(false)} onConfirm={() => { onStartCopy(master, Number(allocation), aiGuardRisk, selectedSessionType); setSafetyModalOpen(false); onBack(); }} maxAlloc={maxAlloc || 0} />}
+            {safetyModalOpen && (
+                <SafetyGuardModal
+                    risk={aiGuardRisk}
+                    setRisk={setAiGuardRisk}
+                    allocation={allocation}
+                    setAllocation={setAllocation}
+                    onClose={() => setSafetyModalOpen(false)}
+                    onConfirm={() => {
+                        // Priority: VIP/Golden > User Selection (Welcome) > Selected Type (Daily/Trial)
+                        // If selected is DAILY and user checked Welcome, switch to TRIAL_7DAY
+                        const finalType = (selectedSessionType === "DAILY" && useWelcomeTicket) ? "TRIAL_7DAY" : selectedSessionType;
+                        onStartCopy(master, Number(allocation), aiGuardRisk, finalType);
+                        setSafetyModalOpen(false);
+                        setUseWelcomeTicket(false);
+                        onBack();
+                    }}
+                    maxAlloc={maxAlloc || 0}
+                    showWelcomeOption={!isVip && !hasUsed7DayTrial && selectedSessionType === "DAILY"} // Only show for Daily default
+                    useWelcome={useWelcomeTicket}
+                    setUseWelcome={setUseWelcomeTicket}
+                />
+            )}
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}

@@ -9,14 +9,14 @@ export const CURRENT_USER_DATA = {
     isNewVip: true,
     goldenTickets: 1,
     masterProfile: {
-        name: "Master Keng",
-        desc: "Full-time Scalper. I trade London & NY sessions. Disciplined risk management.",
-        tags: ["Scalping", "Gold", "Manual"],
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Keng",
+        name: "",
+        desc: "",
+        tags: [],
+        avatar: "",
         tier: "ROOKIE" as const,
-        followersCount: 48,
+        followersCount: 0,
         followersLimit: 50,
-        aum: 48000,
+        aum: 0,
         aumLimit: 50000,
         monthlyFee: 0
     }

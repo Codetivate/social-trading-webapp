@@ -1,9 +1,10 @@
 export type UserRole = "FOLLOWER" | "MASTER";
-export type AccountStatus = "CONNECTED" | "ERROR";
+export type AccountStatus = "CONNECTED" | "ERROR" | "DISCONNECTED";
 export type SessionType = "DAILY" | "TRIAL_7DAY" | "GOLDEN" | "PAID" | "VIP";
 
 export interface Master {
     id: number;
+    userId?: string; // Add optional userId to link to User model
     name: string;
     type: "AI_BOT" | "HUMAN";
     winRate: number;
@@ -22,6 +23,7 @@ export interface Master {
     currentOrders: Order[];
     monthlyFee: number;
     isPremium: boolean;
+    isPublic: boolean; // ✅ Added
 }
 
 export interface Order {
@@ -56,6 +58,7 @@ export interface Follower {
 }
 
 export interface MasterProfile {
+    userId: string; // ✅ Added
     name: string;
     desc: string;
     tags: string[];
@@ -66,4 +69,5 @@ export interface MasterProfile {
     aum: number;
     aumLimit: number;
     monthlyFee: number;
+    isPublic?: boolean; // ✅ Added
 }
