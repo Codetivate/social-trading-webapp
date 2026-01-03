@@ -4,13 +4,17 @@ export type SessionType = "DAILY" | "TRIAL_7DAY" | "GOLDEN" | "PAID" | "VIP";
 
 export interface Master {
     id: number;
-    userId?: string; // Add optional userId to link to User model
+    userId?: string;
+    masterUserId?: string; // ✅ Diagnostics Mapping
     name: string;
     type: "AI_BOT" | "HUMAN";
     winRate: number;
     roi: number;
+    leverage?: number; // ✅ New
+    riskReward?: number; // ✅ New
     pnlText: string;
     followers: number;
+    aum: number; // ✅ Added AUM
     balance: number;
     risk: number;
     drawdown: number;
@@ -22,6 +26,7 @@ export interface Master {
     joined: string;
     currentOrders: Order[];
     monthlyFee: number;
+    minDeposit: number; // ✅ Added
     isPremium: boolean;
     isPublic: boolean; // ✅ Added
 }
@@ -42,6 +47,7 @@ export interface Session {
     risk: number | string;
     startTime: number;
     pnl: number;
+    unrealizedPnL?: number; // ⚡ Real-Time Floating PnL
     orders: Order[];
     isTrial: boolean;
     type: SessionType;
@@ -69,5 +75,6 @@ export interface MasterProfile {
     aum: number;
     aumLimit: number;
     monthlyFee: number;
+    minDeposit?: number; // ✅ Added
     isPublic?: boolean; // ✅ Added
 }

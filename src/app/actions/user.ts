@@ -155,6 +155,7 @@ export async function activateMasterAccount(userId: string, fee: number) {
                         winRate: 0,
                         drawdown: 0,
                         followersCount: 0,
+                        minDeposit: 10, // ✅ Default Min Deposit
                         brokerAccountId: brokerAccount.id // 🔗 Link Broker
                     }
                 });
@@ -261,5 +262,40 @@ export async function disconnectBroker(userId: string) {
     } catch (error) {
         console.error("Disconnect Broker Error:", error);
         return { success: false, error: "Failed to disconnect broker." };
+    }
+}
+
+// --- 📊 GET ACTIVE POSITIONS ---
+export async function getOpenPositions(userId: string) {
+    if (!userId) return [];
+
+    try {
+        const brokerAccount = await prisma.brokerAccount.findFirst({
+            where: { userId, status: "CONNECTED" },
+            include: {
+                positions: {
+                    orderBy: { openTime: 'desc' }
+                }
+            }
+        });
+
+        if (!brokerAccount) return [];
+
+        // Return simpler structure
+        return brokerAccount.positions.map(pos => ({
+            ticket: String(pos.ticket), // BigInt to String
+            symbol: pos.symbol,
+            type: pos.type,
+            volume: pos.volume,
+            openPrice: pos.openPrice,
+            currentPrice: pos.currentPrice,
+            profit: pos.profit,
+            sl: pos.sl,
+            tp: pos.tp,
+            openTime: pos.openTime
+        }));
+    } catch (error) {
+        console.error("Fetch Positions Error:", error);
+        return [];
     }
 }

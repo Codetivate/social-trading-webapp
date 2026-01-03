@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
             where: { id: signalId },
             data: {
                 status: status,
-                executedTicket: ticket ? BigInt(ticket) : undefined,
+                executedTicket: ticket ? String(ticket) : undefined,
                 errorMessage: comment
             }
         });

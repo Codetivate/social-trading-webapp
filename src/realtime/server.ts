@@ -1,61 +1,73 @@
 import { Server } from "socket.io";
-import { createServer } from "http";
-import { redis } from "../lib/redis"; // Shared Redis Client
+// @ts-ignore
 import Redis from "ioredis";
+import dotenv from "dotenv";
 
-/**
- * ⚡ Realtime Push Server (Microservice)
- * 
- * This server handles the WebSocket connections from 100k+ followers.
- * It listens to Redis Pub/Sub events and pushes them down the socket.
- */
+dotenv.config();
 
-const PORT = parseInt(process.env.WS_PORT || "3001");
-const httpServer = createServer();
+const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
+const PORT = parseInt(process.env.SOCKET_PORT || "3001");
 
-// Initialize Socket.io with CORS
-const io = new Server(httpServer, {
-    cors: {
-        origin: "*", // Allow all origins (Secure this in prod!)
-        methods: ["GET", "POST"]
+async function startServer() {
+    console.log(`[Socket] Starting Realtime Server on Port ${PORT}...`);
+
+    // 1. Setup Redis Subscriber via ioredis
+    // @ts-ignore
+    const redisSubscriber = new Redis(REDIS_URL);
+
+    if (REDIS_URL.includes("upstash")) {
+        console.log(`[Socket] Connected to Redis Cloud`);
+    } else {
+        console.log(`[Socket] Connected to Redis Local`);
     }
-});
 
-// Dedicated Redis Subscriber (Pub/Sub requires a dedicated connection)
-const subClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-
-// 🎧 Subscribe to Signals Channel
-subClient.subscribe("channel:all_followers", (err: any, count: any) => {
-    if (err) console.error("❌ Failed to subscribe: %s", err.message);
-    else console.log(`✅ Subscribed to ${count} channels. Listening for signals...`);
-});
-
-// 🔄 Message Loop
-subClient.on("message", (channel: string, message: string) => {
-    console.log(`📩 Received ${message} from ${channel}`);
-    // Broadcast to all connected clients (Fan-Out)
-    io.emit("signal", JSON.parse(message));
-});
-
-io.on("connection", (socket: any) => { // Todo: Define strict Socket type
-    console.log(`🔌 Client Connected: ${socket.id}`);
-
-    socket.on("identify", (userId: string) => {
-        console.log(`👤 User identified: ${userId}`);
-        socket.join(`user:${userId}`);
+    // 2. Setup Socket.io
+    const io = new Server(PORT, {
+        cors: {
+            origin: "*", // Allow all for dev
+            methods: ["GET", "POST"],
+        },
     });
 
-    socket.on("disconnect", () => {
-        console.log(`❌ Client Disconnected: ${socket.id}`);
-    });
-});
+    io.on("connection", (socket) => {
+        console.log(`[Socket] Client Connected: ${socket.id}`);
 
-httpServer.listen(PORT, () => {
-    console.log(`
-🚀 🚀 REALTIME SERVER STARTED 🚀 🚀
------------------------------------
-Listening on Port: ${PORT}
-Redis: ${process.env.REDIS_URL || 'localhost:6379'}
------------------------------------
-    `);
+        socket.on("disconnect", () => {
+            // console.log(`[Socket] Client Disconnected: ${socket.id}`);
+        });
+    });
+
+    // 3. Bridge: Redis -> Socket
+    // ioredis uses .subscribe(channel) and then .on('message')
+    redisSubscriber.subscribe("channel:all_followers", (err: any) => {
+        if (err) console.error("Redis Subscribe Error:", err);
+    });
+
+    // 🚀 New Channel: Live Executions from Followers
+    redisSubscriber.subscribe("channel:executions", (err: any) => {
+        if (err) console.error("Redis Subscribe Exec Error:", err);
+    });
+
+    redisSubscriber.on("message", (channel: string, message: string) => {
+        try {
+            const payload = JSON.parse(message);
+
+            if (channel === "channel:all_followers") {
+                io.emit("signal", payload);
+                // console.log(`[Socket] ⚡ Signal: ${payload.ticket} (${payload.action})`);
+            } else if (channel === "channel:executions") {
+                io.emit("execution", payload);
+                console.log(`[Socket] ✅ Execution: ${payload.masterTicket} -> ${payload.followerTicket}`);
+            }
+
+        } catch (e) {
+            console.error("[Socket] Failed to parse message:", e);
+        }
+    });
+
+    console.log(`[Socket] 🚀 Listening for signals...`);
+}
+
+startServer().catch((err) => {
+    console.error("[Socket] Fatal Error:", err);
 });

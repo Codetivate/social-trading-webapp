@@ -3719,3 +3719,276 @@ Argument `masterId`: Invalid value provided. Expected StringFilter or String, pr
 [Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3065710453","action":"CLOSE","symbol":"XAUUSDm"}
 [SmartRouter] Dispatching ticket 3065710453 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
 [SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793144","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90205.65000000001,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793144 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793217","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90206.85,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793217 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793220","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90206.85,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793220 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793223","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90206.85,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793223 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793226","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90206.85,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793226 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793144","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793144 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793226","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793226 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793217","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793217 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793220","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793220 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793223","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793223 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793305","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90218.82,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793305 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793305","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793305 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793446","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90212.40000000001,"sl":80000,"tp":100000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068793446 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793446","symbol":"BTCUSDm","action":"MODIFY","sl":85000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068793446 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793446","symbol":"BTCUSDm","action":"MODIFY","sl":86000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068793446 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793446","symbol":"BTCUSDm","action":"MODIFY","sl":86000,"tp":120000}
+[SmartRouter] Dispatching ticket 3068793446 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068793446","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068793446 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797011","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90338.06,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797011 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797025","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90337.92,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797025 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797044","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90337.92,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797044 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797047","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90337.78,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797047 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797055","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90337.78,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797055 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797011","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797011 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797025","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797025 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797055","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797055 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797044","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797044 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797047","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797047 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797227","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90337.42,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068797227 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797227","symbol":"BTCUSDm","action":"MODIFY","sl":80000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068797227 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797227","symbol":"BTCUSDm","action":"MODIFY","sl":85000,"tp":110000}
+[SmartRouter] Dispatching ticket 3068797227 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068797227","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068797227 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798023","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90307,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798023 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798023","symbol":"BTCUSDm","action":"MODIFY","sl":80000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068798023 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798023","symbol":"BTCUSDm","action":"MODIFY","sl":85000,"tp":110000}
+[SmartRouter] Dispatching ticket 3068798023 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798023","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798023 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798156","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90308.64,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798156 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798156","symbol":"BTCUSDm","action":"MODIFY","sl":90000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068798156 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798156","symbol":"BTCUSDm","action":"MODIFY","sl":80000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068798156 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798767","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90320.2,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798767 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798825","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90320.2,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798825 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798850","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90320.2,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798850 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798861","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90320.2,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798861 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798867","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90320.2,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068798867 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798156","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798156 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798767","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798767 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798825","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798825 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798850","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798850 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798861","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798861 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068798867","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068798867 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800831","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90313.69,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068800831 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800859","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90295.69,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068800859 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800831","symbol":"BTCUSDm","action":"MODIFY","sl":90000,"tp":0}
+[SmartRouter] Dispatching ticket 3068800831 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800859","symbol":"BTCUSDm","action":"MODIFY","sl":110000,"tp":0}
+[SmartRouter] Dispatching ticket 3068800859 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800859","symbol":"BTCUSDm","action":"MODIFY","sl":120000,"tp":0}
+[SmartRouter] Dispatching ticket 3068800859 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068800831","symbol":"BTCUSDm","action":"MODIFY","sl":90000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068800831 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90310.66,"sl":80000,"tp":100000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","symbol":"BTCUSDm","action":"MODIFY","sl":85000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","symbol":"BTCUSDm","action":"MODIFY","sl":80000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","symbol":"BTCUSDm","action":"MODIFY","sl":80001,"tp":100000}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","symbol":"BTCUSDm","action":"MODIFY","sl":80001,"tp":150000}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801808","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90292.75,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068801808 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801808","symbol":"BTCUSDm","action":"MODIFY","sl":100000,"tp":0}
+[SmartRouter] Dispatching ticket 3068801808 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801554","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068801554 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068801808","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068801808 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809377","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90350.15000000001,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068809377 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809465","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90360.29000000001,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068809465 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809523","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90340.63,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068809523 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809377","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068809377 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809523","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068809523 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068809465","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068809465 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068810094","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90286.77,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068810094 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068810094","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068810094 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068811342","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90305.77,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068811342 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068811342","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068811342 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068812009","symbol":"BTCUSDm","type":"BUY","volume":1,"price":90282.68000000001,"sl":80000,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068812009 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068812009","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068812009 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813024","symbol":"BTCUSDm","type":"BUY","volume":0.2,"price":90274.07,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813024 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813024","symbol":"BTCUSDm","action":"MODIFY","sl":80000,"tp":100000}
+[SmartRouter] Dispatching ticket 3068813024 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813226","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.61,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813226 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813232","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.61,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813232 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813251","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.75,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813251 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813253","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.75,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813253 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813262","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.75,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813262 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813275","symbol":"BTCUSDm","type":"SELL","volume":0.2,"price":90257.84,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3068813275 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813024","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813024 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813226","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813226 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813232","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813232 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813251","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813251 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813253","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813253 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813262","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813262 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813275","action":"CLOSE","symbol":"BTCUSDm"}
+[SmartRouter] Dispatching ticket 3068813275 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5

@@ -6,20 +6,28 @@ import json
 import os
 from dotenv import load_dotenv
 load_dotenv() # 📥 Load .env file
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# ⚙️ CONFIGURATION (Moved to .env in Prod)
+import argparse
+
+# 🔧 ARGUMENT PARSING
+parser = argparse.ArgumentParser(description='Hydra Broadcaster')
+parser.add_argument('--user-id', type=str, required=True, help='Master User ID')
+parser.add_argument('--mt5-path', type=str, default=os.getenv("MT5_PATH"), help='Path to MT5 Terminal')
+parser.add_argument('--secret', type=str, default=os.getenv("API_SECRET"), help='Bridge Secret')
+
+args = parser.parse_args()
+
 # ⚙️ CONFIGURATION
-BASE_URL = os.getenv("AUTH_URL", "http://192.168.2.33.nip.io:3000") # User specified URL
+BASE_URL = os.getenv("AUTH_URL", "http://localhost:3000") # Default to localhost if not set
 WEBHOOK_URL = f"{BASE_URL}/api/webhook/signal" 
 BROKER_API_URL = f"{BASE_URL}/api/user/broker"
+POLL_INTERVAL = 0.05 
 
-# USER IDENTITY (Ideally passed as arg or env)
-# For the demo, we assume this script runs for a specific User ID (UUID)
-# You can find your User ID in the Database or Browser Console (Network tab -> session)
-USER_ID = os.getenv("USER_ID", "0c13bf41-fad5-4884-8be5-c6bb2532cca5") # Correct User ID from DB
-MASTER_ID = USER_ID # 🔄 SELF-MASTER: You are broadcasting your own trades as Master
-API_SECRET = os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro") # Matches .env BROKER_SECRET
+# USER IDENTITY
+USER_ID = args.user_id
+MASTER_ID = USER_ID 
+API_SECRET = args.secret or "AlphaBravoCharlieDeltaEchoFoxtro"
 
 def fetch_credentials():
     print(f"[INFO] Fetching credentials from {BROKER_API_URL}...")
@@ -53,7 +61,8 @@ def initialize_mt5():
         server = "Exness-MT5Trial7"
 
     # 2. Path Configuration
-    mt5_path = os.getenv("MT5_PATH", "")
+    # PRIORITY: CLI Arg > Env Var > Default
+    mt5_path = args.mt5_path if args.mt5_path else os.getenv("MT5_PATH", "")
     init_args = {}
     if mt5_path and os.path.exists(mt5_path):
         init_args["path"] = mt5_path
@@ -113,14 +122,27 @@ def follow_signals():
                 "symbol": p.symbol # Store symbol for Close events
             }
 
+    poll_interval = POLL_INTERVAL # Local var from Global Config
+    last_equity_report = 0
+
+
     while True:
         try:
+            # 🛡️ CONNECTION GUARD: Prevent "False Closes" if terminal disconnects
+            # If terminal is disconnected, positions_get() might return empty or stale data.
+            # We must NOT signal closes if we are not connected.
+            term_info = mt5.terminal_info()
+            if not term_info or not term_info.connected:
+                print("[WARN] Terminal Disconnected! Pausing signal broadcast...")
+                # Try to reconnect
+                initialize_mt5()
+                time.sleep(1)
+                continue
+
             # 1. Get Current Open Positions
             current_positions_tuple = mt5.positions_get()
             
             if current_positions_tuple is None:
-                # Could be connection loss or actual no positions
-                # We need to distinguish, but for simplicity we assume empty list if None but check error
                 if mt5.last_error()[0] != 1: # 1 = Success
                      print("[WARN] MT5 Error:", mt5.last_error())
                 current_positions_tuple = []
@@ -154,7 +176,8 @@ def follow_signals():
                         "tp": pos.tp, 
                         "price": pos.price_open, 
                         "volume": pos.volume,
-                        "symbol": pos.symbol
+                        "symbol": pos.symbol,
+                        "type": "BUY" if pos.type == 0 else "SELL" # Store Type for Catch-Up
                     }
                 else:
                     # --- B. CHECK FOR MODIFICATIONS (SL/TP) ---
@@ -178,15 +201,41 @@ def follow_signals():
             closed_tickets = [t for t in known_positions if t not in current_tickets]
             
             for ticket in closed_tickets:
-                print(f"[SIGNAL] CLOSE: {ticket}")
-                # Ideally, get close price from history_deals
-                # For latency, we just signal CLOSE immediately
+                print(f"[SIGNAL] CLOSE DETECTED: {ticket}. Fetching PnL...")
+                
+                # 🔍 FETCH DEAL INFO (PnL, Price, Swap)
+                # Look back 5 minutes to find the closing deal
+                history = mt5.history_deals_get(datetime.now() - timedelta(minutes=5), datetime.now())
+                deal_info = None
+                
+                if history:
+                    for deal in history:
+                        # Find the OUT entry for this Position ID
+                        if deal.position_id == ticket and deal.entry == mt5.DEAL_ENTRY_OUT:
+                            deal_info = deal
+                            break
+                
                 payload = {
                     "masterId": MASTER_ID,
-                    "ticket": str(ticket), # ✅ String Ticket
+                    "ticket": str(ticket),
                     "action": "CLOSE",
-                    "symbol": known_positions[ticket].get("symbol", "Unknown")
+                    "symbol": known_positions[ticket].get("symbol", "Unknown"),
+                    "openPrice": known_positions[ticket].get("price", 0.0)
                 }
+
+                if deal_info:
+                    print(f"   ✅ Deal Found! Profit: {deal_info.profit}")
+                    payload.update({
+                        "price": deal_info.price, # Close Price
+                        "profit": deal_info.profit,
+                        "swap": deal_info.swap,
+                        "commission": deal_info.commission,
+                        "volume": deal_info.volume,
+                        "closeTime": int(deal_info.time)
+                    })
+                else:
+                    print(f"   ⚠️ Deal History not found for {ticket}. Sending CLOSE without PnL.")
+
                 send_signal(payload)
                 del known_positions[ticket]
 
@@ -196,7 +245,59 @@ def follow_signals():
                 if account_info:
                     sync_balance(account_info)
 
-            time.sleep(0.05) # 50ms polling
+            # 4. 🧠 STATE SYNC (Anti-Ghosting) & HISTORY VERIFICATION
+            try:
+                # A. Active Snapshot
+                active_tickets = list(known_positions.keys())
+                state_payload = json.dumps({
+                    "tickets": list(known_positions.keys()), # Legacy support
+                    "positions": known_positions,            # Full State for Catch-Up
+                    "timestamp": time.time(),
+                    "count": len(known_positions)
+                }, default=str) # Handle BigInts
+                r_client.set(f"state:master:{MASTER_ID}:tickets", state_payload, ex=10)
+
+                # B. History Sync (Confirm Closes)
+                # Sync last 24h of history to allow followers to verify "Did Master actually close this?"
+                from_date = datetime.now() - timedelta(days=1)
+                history_deals = mt5.history_deals_get(from_date, datetime.now())
+                
+                if history_deals:
+                    # Extract Position IDs (Ticket) from deals where entry=OUT (Close)
+                    closed_tickets = set()
+                    for deal in history_deals:
+                        if deal.entry == mt5.DEAL_ENTRY_OUT:
+                            closed_tickets.add(str(deal.position_id))
+                    
+                    if closed_tickets:
+                        # Store as Redis Set for O(1) checking
+                        r_client.sadd(f"history:master:{MASTER_ID}:closed", *closed_tickets)
+                        # Set expiry to 48h to keep DB size managed but allow weekend catchup
+                        r_client.expire(f"history:master:{MASTER_ID}:closed", 172800)
+            
+            except Exception as e:
+                print(f"   [WARN] State/History Sync Failed: {e}")
+
+            # 📊 ANALYTICS: Report Equity Snapshot (Every 60s)
+            if time.time() - last_equity_report > 60:
+                acct = mt5.account_info()
+                if acct:
+                    # Send Snapshot
+                    snap_url = WEBHOOK_URL.replace("/signal", "/equity-snap")
+                    snap_payload = {
+                        "userId": USER_ID,
+                        "balance": acct.balance,
+                        "equity": acct.equity
+                    }
+                    try:
+                        requests.post(snap_url, json=snap_payload, headers={"x-bridge-secret": API_SECRET}, timeout=2)
+                        print(f"   [📊 SNAPSHOT] Equity: {acct.equity} Balance: {acct.balance}")
+                        last_equity_report = time.time()
+                    except Exception as e:
+                        print(f"   [WARN] Failed to report snapshot: {e}")
+
+            # 5. Sleep
+            time.sleep(poll_interval)
             
         except KeyboardInterrupt:
             print("[STOP] Stopping Broadcaster...")
@@ -235,25 +336,27 @@ def sync_balance(account_info):
 # ⚙️ REDIS CONFIGURATION
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 import redis
-r_client = redis.from_url(REDIS_URL)
+try:
+    r_client = redis.from_url(REDIS_URL, decode_responses=True)
+    r_client.ping()
+    print(f"[OK] Connected to Redis Cache: {'Cloud' if 'upstash' in REDIS_URL else 'Local'}")
+except Exception as e:
+    print(f"[WARN] Redis Connection Failed: {e}")
+    r_client = None
 
 def send_signal(payload):
     try:
         # 1. 🚀 FIRE-AND-FORGET: Push to Realtime Subscribers (WebSockets)
         # Latency: < 1ms
         json_payload = json.dumps(payload)
-        r_client.publish('channel:all_followers', json_payload)
+        r_client.publish(f"signals:master:{MASTER_ID}", json_payload) # 🎯 Precise routing
         
         # 2. 📝 AUDIT LOG: Push to Redis Stream for persistence/replay
         r_client.xadd('stream:signals', { 'payload': json_payload, 'timestamp': str(time.time()) })
         
-        # 3. 🕸️ LEGACY SYNC: Keep HTTP for DB sync (Optional, can be removed to be purely Event-Driven)
-        # Ideally, a separate Worker should read 'stream:signals' and write to DB async.
-        # For this hybrid phase, we keep it to ensure DB stays updated without running a new worker.
-        try:
-            requests.post(WEBHOOK_URL, json=payload, headers={"x-bridge-secret": API_SECRET}, timeout=1)
-        except Exception:
-             print("   [WARN] Legacy HTTP sync failed (Redis delivery still active)")
+        # 3. 🕸️ LEGACY SYNC: DISABLED (Using Redis Event-Driven Only)
+        # requests.post(WEBHOOK_URL, json=payload, headers={"x-bridge-secret": API_SECRET}, timeout=1)
+        pass
 
         print(f"   [🚀] Signal Pushed to Redis (Ticket: {payload['ticket']})")
 

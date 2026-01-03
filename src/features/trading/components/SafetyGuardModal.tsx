@@ -14,7 +14,10 @@ interface SafetyGuardModalProps {
     setUseWelcome?: (v: boolean) => void; // New Prop
 }
 
-export function SafetyGuardModal({ risk, setRisk, allocation, setAllocation, onClose, onConfirm, maxAlloc, showWelcomeOption, useWelcome, setUseWelcome }: SafetyGuardModalProps) {
+export function SafetyGuardModal({
+    risk, setRisk, allocation, setAllocation, onClose, onConfirm, maxAlloc,
+    showWelcomeOption, useWelcome, setUseWelcome
+}: SafetyGuardModalProps) {
     const [showInfo, setShowInfo] = useState(false);
     const riskAmount = (Number(allocation) * Number(risk) / 100).toFixed(0);
 
@@ -89,7 +92,7 @@ export function SafetyGuardModal({ risk, setRisk, allocation, setAllocation, onC
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs text-gray-400 font-bold uppercase">2. AI Hard Cut (%)</label>
+                    <label className="text-xs text-gray-400 font-bold uppercase">3. AI Hard Cut (%)</label>
                     <div className="grid grid-cols-5 gap-2">
                         {[10, 20, 30, 50, 95].map((val) => (
                             <button

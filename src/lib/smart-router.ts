@@ -11,6 +11,12 @@ export type SignalPayload = {
     volume?: number;
     sl?: number;
     tp?: number;
+    // 📊 PnL Data (on Close)
+    openPrice?: number;
+    profit?: number;
+    swap?: number;
+    commission?: number;
+    closeTime?: number;
 };
 
 export class SmartRouter {
@@ -24,6 +30,41 @@ export class SmartRouter {
     static async dispatch(signal: SignalPayload) {
         fs.appendFileSync('debug.log', `[SmartRouter] Dispatching ticket ${signal.ticket} from Master ${signal.masterId}\n`);
         console.log(`[SmartRouter] 🚀 Processing ${signal.action} for ${signal.symbol} (Master: ${signal.masterId})`);
+
+        // 0. 💾 PERSIST MASTER HISTORY (If Close & PnL provided)
+        if (signal.action === "CLOSE" && signal.profit !== undefined) {
+            try {
+                // Check if already exists to avoid dupes
+                const exists = await prisma.tradeHistory.findFirst({
+                    where: { ticket: signal.ticket, followerId: signal.masterId }
+                });
+
+                if (!exists) {
+                    await prisma.tradeHistory.create({
+                        data: {
+                            followerId: signal.masterId, // Self-Referential for Master Record
+                            masterId: signal.masterId,
+                            ticket: String(signal.ticket),
+                            symbol: signal.symbol,
+                            type: signal.type || "UNKNOWN",
+                            volume: Number(signal.volume || 0),
+                            openPrice: Number(signal.openPrice || 0),
+                            closePrice: Number(signal.price || 0),
+                            openTime: new Date(), // We don't have exact open time in payload yet, using Now as fallback or could query Position.
+                            // Ideally Broadcaster sends openTime too. For now this is "best effort" for history.
+                            closeTime: signal.closeTime ? new Date(signal.closeTime * 1000) : new Date(),
+                            profit: Number(signal.profit),
+                            commission: Number(signal.commission || 0),
+                            swap: Number(signal.swap || 0),
+                            netProfit: Number(signal.profit) + Number(signal.commission || 0) + Number(signal.swap || 0)
+                        }
+                    });
+                    console.log(`[SmartRouter] 📜 Persisted Master Trade History: ${signal.ticket}`);
+                }
+            } catch (e) {
+                console.error("[SmartRouter] Failed to persist master history:", e);
+            }
+        }
 
         // 1. Find Active Copy Sessions for this Master
         const sessions = await prisma.copySession.findMany({

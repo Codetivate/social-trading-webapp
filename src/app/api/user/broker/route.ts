@@ -101,11 +101,9 @@ export async function PUT(req: NextRequest) {
         if (!userId) return NextResponse.json({ error: "Missing User ID" }, { status: 400 });
 
         const body = await req.json();
-        const { balance, equity, margin, leverage, login } = body;
+        const { balance, equity, leverage, login, floating } = body;
 
         if (!login) {
-            // Fallback: If no login provided, update FIRST account (Legacy behavior)
-            // But ideally we should require login. For now, let's try to update based on login if present.
             await prisma.brokerAccount.updateMany({
                 where: { userId },
                 data: { balance, equity, leverage, updatedAt: new Date() }
@@ -125,9 +123,99 @@ export async function PUT(req: NextRequest) {
             });
         }
 
+        if (floating && typeof floating === 'object') {
+            const tickets = Object.keys(floating);
+
+            // 1. Reset PnL for active sessions first
+            await prisma.copySession.updateMany({
+                where: { followerId: userId, isActive: true },
+                data: { unrealizedPnL: 0 }
+            });
+
+            if (tickets.length > 0) {
+                // 2. Find Signals
+                const signals = await prisma.signal.findMany({
+                    where: { ticket: { in: tickets } },
+                    select: { ticket: true, masterId: true }
+                });
+
+                // 3. Aggregate PnL
+                const masterPnlMap: Record<string, number> = {};
+                signals.forEach(sig => {
+                    const pnl = floating[sig.ticket] || 0;
+                    masterPnlMap[sig.masterId] = (masterPnlMap[sig.masterId] || 0) + pnl;
+                });
+
+                // 4. Update Sessions
+                for (const [masterId, pnl] of Object.entries(masterPnlMap)) {
+                    await prisma.copySession.updateMany({
+                        where: { followerId: userId, masterId: masterId, isActive: true },
+                        data: { unrealizedPnL: pnl }
+                    });
+                }
+            }
+        }
+
+        // 📈 PROESS OPEN POSITIONS (Sync)
+        const { positions } = body;
+        if (Array.isArray(positions)) {
+            // Find existing broker account ID
+            const brokerAccount = await prisma.brokerAccount.findFirst({
+                where: { userId },
+                select: { id: true }
+            });
+
+            if (brokerAccount) {
+                const activeTickets = positions.map(p => BigInt(p.ticket));
+
+                // 1. UPSERT ACTIVE POSITIONS
+                for (const pos of positions) {
+                    await prisma.position.upsert({
+                        where: { ticket: BigInt(pos.ticket) },
+                        update: {
+                            symbol: pos.symbol,
+                            volume: Number(pos.volume),
+                            currentPrice: Number(pos.currentPrice),
+                            profit: Number(pos.profit),
+                            swap: Number(pos.swap),
+                            commission: Number(pos.commission),
+                            sl: pos.sl ? Number(pos.sl) : null,
+                            tp: pos.tp ? Number(pos.tp) : null,
+                            updatedAt: new Date()
+                        },
+                        create: {
+                            ticket: BigInt(pos.ticket),
+                            symbol: pos.symbol,
+                            type: pos.type,
+                            volume: Number(pos.volume),
+                            openPrice: Number(pos.openPrice),
+                            currentPrice: Number(pos.currentPrice),
+                            profit: Number(pos.profit), // Floating PnL
+                            swap: Number(pos.swap),
+                            commission: Number(pos.commission),
+                            sl: pos.sl ? Number(pos.sl) : null,
+                            tp: pos.tp ? Number(pos.tp) : null,
+                            openTime: new Date(Number(pos.openTime) * 1000), // MT5 Timestamp is seconds
+                            brokerAccountId: brokerAccount.id
+                        }
+                    });
+                }
+
+                // 2. DELETE CLOSED POSITIONS (Not in payload)
+                // If it's not in the 'positions' array from MT5, it's closed (or filtered out).
+                // We delete positions associated with this BrokerAccount that are NOT in activeTickets
+                await prisma.position.deleteMany({
+                    where: {
+                        brokerAccountId: brokerAccount.id,
+                        ticket: { notIn: activeTickets }
+                    }
+                });
+            }
+        }
+
         return NextResponse.json({ status: "OK" });
     } catch (error) {
-        return NextResponse.json({ error: "Update Failed" }, { status: 500 });
+        console.error("Broker Update Error:", error);
+        return NextResponse.json({ error: "Update Failed", details: String(error) }, { status: 500 });
     }
 }
-

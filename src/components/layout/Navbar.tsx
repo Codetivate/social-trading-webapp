@@ -21,9 +21,10 @@ interface NavbarProps {
     onOpenSettings: () => void;
     onOpenVIP: () => void;
     onBecomeMaster?: () => void;
+    onOpenWallet?: () => void;
 }
 
-export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIsLoggedIn, isVip, goldenTickets, goldenTicketExpiry, goldenTicketStart, onLogin, onOpenSettings, onOpenVIP, onBecomeMaster }: NavbarProps) {
+export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIsLoggedIn, isVip, goldenTickets, goldenTicketExpiry, goldenTicketStart, onLogin, onOpenSettings, onOpenVIP, onBecomeMaster, onOpenWallet }: NavbarProps) {
     const { data: session } = useSession();
     const isAuthenticated = !!session || propsIsLoggedIn;
 
@@ -67,14 +68,16 @@ export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIs
                     )}
                     {isAuthenticated ? (
                         <>
+
+
                             {goldenTickets > 0 && !isGoldenActive && !isVip && (
-                                <div className="flex items-center gap-1 bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
+                                <div className="hidden sm:flex items-center gap-1 bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                                     <Ticket size={12} fill="currentColor" />
                                     <span className="text-[10px] font-bold">{goldenTickets}</span>
                                 </div>
                             )}
                             {(isGoldenActive || isVip) && (
-                                <div className="flex items-center gap-2 group relative cursor-help">
+                                <div className="hidden sm:flex items-center gap-2 group relative cursor-help">
                                     <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-2.5 py-1 rounded-full border border-yellow-500/30 glow-purple">
                                         <Clock size={12} />
                                         <span className="text-[10px] font-bold">{isVip ? "VIP Active" : `${daysLeft}d left`}</span>

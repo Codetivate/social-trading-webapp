@@ -6,22 +6,67 @@ import json
 import os
 from dotenv import load_dotenv
 load_dotenv() # 📥 Load .env file
+from datetime import datetime, timedelta
+
+import argparse
+import psycopg2
+import hashlib
 
 # ⚙️ CONFIGURATION
 PORT = "3000"
 # Try user's IP first, then localhost as fallback
 HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1"] 
-BRIDGE_SECRET = os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro")
-# HARCODED ID for testing (The id of Numsin Ketchaisri from logs)
-MY_FOLLOWER_ID = os.getenv("FOLLOWER_ID", "79324dd3-e856-4a55-8f90-853988a584ab") # Follower Nes 
+DATABASE_URL = os.getenv("DATABASE_URL") 
+
+# 🔧 ARGUMENT PARSING (Multi-Tenant Support)
+parser = argparse.ArgumentParser(description='Hydra Executor Worker')
+parser.add_argument('--user-id', type=str, required=True, help='Target User ID (Follower)')
+parser.add_argument('--secret', type=str, help='Bridge API Secret', default=os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro"))
+parser.add_argument('--mt5-path', type=str, help='Specific MT5 Terminal Path', default=os.getenv("MT5_PATH", ""))
+parser.add_argument('--dry-run', action='store_true', help='Disable trade execution')
+
+args = parser.parse_args()
+
+BRIDGE_SECRET = args.secret
+MY_FOLLOWER_ID = args.user_id
+MT5_PATH_ARG = args.mt5_path
 POLL_INTERVAL = 1.0 # Seconds
-DRY_RUN = False # ⚠️ SAFETY: Set to False to actually execute trades
+DRY_RUN = args.dry_run # ⚠️ SAFETY: Set to False to actually execute trades
 
 def get_api_url(host):
     return f"http://{host}:{PORT}/api/engine/poll"
 
 def get_broker_url(host):
     return f"http://{host}:{PORT}/api/user/broker"
+
+def get_db_connection():
+    try:
+        return psycopg2.connect(DATABASE_URL)
+    except Exception as e:
+        print(f"[ERROR] DB Connect Failed: {e}")
+        return None
+
+def fetch_subscriptions(follower_id):
+    """
+    Fetch active CopySessions for this follower to know which Masters to listen to.
+    """
+    conn = get_db_connection()
+    if not conn: return []
+    
+    try:
+        cur = conn.cursor()
+        query = """
+            SELECT "masterId" FROM "CopySession"
+            WHERE "followerId" = %s AND "isActive" = true
+        """
+        cur.execute(query, (follower_id,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [row[0] for row in rows]
+    except Exception as e:
+        print(f"[ERROR] Fetch Subscriptions Failed: {e}")
+        return []
 
 def fetch_credentials():
     print("[INFO] Fetching credentials from Cloud...")
@@ -50,6 +95,10 @@ def login_mt5(creds):
         return True
 
     print(f"[INFO] Logging in as {creds['login']}...")
+    print(f"      Server: {creds['server']}")
+    print(f"      Password: {'*' * len(creds['password'])} (Length: {len(creds['password'])})")
+
+    # 1. Try Explicit Login (Best for Switching)
     authorized = mt5.login(
         login=int(creds['login']), 
         password=creds['password'], 
@@ -59,16 +108,29 @@ def login_mt5(creds):
     if authorized:
         print(f"[OK] Login Successful: {creds['login']}")
         return True
-    else:
-        print(f"[ERROR] Login Failed: {mt5.last_error()}")
-        print(f"👉 TIP: If your broker requires OTP, please Login MANUALLY in the MT5 Terminal and check 'Save Password'.")
-        return False
+    
+    print(f"[WARN] Explicit Login Failed: {mt5.last_error()}")
+    
+    # 2. Fallback: Try Login with SAVED Password (if manual login was done before)
+    print(f"[INFO] Retrying with Saved Password (OTP Mode)...")
+    authorized = mt5.login(
+        login=int(creds['login']),
+        server=creds['server']
+    )
+    
+    if authorized:
+        print(f"[OK] Login Successful (Saved Password): {creds['login']}")
+        return True
+        
+    print(f"[ERROR] All Login Attempts Failed: {mt5.last_error()}")
+    print(f"👉 TIP: Login MANUALLY in MT5, check 'Save Password', and ensure Server Name matches exactly.")
+    return False
 
 
     
 def initialize_mt5():
     # Optional: Path to specific terminal (Crucial for running multiple instances)
-    mt5_path = os.getenv("MT5_PATH", "") 
+    mt5_path = MT5_PATH_ARG 
 
     init_params = {}
     if mt5_path and os.path.exists(mt5_path):
@@ -120,71 +182,116 @@ def acknowledge_signal(signal_id, status="EXECUTED", ticket=None, comment=None):
 
 def find_trade_by_ticket(target_ticket):
     """
-    Robust 3-Stage Matching Strategy to find Follower's trade 
-    corresponding to a Master Ticket.
+    Robust Deep Scanning Strategy (O(N))
     """
     target_ticket_str = str(target_ticket)
     stub_exact = f"CPY:{target_ticket_str}"
     
-    # 🛡️ GLOBAL SCAN: Get ALL positions to avoid Symbol Mismatch
-    all_positions = mt5.positions_get()
+    # 🛡️ CONNECTION RETRY for Positions
+    # If terminal disconnects, positions_get returns None. We must retry.
+    all_positions = None
+    for attempt in range(2):
+        if mt5.terminal_info() is None:
+             print(f"   [WARN] Terminal info is None. Reconnecting...")
+             initialize_mt5()
+             time.sleep(0.5)
+
+        all_positions = mt5.positions_get()
+        if all_positions is not None:
+             break
+        print(f"   [WARN] positions_get() returned None. Retrying connection...")
+        initialize_mt5()
+        time.sleep(0.5)
+
     if all_positions is None: return None
     
-    # Filter for our bot's trades only
-    positions = [p for p in all_positions if p.magic == 234000]
-    
-    if not positions: return None
-
-    print(f"   [DEBUG] Scanning {len(positions)} active copy trades for Master Ticket {target_ticket_str}...")
-
-    # Pass 1: Exact Match
-    for pos in positions:
-        if stub_exact in pos.comment:
+    # Pass 1: Magic Number + Exact Comment Match (Fastest)
+    for pos in all_positions:
+        if pos.magic == 234000 and stub_exact in pos.comment:
             print(f"   [MATCH] Found Exact Match: {pos.ticket} (Comment: {pos.comment})")
             return pos
-    
-    # Pass 2: Fuzzy Match (Ticket ID in comment)
-    for pos in positions:
+            
+    # Pass 2: Loose Magic + Ticket in Comment (Handling manual mods)
+    for pos in all_positions:
         if target_ticket_str in pos.comment:
             print(f"   [MATCH] Found Fuzzy Match: {pos.ticket} (Comment: {pos.comment})")
             return pos
 
-    # Pass 3: FIFO Fallback (Oldest trade regardless of symbol? No, risky. 
-    # Let's return None here and let caller decide fallback or fail.
-    # Actually, for CLOSE/MODIFY, we really want to find *something*.
-    # But FIFO is dangerous if there are multiple open trades.
-    # The previous logic had FIFO fallback inside the Close block.
-    # Let's keep it safer: Return None if no string match.
+    # Pass 3: DEEP AI HISTORY CHECK 🧠
+    # Maybe we already closed it? If so, we should return a "Ghost" object or None but log it.
+    # This precludes the "Error: Trade Not Found" panic.
+    from datetime import datetime, timedelta
+    history = mt5.history_deals_get(datetime.now() - timedelta(hours=24), datetime.now())
+    if history:
+        for deal in history:
+            if deal.entry == mt5.DEAL_ENTRY_OUT and target_ticket_str in deal.comment:
+                 print(f"   [INFO] Signal {target_ticket} was ALREADY CLOSED at {datetime.fromtimestamp(deal.time)}")
+                 return None # Clean exit, no error needed
+
+    # DEBUG: Help diagnose why we missed it
+    print(f"   [DEBUG] Search for {target_ticket_str} failed. Dumping {len(all_positions)} open positions:")
+    for p in all_positions:
+        print(f"      -> Ticket: {p.ticket}, Magic: {p.magic}, Comment: '{p.comment}'")
+
     return None
+
+def report_trade_result(deal, master_id, api_url):
+    """
+    Sends closed trade data to Analytics API
+    """
+    endpoint = api_url.replace("/api/engine/poll", "/api/webhook/trade-result")
+    
+    payload = {
+        "followerId": MY_FOLLOWER_ID,
+        "masterId": str(master_id), # Master Ticket or ID
+        "ticket": deal.ticket,
+        "symbol": deal.symbol,
+        "type": "BUY" if deal.type == 0 else "SELL", # 0=Buy, 1=Sell in Deal too? Actually Deal Entry Out type matters.
+        # But we can infer from deal type. deal.type: 0=Buy, 1=Sell.
+        "volume": deal.volume,
+        "openPrice": 0, 
+        "closePrice": deal.price, 
+        "openTime": 0, 
+        "closeTime": deal.time,
+        "profit": deal.profit,
+        "commission": deal.commission,
+        "swap": deal.swap
+    }
+    
+    try:
+        requests.post(endpoint, json=payload, headers={"x-bridge-secret": BRIDGE_SECRET}, timeout=2)
+        print(f"   [📊 ANALYTICS] Reported PnL: {deal.profit}")
+    except Exception as e:
+        print(f"   [WARN] Failed to report analytics: {e}")
 
 def execute_trade(signal, api_url):
     ticket = int(signal.get('ticket', 0)) # Handle String from BigInt JSON
-    action = signal['action'] # OPEN, CLOSE, MODIFY
-    symbol = signal['symbol']
-    trade_type = signal['type'] # "BUY" or "SELL"
-    volume = signal['volume'] 
-    signal_id = signal['id']
+    action = signal.get('action') # OPEN, CLOSE, MODIFY
+    symbol = signal.get('symbol')
+    trade_type = signal.get('type') # "BUY" or "SELL" (Optional for Close/Modify)
+    volume = signal.get('volume') 
+    signal_id = signal.get('id')
     
-    print(f"[EXEC] PROCESSING: {action} {symbol} {trade_type} {volume} Lots (Signal: {signal_id})")
+    print(f"[EXEC] PROCESSING: {action} {symbol} {trade_type or ''} {volume or ''} (Signal: {signal_id})")
 
-    # 1. VALIDATE SYMBOL (Common for OPEN/CLOSE)
-    selected = mt5.symbol_select(symbol, True)
-    if not selected:
-        # Try generic cleanup
-        clean = symbol.replace('m', '').replace('c', '')
-        if mt5.symbol_select(clean, True): symbol = clean
-        else:
-             # Try suffixes
-             for s in ["m", "c", "z"]: 
-                if mt5.symbol_select(f"{symbol}{s}", True): 
-                    symbol = f"{symbol}{s}"
-                    break
+    # ️ SAFETY CHECK: Verify Account ID matches Credentials
+    # This prevents trading on Master account if path isolation failed
+    # MOVED TO TOP to protect CLOSE/MODIFY actions too!
+    current_account = mt5.account_info()
+    creds = fetch_credentials() # Re-verify before trade
     
-    current_tick = mt5.symbol_info_tick(symbol)
-    if not current_tick:
-        print(f"[ERROR] No tick for {symbol}")
-        send_ack(api_url, signal_id, "FAILED", 0, "No Tick")
-        return
+    if current_account and creds and str(current_account.login) != str(creds['login']):
+         print(f"[WARN] Account Mismatch! Active: {current_account.login}, Target: {creds['login']}")
+         print(f"[INFO] Attempting Auto-Login to {creds['login']}...")
+         
+         if login_mt5(creds):
+              print(f"[OK] Switched Account successfully. Resume Trade...")
+              # Small sleep to let terminal sync
+              time.sleep(1)
+         else:
+              print("[STOP] Login switch failed. Blocking trade.")
+              send_ack(api_url, signal_id, "FAILED", 0, "Account Switch Failed")
+              return
 
     # 🔄 HANDLE CLOSE SIGNAL
     if action == "CLOSE":
@@ -193,15 +300,39 @@ def execute_trade(signal, api_url):
         
         # Fallback FIFO logic if find_trade_by_ticket fails?
         if not target_pos:
-             # Emergency FIFO Scan for Symbol
-             symbol_audit = mt5.positions_get(symbol=symbol)
-             if symbol_audit:
-                 target_pos = symbol_audit[0] # Oldest
-                 print(f"   [FALLBACK] No comment match. Using FIFO rule: {target_pos.ticket}")
+             # Emergency FIFO Scan for Symbol (Only if symbol is valid in this terminal context)
+             # But if symbol mismatch, we can't scan.
+             # So we rely purely on Ticket Match first.
+             pass
 
         if target_pos:
+            # ✅ PRE-CLOSE SYMBOL SELECT FOR SAFETY
+            if not mt5.symbol_select(target_pos.symbol, True):
+                 print(f"   [WARN] Could not select {target_pos.symbol} for Close. Attempting anyway.")
+
+            current_tick = mt5.symbol_info_tick(target_pos.symbol)
+            # Retry Tick
+            if not current_tick:
+                for _ in range(5):
+                    time.sleep(0.1)
+                    current_tick = mt5.symbol_info_tick(target_pos.symbol)
+                    if current_tick: break
+            
+            price_close = 0.0
+            if current_tick:
+                 price_close = current_tick.bid if target_pos.type == mt5.ORDER_TYPE_BUY else current_tick.ask
+            else:
+                 # Fallback to cached info
+                 info = mt5.symbol_info(target_pos.symbol)
+                 if info:
+                     price_close = info.bid if target_pos.type == mt5.ORDER_TYPE_BUY else info.ask
+            
+            if price_close == 0.0:
+                 print(f"   [ERROR] No Price for {target_pos.symbol}. Cannot Close.")
+                 send_ack(api_url, signal_id, "FAILED", 0, "No Price")
+                 return
+
             type_close = mt5.ORDER_TYPE_SELL if target_pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
-            price_close = current_tick.bid if type_close == mt5.ORDER_TYPE_SELL else current_tick.ask
             
             req = {
                 "action": mt5.TRADE_ACTION_DEAL,
@@ -217,6 +348,33 @@ def execute_trade(signal, api_url):
             if res.retcode == mt5.TRADE_RETCODE_DONE:
                 print(f"   [OK] Closed {target_pos.symbol} (Ticket: {res.order}) matched to Master {target_ticket}")
                 send_ack(api_url, signal_id, "EXECUTED", res.order, "Closed")
+
+                # 🛠️ POST-CLOSE ANALYTICS
+                # After execution, verify deal in history to get PnL
+                # Wait a bit for history to update
+                time.sleep(1)
+                from datetime import datetime
+                # Scan last minute history for this ticket? 
+                # Note: Deal Ticket != Order Ticket != Position Ticket. 
+                # Position ID is the key.
+                
+                # We know 'target_ticket' (Master Ticket). But we closed 'target_pos.ticket' (Follower Ticket).
+                # We need to find the DEAL associated with 'target_pos.ticket'.
+                
+                # Correct Logic:
+                # 1. Get History for last 1 min.
+                # 2. Find Deal where position_id == target_pos.ticket AND entry == DEAL_ENTRY_OUT
+                
+                history = mt5.history_deals_get(datetime.now() - timedelta(minutes=1), datetime.now())
+                if history:
+                    for deal in history:
+                         if deal.position_id == target_pos.ticket and deal.entry == mt5.DEAL_ENTRY_OUT:
+                             # Found it!
+                             master_id = signal.get('ticket', 'UNKNOWN') # Use signal's ticket as masterId
+                             report_trade_result(deal, master_id, api_url)
+                             break
+                
+                # --- END CLOSE LOGIC ---
                 return
             else:
                 print(f"   [ERROR] Close Failed: {res.comment}")
@@ -266,6 +424,52 @@ def execute_trade(signal, api_url):
          send_ack(api_url, signal_id, "FAILED", 0, "Invalid Data")
          return
 
+    # 1. VALIDATE & SELECT SYMBOL (Robust) for OPEN
+    # 1. VALIDATE & SELECT SYMBOL (Robust) for OPEN
+    # Retry loop to handle "Terminal Disconnected" false negatives
+    for attempt in range(2):
+        if mt5.symbol_select(symbol, True):
+            break
+        
+        # Try generic cleanup (remove suffixes)
+        candidates = [symbol, symbol.replace('m', ''), symbol.replace('c', ''), symbol.replace('.pro', '')]
+        found = False
+        for cand in candidates:
+            # Try appending common suffixes
+            for suffix in ["", "m", "c", "z", ".pro", ".r"]:
+                trial = f"{cand}{suffix}"
+                if mt5.symbol_select(trial, True):
+                    symbol = trial
+                    found = True
+                    break
+            if found: break
+        
+        if found:
+            break
+            
+        # If not found, maybe connection is stale?
+        if attempt == 0:
+             print(f"   [WARN] Symbol {symbol} not found. Refreshing Connection...")
+             initialize_mt5()
+             time.sleep(0.5)
+        else:
+             print(f"   [ERROR] Symbol {symbol} not found in this terminal (after refresh).")
+             send_ack(api_url, signal_id, "FAILED", 0, "Symbol Not Found")
+             return
+
+    # 2. WAIT FOR TICK (Prevent 'No Tick' Error)
+    current_tick = mt5.symbol_info_tick(symbol)
+    if not current_tick:
+        # Retry loop for 2 seconds (sometimes tick arrives late after selection)
+        for _ in range(10):
+            time.sleep(0.2)
+            current_tick = mt5.symbol_info_tick(symbol)
+            if current_tick: break
+    
+    if not current_tick:
+        print(f"[ERROR] No tick for {symbol}")
+        return
+
     market_price = current_tick.ask if trade_type == "BUY" else current_tick.bid
     
     # Check difference between Master's Entry Price (signal['price']) and Current Market Price
@@ -296,16 +500,7 @@ def execute_trade(signal, api_url):
         # else:
             # print(f"   ✅ Price OK")
 
-    # 🛡️ SAFETY CHECK: Verify Account ID matches Credentials
-    # This prevents trading on Master account if path isolation failed
-    current_account = mt5.account_info()
-    creds = fetch_credentials() # Re-verify or use cached? Use current connection check.
-    
-    if current_account and creds and str(current_account.login) != str(creds['login']):
-         print(f"[CRITICAL] ACCOUNT MISMATCH! Expected {creds['login']}, Action on {current_account.login}")
-         print("[STOP] BLOCKING ORDER to prevent unauthorized trade.")
-         send_ack(api_url, signal_id, "FAILED", 0, "Account Mismatch")
-         return
+    # Safety Check moved to top of function
 
     # Prepare Order
     order_type = mt5.ORDER_TYPE_BUY if trade_type == "BUY" else mt5.ORDER_TYPE_SELL
@@ -343,6 +538,24 @@ def execute_trade(signal, api_url):
         print("[OK] Order Executed:", result.order)
         send_ack(api_url, signal_id, "EXECUTED", result.order, "Filled")
 
+        # 🚀 FEEDBACK LOOP: Publish Execution Event for Admin Dashboard
+        try:
+             exec_payload = json.dumps({
+                 "type": "EXECUTION",
+                 "followerId": MY_FOLLOWER_ID,
+                 "masterTicket": signal.get('ticket'),
+                 "followerTicket": str(result.order),
+                 "symbol": symbol,
+                 "action": action,
+                 "status": "FILLED",
+                 "timestamp": time.time()
+             })
+             if r_client:
+                 r_client.publish('channel:executions', exec_payload)
+                 # print(f"   [📡] Reported Execution to Dashboard")
+        except Exception as e:
+             print(f"   [WARN] Failed to report execution: {e}")
+
 def send_ack(api_url, signal_id, status, ticket, comment):
     try:
         payload = {
@@ -371,99 +584,616 @@ def find_server():
     print("[ERROR] Could not connect to any server.")
     return None
 
+from datetime import datetime
+
+def check_risk_guards(creds):
+    """
+    🛡️ ADVANCED RISK CONTROLS
+    Checks Daily Loss and Minimum Equity thresholds.
+    Triggers Emergency Stop if breached.
+    """
+    if not creds: return
+
+    # 1. Parse Limits
+    max_daily_loss = float(creds.get('maxDailyLoss', 0) or 0)
+    min_equity = float(creds.get('minEquity', 0) or 0)
+
+    # If no risk rules active, exit
+    if max_daily_loss <= 0 and min_equity <= 0: return
+
+    account = mt5.account_info()
+    if not account: return
+
+    # 2. Check Equity Hard Stop
+    current_equity = account.equity
+    if min_equity > 0 and current_equity < min_equity:
+        print(f"🚨 [RISK] HARD STOP! Equity ({current_equity}) < Limit ({min_equity})")
+        emergency_close_all("Equity Hard Stop Triggered")
+        return
+
+    # 3. Check Daily Loss Limit
+    if max_daily_loss > 0:
+        # Calculate Daily PnL
+        now = datetime.now()
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Get deals from midnight until now
+        deals = mt5.history_deals_get(midnight, now)
+        daily_pnl = 0.0
+        
+        if deals:
+             for d in deals:
+                 daily_pnl += d.profit + d.swap + d.commission
+
+        # Include Floating PnL (Unrealized) for stricter safety? 
+        # Usually Daily Loss = Realized + Unrealized
+        # floating_pnl = account.equity - account.balance
+        # total_daily_impact = daily_pnl + floating_pnl
+        
+        # Calculate Drawdown % for monitoring
+        if account.balance > 0:
+             dd_percent = (daily_pnl / account.balance) * 100
+             if dd_percent < -5:
+                 print(f"   ⚠️ [ALERT] High Daily Drawdown: {dd_percent:.2f}%")
+
+        print(f"   [🛡️] Daily PnL: {daily_pnl:.2f} / Max Loss: -{max_daily_loss}")
+
+        if daily_pnl < (-1 * max_daily_loss):
+             print(f"🚨 [RISK] DAILY LOSS LIMIT! PnL ({daily_pnl}) < Limit (-{max_daily_loss})")
+             emergency_close_all("Daily Loss Limit Triggered")
+
+def emergency_close_all(reason="Emergency Stop"):
+    """
+    Iterates all open positions and closes them immediately.
+    """
+    positions = mt5.positions_get()
+    if not positions:
+        print("[ℹ️] No positions to close.")
+        return
+
+    print(f"🔥 [EMERGENCY] CLOSING ALL {len(positions)} POSITIONS! Reason: {reason}")
+    for pos in positions:
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": pos.symbol,
+            "volume": pos.volume,
+            "type": mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY,
+            "position": pos.ticket,
+            "price": mt5.symbol_info_tick(pos.symbol).bid if pos.type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(pos.symbol).ask,
+            "deviation": 50,
+            "magic": 234000,
+            "comment": f"RISK:{reason}",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        res = mt5.order_send(request)
+        if res.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"   ❌ Close Failed: {res.comment}")
+        else:
+            print(f"   ✅ Closed Ticket {pos.ticket}")
+
 def sync_balance(api_url):
     try:
         # ⚠️ DO NOT re-initialize without path! It can switch terminals.
         # Just check if we are still connected.
         if not mt5.terminal_info(): return
         
-        info = mt5.account_info()
-        if not info: return
+        # 🔄 Re-fetch credentials to get latest Risk Settings from DB
+        # This allows user to update Risk Limit in UI and have it apply immediately
+        creds = fetch_credentials() 
+        
+        # 🛡️ RUN RISK CHECKS
+        check_risk_guards(creds)
+        
+        account = mt5.account_info()
+        if not account: return
 
         # Construct Base URL (strip /api/engine/poll)
         base_url = api_url.replace("/api/engine/poll", "/api/user/broker")
         
         payload = {
-            "balance": info.balance,
-            "equity": info.equity,
-            "balance": info.balance,
-            "equity": info.equity,
-            "leverage": info.leverage,
-            "login": info.login
+            "balance": account.balance,
+            "equity": account.equity,
+            "leverage": account.leverage,
+            "login": account.login,
+            "floating": {} 
         }
+
+        # 📊 AGGREGATE FLOATING PNL PER MASTER
+        # 📊 AGGREGATE FLOATING PNL & DETAILED POSITIONS
+        positions = mt5.positions_get()
+        detailed_positions = []
+        
+        if positions:
+            for pos in positions:
+                # 1. PnL Aggregation (Existing Logic)
+                if pos.magic == 234000 and "CPY:" in pos.comment:
+                     try:
+                         master_ticket = pos.comment.split(':')[1]
+                         current_pnl = payload["floating"].get(master_ticket, 0.0)
+                         payload["floating"][master_ticket] = current_pnl + pos.profit
+                     except:
+                         pass
+                
+                # 2. Detailed Position Capture (New)
+                # We capture ALL positions or just CPY? USER SAID: "let master and follower see total holding position"
+                # For Follower, this means showing all positions they hold.
+                # Ideally we filter by Magic 234000 to only show Copy-Trades.
+                if pos.magic == 234000:
+                    pos_data = {
+                        "ticket": str(pos.ticket),
+                        "symbol": pos.symbol,
+                        "type": "BUY" if pos.type == 0 else "SELL",
+                        "volume": pos.volume,
+                        "openPrice": pos.price_open,
+                        "currentPrice": pos.price_current,
+                        "sl": pos.sl,
+                        "tp": pos.tp,
+                        "tp": pos.tp,
+                        "swap": pos.swap,
+                        # 🛡️ SAFETY: Some brokers don't populate 'commission'. Use getattr.
+                        "commission": getattr(pos, 'commission', 0.0),
+                        "profit": pos.profit,
+                        "openTime": pos.time # Timestamp
+                    }
+                    detailed_positions.append(pos_data)
+
+        payload["positions"] = detailed_positions # Add to Payload
+
         headers = {
             "x-bridge-secret": BRIDGE_SECRET,
             "x-user-id": MY_FOLLOWER_ID
         }
         # Fire and forget (timeout 1s)
         requests.put(base_url, json=payload, headers=headers, timeout=1)
-    except:
-        pass # Silent fail is ok for stats
+        print(f"   [💰 SYNC] Balance: {account.balance} Equity: {account.equity}")
+    except Exception as e:
+        print(f"   [WARN] Sync Balance Failed: {e}") # Added specific error logging for sync_balance
 
 # Avoid duplicate processing
 processed_signals = set()
 # ⚙️ REDIS CONFIGURATION (Loaded from .env)
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 import redis
-r_client = redis.from_url(REDIS_URL)
+try:
+    r_client = redis.from_url(REDIS_URL, decode_responses=True)
+    r_client.ping()
+    print(f"[OK] Connected to Redis Cache: {'Cloud' if 'upstash' in REDIS_URL else 'Local'}")
+except Exception as e:
+    print(f"[WARN] Redis Connection Failed: {e}")
+    r_client = None
+
+
+# 🕵️ RECONCILIATION LOGIC (Anti-Ghosting)
+def reconcile_positions(api_url):
+    try:
+        # 1. Get subscriptions DYNAMICALLY
+        subs = fetch_subscriptions(MY_FOLLOWER_ID)
+        if not subs: return
+
+        for sub_master_id in subs: # sub_master_id is just the master ID string
+            
+            # 2. Get Master State
+            key = f"state:master:{sub_master_id}:tickets"
+            data = r_client.get(key)
+            if not data: continue
+            
+            state = json.loads(data)
+            # Support both Legacy List and New Dict format
+            if isinstance(state.get("tickets"), list):
+                 master_tickets = set(map(str, state['tickets']))
+            elif isinstance(state.get("positions"), dict):
+                 master_tickets = set(state['positions'].keys())
+            else:
+                 continue
+
+            last_seen = state['timestamp']
+            
+            # AGE CHECK: If snapshot is older than 15s, Master might be offline. UNSAFE to reconcile.
+            if time.time() - last_seen > 15:
+                continue
+
+            # 2. Scan Local Positions
+            local_positions = mt5.positions_get()
+            if not local_positions: continue
+            
+            for pos in local_positions:
+                if pos.magic != 234000: continue
+                
+                # extracting master ticket from comment "CPY:12345"
+                if "CPY:" not in pos.comment: continue
+                
+                try:
+                    master_ticket_id = pos.comment.split(':')[1]
+                except:
+                    continue
+                
+                # 3. THE GHOST CHECK 👻
+                # If we hold a trade (CPY:123) BUT Master's official list does NOT contain 123...
+                # AND we are looking at the correct Master (Need to verify Master ID logic, but for now assuming global unique tickets or single master)
+                # Ideally comment should contain MasterID too like "CPY:MID:TID". 
+                # For this demo, we assume global ticket uniqueness or single master context.
+                
+                if master_ticket_id not in master_tickets:
+                    # 🚦 HISTORY CHECK (Anti-Ghosting Level 2)
+                    # Before strictly closing, check if Master actually has a CLOSED record for this ticket.
+                    # This prevents closing trade just because it's missing from the ephemeral "Open" list (e.g. during partial close, paging, or lag).
+                    # 🚦 HISTORY CHECK (Anti-Ghosting Level 2)
+                    is_verified_closed = r_client.sismember(f"history:master:{sub_master_id}:closed", master_ticket_id)
+                    
+                    if is_verified_closed:
+                        print(f"   [👻 GHOST VERIFIED] Master {sub_master_id} CONFIRMED CLOSED Ticket {master_ticket_id} in history. Executing Force Close.")
+                        
+                        # Construct Mock Signal
+                        mock_signal = {
+                            "action": "CLOSE",
+                            "symbol": pos.symbol,
+                            "ticket": master_ticket_id,
+                            "id": f"RECON-{master_ticket_id}-{time.time()}",
+                            "type": "SELL" if pos.type == 0 else "BUY",
+                            "volume": pos.volume
+                        }
+                        execute_trade(mock_signal, api_url)
+                    else:
+                        # Safety Hold
+                        # print(f"   [🛡️ SAFETY HOLD] Ticket {master_ticket_id} missing from Active list but NOT found in history.")
+                        pass
+
+    except Exception as e:
+        print(f"[WARN] Reconciliation Error: {e}")
+
+# 🔒 SINGLETON LOCK (Prevent Duplicate Execution)
+def acquire_lock(account_id):
+    if not r_client: return True # No Redis = No Safety (Warned elsewhere)
+    key = f"lock:executor:{account_id}"
+    
+    # Retry logic for Fast Restarts
+    # OLD: 3 attempts * 5s = 15s
+    # NEW: 60 attempts * 0.25s = 15s max wait (Responsive)
+    for attempt in range(1, 61):
+        # Try to set lock with 10s expiry (Heartbeat needed every 5s)
+        is_locked = r_client.set(key, "LOCKED", ex=10, nx=True)
+        if is_locked:
+            print(f"[LOCK] 🔒 Acquired Safety Lock for {account_id}")
+            return True
+        
+        # Only warn every 5th attempt to reduce spam
+        if attempt % 5 == 0:
+            print(f"[WARN] Lock exists for {account_id}. Retrying... ({attempt}/60)")
+        time.sleep(0.25)
+
+# 🔐 GLOBAL TERMINAL MUTEX (1:N Concurrency)
+# Ensures only ONE Executor operates on the physical terminal at a time.
+# Crucial for 1:50 shared terminal setups.
+def acquire_terminal_lock():
+    if not r_client or not MT5_PATH_ARG: return True # Fallback
+    
+    # Hash path to create unique lock key
+    path_hash = hashlib.md5(MT5_PATH_ARG.encode()).hexdigest()
+    key = f"lock:terminal:{path_hash}"
+    
+    # Fast Spinlock (Wait up to 10s)
+    # We want to be FAST. If someone is using it, wait briefly then grab.
+    for attempt in range(100): # 100 * 0.1s = 10s timeout
+        # Set Lock with 30s TTL (in case of crash, auto-release)
+        is_locked = r_client.set(key, MY_FOLLOWER_ID, ex=30, nx=True)
+        if is_locked:
+            # print(f"[MUTEX] 🟢 Acquired Terminal Lock") 
+            return True
+        
+        # Check who has it?
+        # current_owner = r_client.get(key)
+        # if current_owner == MY_FOLLOWER_ID: return True # Re-entrancy
+        
+        time.sleep(0.1)
+        
+    print(f"[MUTEX] 🔴 Failed to acquire Terminal Lock after 10s. Forcing overlap (Dangerous).")
+    return False
+
+def release_terminal_lock():
+    if not r_client or not MT5_PATH_ARG: return
+    
+    path_hash = hashlib.md5(MT5_PATH_ARG.encode()).hexdigest()
+    key = f"lock:terminal:{path_hash}"
+    
+    # Only release if WE own it
+    # Lua script for atomic check-and-delete is best, but simple get/del is okay for now.
+    current_owner = r_client.get(key)
+    if current_owner == MY_FOLLOWER_ID:
+        r_client.delete(key)
+        # print(f"[MUTEX] ⚪ Released Terminal Lock")
+        return # <--- EXIT ON SUCCESS
+
+    # If we get here, we didn't own the lock but tried to release it.
+    # This might happen if lock expired or was taken by someone else.
+    # It is NOT fatal if we are just shutting down cleanly.
+    # print(f"[WARN] Could not release lock (Owned by: {current_owner})")
+    
+    return False
+
+def refresh_lock(account_id):
+    if r_client:
+        r_client.expire(f"lock:executor:{account_id}", 10)
+
+def release_lock(account_id):
+    if r_client:
+        r_client.delete(f"lock:executor:{account_id}")
+        print(f"[LOCK] 🔓 Released Lock for {account_id}")
+
+def reconcile_initial_state(api_url):
+    """
+    startup-check: Fetches Master's active state from Redis and executes any missed trades.
+    Only executes if Slippage is within acceptable limits.
+    """
+    print("[RECON] 🧐 Checking for missed trades...")
+    if not r_client: return
+
+    # Get subscriptions
+    subs = fetch_subscriptions(MY_FOLLOWER_ID)
+    if not subs: return
+
+    for sub_master_id in subs: # sub_master_id is just the master ID string
+        state_key = f"state:master:{sub_master_id}:tickets"
+        data = r_client.get(state_key)
+        
+        if not data: continue
+
+        try:
+            state = json.loads(data)
+            master_positions = state.get("positions", {}) # New Full State
+            
+            if not master_positions: continue
+
+            # Get Local Positions
+            local_positions = mt5.positions_get()
+            copied_tickets = set()
+            if local_positions:
+                for p in local_positions:
+                    if p.magic == 234000 and "CPY:" in p.comment:
+                        try:
+                            # Extract Master Ticket from Comment "CPY:12345"
+                            t_id = p.comment.split(':')[1]
+                            copied_tickets.add(str(t_id))
+                        except:
+                            pass
+            
+            # Check for Missing
+            for m_ticket, m_info in master_positions.items():
+                if str(m_ticket) not in copied_tickets:
+                    print(f"   [CATCH-UP] Found missed trade {m_ticket} ({m_info['symbol']})")
+                    
+                    # Construct Signal
+                    catchup_signal = {
+                        "action": "OPEN",
+                        "symbol": m_info['symbol'],
+                        "ticket": m_ticket,
+                        "type": m_info['type'],
+                        "volume": m_info['volume'],
+                        "price": m_info['price'],
+                        "sl": m_info.get('sl'),
+                        "tp": m_info.get('tp'),
+                        "id": f"CATCHUP-{m_ticket}-{int(time.time())}"
+                    }
+                    
+
+                    
+                    # 🚦 UNSUB CHECK: Before executing catch-up, ensure we are still subscribed!
+                    # "active_master_ids" isn't passed here, so we check "subs" directly.
+                    # "subs" contains the list of active Master IDs we just fetched from DB.
+                    if sub_master_id not in subs:
+                        print(f"   [SKIP] Catch-up ignored for {m_ticket}. Not subscribed to Master {sub_master_id}.")
+                        continue
+
+                    # Execute (execute_trade handles slippage check)
+                    execute_trade(catchup_signal, api_url)
+                    time.sleep(0.5) # Pace execution
+
+            # 4. GHOST CHECK (Missed Closes) 👻
+            # If we have it (CPY:Ticket) but Master DOESN'T, it means Master closed it while we were away.
+            for p in local_positions:
+                if p.magic == 234000 and "CPY:" in p.comment:
+                    try:
+                        my_master_ticket = p.comment.split(':')[1]
+                        # If Master's active list excludes this ticket..
+                        if my_master_ticket not in master_positions:
+                             # DOUBLE CHECK HISTORY (Safety)
+                             # Only close if we can verify it was CLOSED in history (to avoid race conditions)
+                             is_verified_closed = r_client.sismember(f"history:master:{sub_master_id}:closed", my_master_ticket)
+                             
+                             if is_verified_closed:
+                                 print(f"   [CATCH-UP] Found MISSED CLOSE for {my_master_ticket}. Closing now...")
+                                 close_signal = {
+                                     "action": "CLOSE",
+                                     "symbol": p.symbol,
+                                     "ticket": my_master_ticket,
+                                     "id": f"CATCHUP-CLOSE-{my_master_ticket}-{int(time.time())}"
+                                 }
+                                 execute_trade(close_signal, api_url)
+                                 time.sleep(0.5)
+                             else:
+                                 # Optional: If not in active and not in history, assume closed? 
+                                 # Safer to wait for history sync or explicit close.
+                                 print(f"   [WARN] Ticket {my_master_ticket} missing from active but not verified closed. Holding.")
+                    except:
+                        pass
+
+        except Exception as e:
+            print(f"   [WARN] Catch-up failed: {e}")
 
 def run_executor():
-    print(f"[START] Executor Started for {MY_FOLLOWER_ID}...")
-    print(f"[INFO] Mode: {'DRY RUN (SimulationOnly)' if DRY_RUN else 'LIVE TRADING'}")
-    print(f"[INFO] Transport: REDIS PUB/SUB ⚡ (Low Latency)")
-    
-    api_url = find_server()
-    if not api_url:
-        print("[WARN] API not found. Reporting (Hooks/Acks) might fail, but Trading will proceed via Redis.")
-    
-    # 🔗 Connect to Redis Pub/Sub
-    try:
-        pubsub = r_client.pubsub()
-        pubsub.subscribe('channel:all_followers')
-        print(f"[OK] Subscribed to Redis Channel: channel:all_followers")
-    except Exception as e:
-        print(f"[ERROR] Failed to connect to Redis: {e}")
+    # 🛑 LOCK CHECK (Singleton per User ID, not per Login)
+    # This keeps it stable even if we are temporarily logged into someone else's account.
+    if not acquire_lock(MY_FOLLOWER_ID):
+        # Do not shutdown MT5, as others might be using it!
         return
+
+    print(f"[START] Executor Started for {MY_FOLLOWER_ID}...")
+    
+    # ⚠️ SHARED TERMINAL MODE:
+    # We do NOT force login on startup. We assume "Lazy Switching".
+    # Just verify we can reach the terminal path.
+    current_mt5_login = mt5.account_info().login if mt5.account_info() else "Unknown"
+    print(f"[INFO] Terminal Connected. Current Login: {current_mt5_login}")
+    print(f"[INFO] Mode: LIVE TRADING") 
+    print(f"[INFO] Transport: REDIS PUB/SUB ⚡ (Non-Blocking)")
+
+    # 3. Find API Server
+    # Assumes find_server() is defined (it was used in original code)
+    # If not defined, we fallback to logic
+    try:
+        api_url = find_server() 
+        if not api_url:
+            print("[WARN] API Server not found. Trading continues via Redis Only.")
+    except NameError:
+         # Fallback if find_server missing
+         print("[WARN] find_server() not defined using default.")
+         api_url = get_api_url(HOSTS[0])
+
+    # 4. Connect to Redis (Already done globally but verify)
+    if not r_client: 
+         print("[ERROR] Redis Essential for Signals! Exiting.")
+         release_lock(MY_FOLLOWER_ID) # Changed MY_LOGIN_ID to MY_FOLLOWER_ID
+         return
+    
+    pubsub = r_client.pubsub()
+    # PREVENT LEAKAGE: Removed 'channel:all_followers' global sub.
+    # We only listen to our specific master(s).
+    pubsub.subscribe(f'channel:follower:{MY_FOLLOWER_ID}') # 🎯 Target for Emergency/Sync
+    
+    # 🔗 DYNAMIC SUBSCRIPTION
+    last_recon_time = 0
+    last_sync_time = 0
+    last_subs_refresh_time = 0
+    
+    RECON_INTERVAL = 2.0 # Check for ghosts every 2 seconds (Fast)
+    SYNC_INTERVAL = 3.0
+    RECON_INTERVAL = 2.0 # Check for ghosts every 2 seconds (Fast)
+    SYNC_INTERVAL = 3.0
+    SUBS_REFRESH_INTERVAL = 3.0 # 🔄 Check for Unsubscribe/Pause every 3s (Was 10s)
+
+    # Keep track of what we are listening to
+    active_master_ids = set()
+    initial_subs = fetch_subscriptions(MY_FOLLOWER_ID)
+    if initial_subs:
+        active_master_ids = set(initial_subs) # fetch_subscriptions returns list of master IDs directly
+        for mid in active_master_ids:
+            channel = f"signals:master:{mid}"
+            pubsub.subscribe(channel)
+            print(f"   -> Subscribed to {channel}")
+    else:
+        print("[ℹ️] No active subscriptions found. Waiting for updates...")
+
+    print(f"[OK] Subscribed to Channels: follower:{MY_FOLLOWER_ID}") # Removed 'all_followers'
+
+    # ⚡ CATCH-UP PHASE
+    # Now that we are online and subscribed, check what we missed.
+    reconcile_initial_state(api_url)
 
     print("[READY] Waiting for High-Speed Signals... 🚄")
 
-    # 💓 Heartbeat / Balance Sync Thread could go here. 
-    # For now, we sync once at start.
-    if api_url: sync_balance(api_url)
-    
-    # 🔄 Event Loop
-    for message in pubsub.listen():
-        if message['type'] == 'message':
-            try:
-                # 📨 Parse Signal
-                raw_data = message['data']
-                signal = json.loads(raw_data)
-                
-                # 🛡️ IDEMPOTENCY CHECK
-                # Use Timestamp-Action-Ticket as ID if no explicit ID
-                sig_id = signal.get('id') or f"{signal.get('ticket')}-{signal.get('action')}"
-                signal['id'] = sig_id
+    try:
+        while True:
+            current_time = time.time()
+            
+            # ❤️ HEARTBEAT: Refresh Lock
+            refresh_lock(MY_FOLLOWER_ID)
+            
+            # 1. Process Redis Messages (Non-Blocking)
+            message = pubsub.get_message()
+            if message:
+                if message['type'] == 'message':
+                    data = message['data']
+                    try:
+                        signal = json.loads(data)
+                        
+                        # 🚨 EMERGENCY KILL SWITCH
+                        if signal.get('action') == "KILL":
+                             print(f"🔥 [REDIS] RECEIVED KILL SWITCH! REASON: {signal.get('reason')}")
+                             emergency_close_all(signal.get('reason', 'Remote Kill Switch'))
+                             continue
 
-                if sig_id in processed_signals:
-                    continue
-                
-                processed_signals.add(sig_id)
-                
-                # ⚡ FAST EXECUTION
-                # Note: In a real system, we'd check "Is this signal for me?" 
-                # For this High-Scale Demo, we assume we subscribe to the global feed 
-                # and execute match logic inside or just execute all (Demo Mode).
-                
-                # Filter: Only execute if we have a valid Master ID? 
-                # For now, let's just Print & Execute to prove the pipe works.
-                print(f"[⚡ REDIS SIGNAL] {signal.get('action')} {signal.get('symbol')} (Ticket: {signal.get('ticket')})")
-                
-                execute_trade(signal, api_url)
+                        # 🛡️ SECURITY: Verify Subscription status
+                        # Even if we got the Redis msg (race condition), ignore if not active.
+                        # Broadcaster sends "masterId".
+                        sig_master_id = signal.get("masterId")
+                        if sig_master_id and sig_master_id not in active_master_ids:
+                             # print(f"[IGNORING] Signal from {sig_master_id} - Not Subscribed.")
+                             continue
 
-            except json.JSONDecodeError:
-                print(f"[ERR] Invalid JSON: {message['data']}")
-            except Exception as e:
-                print(f"[ERR] Processing Failed: {e}")
+                        print(f"[⚡ REDIS SIGNAL] {signal.get('action')} {signal.get('symbol')} (Ticket: {signal.get('ticket')})")
+                        
+                        # 🔐 MUTEX: Serialize Trade Execution
+                        # Ensure we own the terminal before trying to login/trade
+                        if acquire_terminal_lock():
+                            try:
+                                execute_trade(signal, api_url)
+                            finally:
+                                release_terminal_lock()
+                    except json.JSONDecodeError:
+                        pass
+            
+            # 2. Safety & Reconciliation (Timestamp based)
+            if current_time - last_recon_time > RECON_INTERVAL:
+                 if api_url:
+                     # 🔐 MUTEX: Serialize Terminal Access
+                     # Wait for other Executors to finish before we check/login
+                     if acquire_terminal_lock():
+                         try:
+                             # Check connection safely
+                             term_info = mt5.terminal_info()
+                             if not term_info or not term_info.connected:
+                                 print("[WARN] Main Loop: Terminal Disconnected. Reconnecting...")
+                                 initialize_mt5()
+                             
+                             reconcile_positions(api_url)
+                         finally:
+                             release_terminal_lock()
+                     
+                     last_recon_time = current_time
+            
+            # 3. Sync Balance (Timestamp based)
+            if current_time - last_sync_time > SYNC_INTERVAL:
+                 if api_url:
+                     sync_balance(api_url)
+                     last_sync_time = current_time
+                     
+            # 4. Refresh Subscriptions (Dynamic Unsubscribe) 🔄
+            if current_time - last_subs_refresh_time > SUBS_REFRESH_INTERVAL:
+                 new_subs = fetch_subscriptions(MY_FOLLOWER_ID)
+                 
+                 # If None, DB might be down. Don't clear cache aggressively?
+                 # If empty list [], means we follow NO ONE.
+                 if new_subs is not None:
+                     # Update the active set so filtering works in the Main Loop
+                     old_masters = active_master_ids
+                     active_master_ids = set(new_subs)
+                     
+                     # Log changes
+                     added = active_master_ids - old_masters
+                     removed = old_masters - active_master_ids
+                     
+                     if added or removed:
+                         print(f"[REFRESH] 🔄 Subs Updated. Added: {added}, Removed: {removed}")
+                         
+                         # Optimized: Subscribe to new channels immediately
+                         # (We don't strictly need to unsubscribe from Redis, as we filter messages anyway,
+                         # but keeping subscriptions clean reduces network traffic)
+                         for m_id in added:
+                             pubsub.subscribe(f"signals:master:{m_id}")
+                             print(f"   -> Subscribed to signals:master:{m_id}")
+                         
+                         for m_id in removed:
+                             pubsub.unsubscribe(f"signals:master:{m_id}")
+                             print(f"   -> Unsubscribed from signals:master:{m_id}")
+                 last_subs_refresh_time = current_time
+
+            time.sleep(0.01) # Ultra Low Latency Loop
+
+    except KeyboardInterrupt:
+        print("[STOP] Stopping Executor...")
+    finally:
+        release_lock(MY_FOLLOWER_ID)
+        mt5.shutdown()
 
 if __name__ == "__main__":
     initialize_mt5()

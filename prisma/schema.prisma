@@ -111,26 +111,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userPromotions UserPromotion[] // 🎟️ Dynamic Promotions
+  userPromotion   UserPromotion? // 🎟️ Dynamic Promotions (One-to-One)
+  equitySnapshots EquitySnapshot[] // 📊 Analytics History
 
   @@index([email])
-}
-
-// 🎟️ DYNAMIC PROMOTIONS
-model UserPromotion {
-  id     String @id @default(uuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  type       String // "DAILY", "WELCOME", "VIP", "FUTURE_PROMO"
-  lastUsed   DateTime? // For frequency caps (e.g. Daily)
-  expiry     DateTime? // For duration access (e.g. VIP)
-  usageCount Int       @default(0) // For one-time/N-time limits
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, type]) // One record per promo type per user
 }
 
 // 🔐 NEXTAUTH MODELS
@@ -203,6 +187,7 @@ model BrokerAccount {
   login    String
   server   String
   password String // Store securely/encrypted
+  mt5Path  String? // 📍 Local Path to MT5 Terminal
 
   // State
   balance  Float         @default(0)
@@ -210,6 +195,10 @@ model BrokerAccount {
   leverage Int           @default(500)
   currency String        @default("USD")
   status   AccountStatus @default(CONNECTED)
+
+  // 🛡️ RISK CONTROLS
+  maxDailyLoss Float? // Max allowed loss per day (USD)
+  minEquity    Float? // Hard Stop Equity Level (USD)
 
   // ⚡ HYBRID EXECUTION ENGINE
   executionMethod ExecutionType @default(SELF_HOSTED)
@@ -221,6 +210,9 @@ model BrokerAccount {
 
   // Relation to Master Profile (If this account is used for broadcasting)
   masterProfiles MasterProfile[]
+
+  // 📈 OPEN POSITIONS (Real-Time Sync)
+  positions Position[]
 
   @@index([userId])
   @@index([login, server]) // Faster lookup for uniqueness check in app logic
@@ -248,7 +240,7 @@ model MasterProfile {
 
   // Plan
   monthlyFee Float @default(0)
-  minDeposit Float @default(100)
+  minDeposit Float @default(10)
 
   // 🔗 Linked Broker Account (Source of Signals)
   brokerAccountId String?
@@ -275,8 +267,10 @@ model CopySession {
   masterId   String
   master     User   @relation("MasterSessions", fields: [masterId], references: [id], onDelete: Cascade)
 
-  allocation Float
-  riskFactor Float // 1.0 = 100%
+  allocation    Float
+  currentEquity Float @default(0) // ✅ Shadow Equity
+  riskFactor    Float // 1.0 = 100%
+  unrealizedPnL Float @default(0) // ⚡ Real-Time Floating PnL from MT5
 
   // Type
   type    SessionType
@@ -288,6 +282,31 @@ model CopySession {
 
   @@index([followerId])
   @@index([masterId])
+}
+
+// 📊 REAL-TIME ORDER POSITIONS
+model Position {
+  id           Int      @id @default(autoincrement())
+  ticket       BigInt   @unique // MT5 Ticket
+  symbol       String
+  type         String // "BUY" or "SELL"
+  volume       Float
+  openPrice    Float
+  currentPrice Float
+  sl           Float?
+  tp           Float?
+  swap         Float    @default(0)
+  commission   Float    @default(0)
+  profit       Float // Floating PnL
+  openTime     DateTime // MT5 Server Time
+
+  // Relations
+  brokerAccountId String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([brokerAccountId])
 }
 
 // 🏛️ BANKING & WITHDRAWALS
@@ -391,4 +410,80 @@ model Signal {
   updatedAt DateTime @updatedAt
 
   @@index([followerId, status]) // Fast lookup for polling
+}
+
+// 📊 ANALYTICS & METRICS
+model TradeHistory {
+  id String @id @default(uuid())
+
+  // Relationships
+  followerId String
+  masterId   String
+  // No direct relation to User to keep writes fast/decoupled? 
+  // actually better to separate logs from core User graph for now or add relation if needed for querying.
+  // Let's keep it simple: IDs for filtering.
+
+  // Trade Info
+  symbol String
+  ticket String // Follower Ticket
+  type   String // BUY/SELL
+  volume Float
+
+  // Price Info
+  openPrice  Float
+  closePrice Float
+
+  // Time Info
+  openTime  DateTime
+  closeTime DateTime
+
+  // PnL
+  profit     Float // Gross Profit
+  commission Float @default(0)
+  swap       Float @default(0)
+  netProfit  Float // Final PnL
+
+  createdAt DateTime @default(now())
+
+  @@index([followerId])
+  @@index([masterId])
+  @@index([closeTime])
+}
+
+model EquitySnapshot {
+  id String @id @default(uuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  balance Float
+  equity  Float
+
+  timestamp DateTime @default(now())
+
+  @@index([userId, timestamp])
+}
+
+// 🎫 USER PROMOTIOM (Tickets & VIP)
+model UserPromotion {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // VIP Logic
+  isVipActive Boolean   @default(false)
+  vipExpiry   DateTime?
+
+  // Welcome Ticket (7-Day Trial)
+  welcomeUsed      Boolean   @default(false)
+  welcomeActivated DateTime?
+  welcomeExpiry    DateTime?
+
+  // Daily Ticket (4 Hours)
+  dailyUsed      Boolean   @default(false)
+  dailyActivated DateTime?
+  dailyExpiry    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

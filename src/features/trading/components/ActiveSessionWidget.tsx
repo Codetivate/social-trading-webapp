@@ -10,10 +10,14 @@ interface ActiveSessionWidgetProps {
     onStop: () => void;
     isVip: boolean;
     session: CopySession;
+    onClick?: () => void;
+    currencySymbol?: string; // ✅ New Prop
 }
 
-export function ActiveSessionWidget({ master, time, risk, allocation, onStop, isVip, session }: ActiveSessionWidgetProps) {
+export function ActiveSessionWidget({ master, time, risk, allocation, onStop, isVip, session, onClick, currencySymbol = "$" }: ActiveSessionWidgetProps) {
     const [timeDisplay, setTimeDisplay] = useState("Loading...");
+
+    // ... (keep useEffect) ...
 
     useEffect(() => {
         const formatTime = (s: number) => {
@@ -59,7 +63,9 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, is
     const isTrialOrGolden = session.type && (session.type === "TRIAL_7DAY" || session.type === "GOLDEN");
 
     return (
-        <div className={`glass-panel p-4 shadow-lg relative overflow-hidden group transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.1)] ${borderColor}`}>
+        <div
+            onClick={onClick}
+            className={`glass-panel p-4 shadow-lg relative overflow-hidden group transition-all hover:shadow-[0_0_15px_rgba(139,92,246,0.1)] ${borderColor} cursor-pointer hover:bg-white/5`}>
             {/* ⚠️ Daily Pass Bar */}
             {session.type === "DAILY" && !isVip && (
                 <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
@@ -79,11 +85,21 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, is
                 </div>
                 <div className="text-right">
                     <p className="text-[9px] text-gray-400">Allocated</p>
-                    <p className="text-xs font-bold font-mono text-white">${allocation}</p>
+                    <p className="text-xs font-bold font-mono text-white">{currencySymbol}{allocation}</p>
                 </div>
             </div>
             <div className="flex justify-between text-[10px] text-gray-400 mb-2">
-                <span>Guard: <span className="text-red-400 font-bold">-{risk}%</span></span>
+                <div className="flex gap-3">
+                    <span>Guard: <span className="text-red-400 font-bold">-{risk}%</span></span>
+                    {/* ✅ Session PnL (Prioritize Unrealized) */}
+                    {(session.unrealizedPnL !== undefined || session.pnl !== undefined) && (
+                        <span>
+                            PnL: <span className={`font-bold ${(session.unrealizedPnL || session.pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {(session.unrealizedPnL || session.pnl || 0) >= 0 ? "+" : ""}{(session.unrealizedPnL || session.pnl || 0).toFixed(2)}
+                            </span>
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-1">
                     {isVip || session.type === "PAID" ? (
                         <span className="text-yellow-400 font-bold flex items-center gap-1 drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]"><Crown size={10} /> Full Access</span>
@@ -94,7 +110,11 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, is
                     )}
                 </div>
             </div>
-            <button onClick={onStop} className="w-full bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold py-2 rounded-lg flex justify-center items-center gap-2 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-[0_0_10px_rgba(239,68,68,0.2)] transition-all active:scale-95"><StopCircle size={14} /> Stop Copy</button>
+            <button
+                onClick={(e) => { e.stopPropagation(); onStop(); }}
+                className="w-full bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold py-2 rounded-lg flex justify-center items-center gap-2 hover:bg-red-500/20 hover:border-red-500/40 hover:shadow-[0_0_10px_rgba(239,68,68,0.2)] transition-all active:scale-95">
+                <StopCircle size={14} /> Stop Copy
+            </button>
         </div>
     )
 }

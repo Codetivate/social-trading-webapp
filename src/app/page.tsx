@@ -4,12 +4,14 @@
 
 import { useSession, signOut } from "next-auth/react";
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useRealTimeData } from '@/hooks/useRealTimeData'; // ✅ Import Hook
 import { Card, CardContent } from "@/components/ui/card";
 // Actions
 import { connectBroker, getBrokerAccount } from '@/app/actions/broker';
 import { activateMasterAccount, updateMasterProfile, getUserProfile } from '@/app/actions/user';
 import { fetchMasters, fetchFollower, fetchUserRole } from '@/app/actions/data';
 import { startCopySession, getActiveSessions, stopCopySession, stopAllActiveSessions, getTicketStatuses } from '@/app/actions/trade';
+import { BrokerAccount } from "@prisma/client";
 // import { Session } from '@prisma/client'; // ❌ Removing Prisma Session to avoid conflict. Using custom type.
 
 import {
@@ -23,7 +25,7 @@ import {
     BadgeCheck, Edit3, Image as ImageIcon, TrendingUp,
     Server, LogIn, Heart, Radio, Moon, Monitor, CreditCard,
     Save, Eye, DollarSign, Ticket, Sparkles, CalendarDays, ZapIcon,
-    SlidersHorizontal, ArrowUpDown, CheckCircle
+    SlidersHorizontal, ArrowUpDown, CheckCircle, ArrowUpRight
 } from "lucide-react";
 import { MasterWalletModal } from "@/features/wallet/components/MasterWalletModal";
 import { MasterProfileView } from "@/features/social/components/MasterProfileView";
@@ -36,6 +38,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Transaction } from "@/features/wallet/types";
 import { Navbar } from "@/components/layout/Navbar";
+import { OpenPositionsTable } from "@/features/trading/components/OpenPositionsTable";
 import { UserRole, AccountStatus, SessionType, Master, Session as CopySession, Follower, MasterProfile } from "@/types"; // ✅ Renamed Session to CopySession
 
 // --- 📝 TYPESCRIPT INTERFACES (Moved to @/types) ---
@@ -126,7 +129,7 @@ interface FilterButtonProps {
 }
 
 function FilterButton({ label, active, onClick }: FilterButtonProps) {
-    return <button onClick={onClick} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${active ? "bg-white text-black border-white shadow-lg" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"}`}>{label}</button>
+    return <button onClick={onClick} className={`px - 4 py - 2 rounded - full text - [10px] font - bold whitespace - nowrap border transition - all ${active ? "bg-white text-black border-white shadow-lg" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}>{label}</button>
 }
 
 
@@ -176,7 +179,7 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                                 <button
                                     key={type}
                                     onClick={() => handleSort(type)}
-                                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border ${config.sortBy === type ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-gray-800 border-transparent text-gray-400 hover:bg-gray-700"}`}
+                                    className={`py - 2.5 px - 3 rounded - xl text - xs font - bold transition - all border ${config.sortBy === type ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-gray-800 border-transparent text-gray-400 hover:bg-gray-700"} `}
                                 >
                                     {type === "RECOMMENDED" && "✨ Recommended"}
                                     {type === "PROFIT" && "📈 Highest Profit"}
@@ -252,7 +255,7 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                     {/* 4. Toggles */}
                     <div onClick={() => setConfig({ ...config, freeOnly: !config.freeOnly })} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl border border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors">
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-6 rounded-full p-1 transition-colors ${config.freeOnly ? "bg-green-500" : "bg-gray-700"}`}><div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.freeOnly ? "translate-x-4" : ""}`} /></div>
+                            <div className={`w - 10 h - 6 rounded - full p - 1 transition - colors ${config.freeOnly ? "bg-green-500" : "bg-gray-700"} `}><div className={`w - 4 h - 4 bg - white rounded - full shadow - sm transition - transform ${config.freeOnly ? "translate-x-4" : ""} `} /></div>
                             <span className="font-bold text-sm text-gray-300">Free Services Only</span>
                         </div>
                     </div>
@@ -280,7 +283,7 @@ function UniversalPaymentModal({ onClose, onSuccess, planDetails }: PaymentModal
 
     const [paymentMethod, setPaymentMethod] = useState<"QR" | "CARD">("QR");
 
-    const title = isMasterUpgrade ? `Upgrade to ${planDetails?.name}` : "Unlock VIP Access";
+    const title = isMasterUpgrade ? `Upgrade to ${planDetails?.name} ` : "Unlock VIP Access";
     const price = isMasterUpgrade ? planDetails?.priceVal : 15;
     const features = isMasterUpgrade ? ["Higher Limits", "Lower GP Fee", "Premium Badge"] : ["Unlimited Copy", "AI Guard", "Golden Ticket (30 Days)"];
 
@@ -309,7 +312,7 @@ function UniversalPaymentModal({ onClose, onSuccess, planDetails }: PaymentModal
                 {step === "METHOD" && (
                     <div className="p-6 space-y-6 animate-in slide-in-from-right">
                         <div className="bg-gray-800 p-4 rounded-xl flex justify-between items-center border border-gray-700"><div><p className="text-xs text-gray-400">Item</p><p className="font-bold text-white">{title}</p></div><p className="text-xl font-bold text-green-400">${price}</p></div>
-                        <div className="space-y-3"><p className="text-xs text-gray-400 font-bold uppercase">Select Payment Method</p><button onClick={() => setPaymentMethod("QR")} className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${paymentMethod === "QR" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"}`}><div className="flex items-center gap-3"><div className="bg-white p-1.5 rounded"><Radio size={20} className="text-blue-900" /></div><div className="text-left"><p className="font-bold text-sm text-white">Thai QR Payment</p><p className="text-[10px] text-gray-400">Scan with any bank app</p></div></div>{paymentMethod === "QR" && <CheckCircle2 className="text-blue-500" size={18} />}</button><button onClick={() => setPaymentMethod("CARD")} className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${paymentMethod === "CARD" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"}`}><div className="flex items-center gap-3"><div className="bg-gray-700 p-1.5 rounded"><CreditCard size={20} className="text-white" /></div><div className="text-left"><p className="font-bold text-sm text-white">Credit / Debit Card</p><p className="text-[10px] text-gray-400">Visa, Mastercard, JCB</p></div></div>{paymentMethod === "CARD" && <CheckCircle2 className="text-blue-500" size={18} />}</button></div>
+                        <div className="space-y-3"><p className="text-xs text-gray-400 font-bold uppercase">Select Payment Method</p><button onClick={() => setPaymentMethod("QR")} className={`w - full p - 4 rounded - xl border flex items - center justify - between transition - all ${paymentMethod === "QR" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-white p-1.5 rounded"><Radio size={20} className="text-blue-900" /></div><div className="text-left"><p className="font-bold text-sm text-white">Thai QR Payment</p><p className="text-[10px] text-gray-400">Scan with any bank app</p></div></div>{paymentMethod === "QR" && <CheckCircle2 className="text-blue-500" size={18} />}</button><button onClick={() => setPaymentMethod("CARD")} className={`w - full p - 4 rounded - xl border flex items - center justify - between transition - all ${paymentMethod === "CARD" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-gray-700 p-1.5 rounded"><CreditCard size={20} className="text-white" /></div><div className="text-left"><p className="font-bold text-sm text-white">Credit / Debit Card</p><p className="text-[10px] text-gray-400">Visa, Mastercard, JCB</p></div></div>{paymentMethod === "CARD" && <CheckCircle2 className="text-blue-500" size={18} />}</button></div>
                         <button onClick={handlePay} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">Pay ${price}</button>
                     </div>
                 )}
@@ -364,7 +367,7 @@ function MasterActivationModal({ onClose, onConfirm }: MasterActivationModalProp
                     <div className="grid grid-cols-2 gap-3">
                         <div
                             onClick={() => setIsPaid(false)}
-                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${!isPaid ? 'border-green-500 bg-green-900/10' : 'border-gray-700 hover:border-gray-600'}`}
+                            className={`p - 4 rounded - xl border - 2 cursor - pointer transition - all ${!isPaid ? 'border-green-500 bg-green-900/10' : 'border-gray-700 hover:border-gray-600'} `}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <span className="text-xs font-bold text-gray-400 uppercase">Growth</span>
@@ -376,7 +379,7 @@ function MasterActivationModal({ onClose, onConfirm }: MasterActivationModalProp
 
                         <div
                             onClick={() => setIsPaid(true)}
-                            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${isPaid ? 'border-yellow-500 bg-yellow-900/10' : 'border-gray-700 hover:border-gray-600'}`}
+                            className={`p - 4 rounded - xl border - 2 cursor - pointer transition - all ${isPaid ? 'border-yellow-500 bg-yellow-900/10' : 'border-gray-700 hover:border-gray-600'} `}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <span className="text-xs font-bold text-gray-400 uppercase">Income</span>
@@ -432,7 +435,7 @@ function MasterPlanModal({ onClose, currentTier, onSelectPlan }: MasterPlanModal
                     <div className="text-center space-y-2 mb-4"><p className="text-gray-400 text-xs text-balance">Your store is growing fast! Upgrade your plan to support more followers and get a bigger revenue share.</p></div>
                     <div className="space-y-3">
                         {plans.map((plan) => (
-                            <div key={plan.id} className={`relative p-4 rounded-2xl border transition-all ${plan.current ? "bg-neon-cyan/10 border-neon-cyan ring-1 ring-neon-cyan shadow-[0_0_15px_rgba(6,182,212,0.2)]" : "bg-white/5 border-white/10 opacity-60 hover:opacity-100"}`}>
+                            <div key={plan.id} className={`relative p - 4 rounded - 2xl border transition - all ${plan.current ? "bg-neon-cyan/10 border-neon-cyan ring-1 ring-neon-cyan shadow-[0_0_15px_rgba(6,182,212,0.2)]" : "bg-white/5 border-white/10 opacity-60 hover:opacity-100"} `}>
                                 {plan.rec && <div className="absolute -top-2 right-4 bg-neon-cyan text-black text-[9px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]">RECOMMENDED</div>}
                                 {plan.current && <div className="absolute top-4 right-4 text-neon-cyan"><CheckCircle2 size={18} /></div>}
                                 <div className="flex justify-between items-end mb-2"><h4 className="font-bold text-lg text-white">{plan.name}</h4><span className="font-bold text-sm text-gray-300">{plan.price}</span></div>
@@ -492,12 +495,14 @@ interface FollowerFlowProps {
     hasUsed7DayTrial: boolean;
     brokerAccount: any;
     masters: Master[]; // ✅ Added Prop
+    masterProfile: MasterProfile; // ✅ Added Prop
 }
 
-function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onOpenVIP, isVip, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, brokerAccount, masters }: FollowerFlowProps) {
+function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onOpenVIP, isVip, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, brokerAccount, masters, masterProfile }: FollowerFlowProps) {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState<"DISCOVER" | "PORTFOLIO">("DISCOVER");
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false); // ✅ New State
+    const [goldenTickets, setGoldenTickets] = useState(0); // 🎫 Golden Tickets
     const [searchTerm, setSearchTerm] = useState("");
 
     // 🔍 Advanced Filter Logic
@@ -544,8 +549,8 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     </button>
 
                     <div className="flex flex-col items-center text-center space-y-4">
-                        <div className={`p-4 rounded-full bg-gray-800/50 mb-2 ${selectedTicket.type === 'VIP' ? 'text-yellow-500' : selectedTicket.type === 'WELCOME' ? 'text-purple-500' : 'text-blue-500'}`}>
-                            {selectedTicket.type === 'VIP' ? <Crown size={32} /> : selectedTicket.type === 'WELCOME' ? <CalendarDays size={32} /> : <Zap size={32} />}
+                        <div className={`p-4 rounded-full bg-gray-800/50 mb-2 ${selectedTicket.type === 'VIP' ? 'text-yellow-500' : selectedTicket.type === 'GOLDEN' ? 'text-yellow-400' : selectedTicket.type === 'WELCOME' ? 'text-purple-500' : 'text-blue-500'} `}>
+                            {selectedTicket.type === 'VIP' ? <Crown size={32} /> : selectedTicket.type === 'GOLDEN' ? <Ticket size={32} /> : selectedTicket.type === 'WELCOME' ? <CalendarDays size={32} /> : <Zap size={32} />}
                         </div>
 
                         <div className="space-y-1">
@@ -575,9 +580,10 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 setSelectedTicket(null);
                             }}
                             className={`w-full py-3 rounded-xl font-bold text-sm transition-all transform active:scale-95 ${selectedTicket.type === 'VIP' ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/30' :
-                                selectedTicket.type === 'WELCOME' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20' :
-                                    'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                                }`}
+                                selectedTicket.type === 'GOLDEN' ? 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-lg shadow-yellow-400/20' :
+                                    selectedTicket.type === 'WELCOME' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20' :
+                                        'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                                } `}
                         >
                             {selectedTicket.buttonText}
                         </button>
@@ -642,8 +648,52 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     // 🎟️ DYNAMIC TICKET STATUS SYNC
     const [ticketStatus, setTicketStatus] = useState({ dailyUsed: false, welcomeUsed: false, isVipActive: false });
 
+    // 🛡️ RISK CONTROLS STATE
+    const [dailyLoss, setDailyLoss] = useState("");
+    const [minEquity, setMinEquity] = useState("");
+
+    // ⚡ Real-Time Data Hook
+    const { stats: realTimeStats, isConnected: isSyncing } = useRealTimeData();
+
+    // Merge Real-Time Stats into Broker Account (Priotizing Live Data)
+    // We update the 'brokerAccount' state whenever 'realTimeStats' changes.
+    const [mergedBrokerAccount, setMergedBrokerAccount] = useState(brokerAccount);
+
+    useEffect(() => {
+        if (brokerAccount) {
+            setMergedBrokerAccount(brokerAccount);
+        }
+    }, [brokerAccount]);
+
+    useEffect(() => {
+        if (realTimeStats && mergedBrokerAccount) {
+            setMergedBrokerAccount((prev: any) => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    balance: realTimeStats.balance,
+                    equity: realTimeStats.equity,
+                    leverage: realTimeStats.leverage,
+                    // If broker API returns positions, we could sync them too, 
+                    // but OpenPositionsTable handles its own polling or we can pass it down.
+                    // realTimeStats.positions is available.
+                };
+            });
+        }
+    }, [realTimeStats, mergedBrokerAccount]);
+
     useEffect(() => {
         if (session?.user?.id) {
+            // 1. Get Profile for Role/Data
+            getUserProfile(session.user.id).then(data => {
+                if (data) {
+                    // Handle any profile-specific updates if needed
+                    // console.log("Profile Loaded for:", data.name);
+                    setGoldenTickets(data.goldenTickets || 0);
+                }
+            });
+
+            // 2. Get Ticket Statuses
             getTicketStatuses(session.user.id).then(status => {
                 if (status) {
                     setTicketStatus({
@@ -684,10 +734,13 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
     const confirmCopy = () => {
         if (selectedMaster) {
-            // Priority: VIP > User Selection (Welcome) > Daily (Default)
-            const sessionType = isVip ? "VIP" : (useWelcomeTicket ? "TRIAL_7DAY" : "DAILY");
+            // Priority: VIP > Golden > Welcome > Daily
+            let sessionType = "DAILY"; // Default
+            if (isVip) sessionType = "VIP";
+            else if (goldenTickets > 0) sessionType = "GOLDEN"; // 🌟 Auto-use Golden if available
+            else if (useWelcomeTicket) sessionType = "TRIAL_7DAY";
 
-            onStartCopy(selectedMaster, Number(allocation), aiGuardRisk, sessionType);
+            onStartCopy(selectedMaster, Number(allocation), aiGuardRisk, sessionType as SessionType);
             setSafetyModalOpen(false);
             setUseWelcomeTicket(false); // Reset
             setActiveTab("PORTFOLIO");
@@ -703,23 +756,27 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         const minutes = Math.floor((s % 3600) / 60);
         const seconds = s % 60;
 
-        if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        if (days > 0) return `${days}d ${hours}h ${minutes} m`;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')} `;
     };
 
     const totalAllocated = activeSessions.reduce((sum, s) => sum + s.allocation, 0);
     // 🏦 REAL DATA: Use Broker Account if connected, otherwise fallback (or 0)
-    const realEquity = brokerAccount?.equity || 0;
-    const realBalance = brokerAccount?.balance || 0;
-
+    const realEquity = mergedBrokerAccount?.equity || 0;
+    const realBalance = mergedBrokerAccount?.balance || 0;
+    const currency = mergedBrokerAccount?.currency || "USD";
+    const currencySymbol = currency === "USD" ? "$" : `${currency} `;
     // Derived Metrics
-    // If we have a broker, Equity is truth. PnL is Equity - Balance. 
-    // Available is Balance - Allocated (Assuming soft lock).
-    const totalPnL = brokerAccount ? (realEquity - realBalance) : activeSessions.reduce((sum, s) => sum + (s.pnl || 0), 0);
+    // 🛡️ SHADOW TRACKING: Removed per user request to allow "Maximizing Equity"
+    // Followers see Real Broker Equity to utilize full purchasing power (including floating PnL/Bonus)
+
+    const totalPnL = mergedBrokerAccount ? (realEquity - realBalance) : activeSessions.reduce((sum, s) => sum + (s.pnl || 0), 0);
 
     // For specific UI display:
-    const totalEquity = brokerAccount ? realEquity : (walletBalance + totalAllocated + totalPnL);
-    const availableBalance = brokerAccount ? Math.max(0, realBalance - totalAllocated) : walletBalance;
+    const totalEquity = mergedBrokerAccount ? realEquity : (walletBalance + activeSessions.reduce((sum, s) => sum + (s.allocation + (s.pnl || 0)), 0));
+
+    // 🚀 MAXIMIZE: Allow allocating based on EQUITY (Unrealized Gains included)
+    const availableBalance = mergedBrokerAccount ? Math.max(0, realEquity - totalAllocated) : walletBalance;
 
     const filteredMasters = useMemo(() => {
         let result = masters.length > 0 ? masters : [];
@@ -749,8 +806,14 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     // Calculate visible tickets for dynamic grid layout
     const showWelcome = !hasUsed7DayTrial;
     const showVIP = !isVip;
-    const visibleTicketsCount = 1 + (showWelcome ? 1 : 0) + (showVIP ? 1 : 0);
-    const gridColsClass = visibleTicketsCount === 1 ? "grid-cols-1" : visibleTicketsCount === 2 ? "grid-cols-2" : "grid-cols-3";
+    const showGolden = goldenTickets > 0 && !isVip;
+
+    const visibleTicketsCount = 1 + (showWelcome ? 1 : 0) + (showVIP ? 1 : 0) + (showGolden ? 1 : 0);
+
+    let gridColsClass = "grid-cols-1";
+    if (visibleTicketsCount === 2) gridColsClass = "grid-cols-2";
+    if (visibleTicketsCount >= 3) gridColsClass = "grid-cols-1 sm:grid-cols-3"; // Responsive: 1 col mobile, 3 desktop
+    if (visibleTicketsCount === 4) gridColsClass = "grid-cols-2 sm:grid-cols-4";
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -776,7 +839,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 buttonText: isVip ? "VIP ACTIVE" : (dailyTicketUsed ? "QUOTA USED" : "UNLOCK 4 HOURS"),
                                 action: isVip || dailyTicketUsed ? undefined : onOpenVIP
                             })}
-                            className={`glass-panel overflow-hidden transition-all duration-300 group ${isVip || dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:border-neon-cyan/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-1"}`}
+                            className={`glass-panel overflow-hidden transition-all duration-300 group ${isVip || dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:border-neon-cyan/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-1"} `}
                         >
                             <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
                                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -784,10 +847,10 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 </div>
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
                                     <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                        <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-neon-purple" : "text-white"}`}>Standard</h4>
+                                        <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-neon-purple" : "text-white"} `}>Standard</h4>
                                         <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">{isVip ? "Unlimited Access" : "Free Follow Master 4hrs"}</p>
                                     </div>
-                                    <div className={`p-2 rounded-full ${isVip ? "bg-neon-purple/20 text-neon-purple" : "bg-neon-cyan/20 text-neon-cyan"}`}>
+                                    <div className={`p-2 rounded-full ${isVip ? "bg-neon-purple/20 text-neon-purple" : "bg-neon-cyan/20 text-neon-cyan"} `}>
                                         <Zap className={`w-3 h-3 sm:w-4 sm:h-4`} />
                                     </div>
                                 </div>
@@ -803,6 +866,39 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             </CardContent>
                         </Card>
 
+
+                        {/* 🌟 Golden Ticket */}
+                        {goldenTickets > 0 && !isVip && (
+                            <Card
+                                onClick={() => setSelectedTicket({
+                                    type: 'GOLDEN',
+                                    title: "Golden Ticket",
+                                    subtitle: `${goldenTickets} Available`,
+                                    description: "Premium 24-hour access to any master. Use your tickets to bypass daily limits.",
+                                    benefits: ["24 Hours Unlimited Access", "Priority Execution", "Keeps 100% Profit"],
+                                    buttonText: "USE TICKET",
+                                    action: undefined // Logic handled in modal
+                                })}
+                                className="glass-panel overflow-hidden transition-all duration-300 group cursor-pointer hover:border-yellow-400/50 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:-translate-y-1"
+                            >
+                                <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
+                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                        <Ticket className="w-24 h-24 text-yellow-400" />
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
+                                        <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                                            <h4 className="text-[10px] sm:text-xs font-bold truncate w-full text-yellow-400">Golden Ticket</h4>
+                                            <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">{goldenTickets} Left</p>
+                                        </div>
+                                        <div className="p-2 rounded-full bg-yellow-400/20 text-yellow-400">
+                                            <Ticket className="w-3 h-3 sm:w-4 sm:h-4" />
+                                        </div>
+                                    </div>
+                                    <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 text-xs font-bold group-hover:bg-yellow-400 group-hover:text-black transition-all shadow-[0_0_15px_rgba(250,204,21,0.15)] whitespace-nowrap">USE TICKET</button>
+                                </CardContent>
+                            </Card>
+                        )}
+
                         {/* 2. Welcome (renamed from 7-Day Trial) */}
                         {showWelcome && (
                             <Card
@@ -815,7 +911,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     buttonText: "CLAIM FREE 7 DAYS",
                                     action: undefined // Todo: implement claim logic
                                 })}
-                                className={`glass-panel overflow-hidden transition-all duration-300 group ${ticketStatus.welcomeUsed ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-pink/50 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:-translate-y-1"}`}
+                                className={`glass-panel overflow-hidden transition-all duration-300 group ${ticketStatus.welcomeUsed ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-pink/50 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:-translate-y-1"} `}
                             >
                                 <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
                                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -851,7 +947,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     buttonText: isVip ? "ACTIVE" : "GET ACCESS",
                                     action: undefined
                                 })}
-                                className={`glass-panel overflow-hidden transition-all duration-300 group relative ${isVip || ticketStatus.isVipActive ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-purple/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:-translate-y-1"}`}
+                                className={`glass-panel overflow-hidden transition-all duration-300 group relative ${isVip || ticketStatus.isVipActive ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-purple/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:-translate-y-1"} `}
                             >
                                 {/* Gold Glow Base */}
                                 <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -862,7 +958,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     </div>
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
                                         <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                            <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-gray-400" : "text-neon-purple"}`}>VIP</h4>
+                                            <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-gray-400" : "text-neon-purple"} `}>VIP</h4>
                                             <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Access All 30 Days</p>
                                         </div>
                                         <div className="p-2 rounded-full bg-neon-purple/20 text-neon-purple">
@@ -886,17 +982,17 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             <input type="text" placeholder="Search Masters..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-space border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/50 text-white transition-all placeholder:text-gray-600" />
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                            <button onClick={() => setShowFilterModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${showFilterModal || filterConfig.sortBy !== "RECOMMENDED" ? "bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.2)]" : "bg-space text-gray-400 border-white/10 hover:border-white/30"}`}>
+                            <button onClick={() => setShowFilterModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${showFilterModal || filterConfig.sortBy !== "RECOMMENDED" ? "bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.2)]" : "bg-space text-gray-400 border-white/10 hover:border-white/30"} `}>
                                 <SlidersHorizontal size={12} /> {filterConfig.sortBy === "RECOMMENDED" ? "Filters" : filterConfig.sortBy}
                             </button>
 
                             {/* Quick Filter: Free */}
-                            <button onClick={() => setFilterConfig(prev => ({ ...prev, freeOnly: !prev.freeOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.freeOnly ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-gray-900 text-gray-400 border-gray-700"}`}>
+                            <button onClick={() => setFilterConfig(prev => ({ ...prev, freeOnly: !prev.freeOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.freeOnly ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-gray-900 text-gray-400 border-gray-700"} `}>
                                 {filterConfig.freeOnly ? "Free Only ✓" : "Free"}
                             </button>
 
                             {/* Quick Filter: Favorites (Separated Logic for simple toggle) */}
-                            <button onClick={() => setFilterConfig(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.favoritesOnly ? "bg-red-500/20 text-red-400 border-red-500/50" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"}`}>
+                            <button onClick={() => setFilterConfig(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.favoritesOnly ? "bg-red-500/20 text-red-400 border-red-500/50" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}>
                                 {filterConfig.favoritesOnly ? "Favorites Only ❤️" : "Favorites"}
                             </button>
                         </div>
@@ -919,10 +1015,10 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                                 {master.isVip && <div className="absolute bottom-0 right-0 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black text-[8px] px-1 rounded-full font-bold shadow-lg">PRO</div>}
                                             </div>
                                             <h4 className="font-bold text-xs leading-tight line-clamp-1 mb-1 text-white group-hover:text-neon-purple transition-colors">{master.name}</h4>
-                                            <p className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.3)]' : 'text-red-400'}`}>+{master.roi}%</p>
-                                            <p className="text-[9px] text-gray-400 font-bold mt-1 group-hover:text-white transition-colors">{master.followers.toLocaleString()} Investors</p>
+                                            <p className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.3)]' : 'text-red-400'} `}>+{master.roi}%</p>
+                                            <p className="text-[9px] text-gray-500 font-bold mt-1 group-hover:text-white transition-colors">{master.followers.toLocaleString()} Investors</p>
                                         </div>
-                                        <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`w-full text-[10px] font-bold py-2 rounded-lg transition-colors ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"}`}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Uncopy" : "Copy"}</button>
+                                        <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`w-full text-[10px] font-bold py-2 rounded-lg transition-colors ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"} `}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Uncopy" : "Copy"}</button>
                                     </div>
                                 ))}
                             </div>
@@ -935,8 +1031,8 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             filteredMasters.map((master) => (
                                 <div key={master.id} onClick={() => onViewProfile(master)} className="bg-gray-900/50 backdrop-blur-sm rounded-2xl p-3 border border-gray-800 relative hover:bg-gray-800 transition-colors cursor-pointer flex gap-3 items-center">
                                     <img src={master.avatar} alt={master.name} className="w-12 h-12 rounded-xl" />
-                                    <div className="flex-1 min-w-0"><div className="flex justify-between items-center"><h3 className="font-bold text-sm truncate flex items-center gap-1">{master.name} <div onClick={(e) => onToggleFav(e, master.id)} className="cursor-pointer p-1 hover:scale-110 active:scale-90 transition-transform">{favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500" /> : <Heart size={14} className="text-gray-600 hover:text-red-400" />}</div></h3><span className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400' : 'text-red-400'}`}>+{master.roi}%</span></div><div className="flex justify-between items-center mt-1"><div className="flex gap-1 text-[9px] text-gray-400 overflow-hidden">{master.tags.slice(0, 2).map((t, i) => <span key={i} className="bg-gray-800 px-1.5 py-0.5 rounded whitespace-nowrap">{t}</span>)} <span className="text-blue-400 font-bold flex items-center gap-0.5"><Users size={10} /> {master.followers.toLocaleString()}</span></div>{master.monthlyFee > 0 ? <span className="text-[10px] text-yellow-500 font-bold">${master.monthlyFee}/mo</span> : <span className="text-[10px] text-green-500 font-bold">Free</span>}</div></div>
-                                    <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`text-[10px] font-bold px-3 py-1.5 rounded-lg shadow shrink-0 ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white hover:bg-red-600" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"}`}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Stop" : "Copy"}</button>
+                                    <div className="flex-1 min-w-0"><div className="flex justify-between items-center"><h3 className="font-bold text-sm truncate flex items-center gap-1">{master.name} <div onClick={(e) => onToggleFav(e, master.id)} className="cursor-pointer p-1 hover:scale-110 active:scale-90 transition-transform">{favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500" /> : <Heart size={14} className="text-gray-600 hover:text-red-400" />}</div></h3><span className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400' : 'text-red-400'} `}>+{master.roi}%</span></div><div className="flex justify-between items-center mt-1"><div className="flex gap-1 text-[9px] text-gray-400 overflow-hidden">{master.tags.slice(0, 2).map((t, i) => <span key={i} className="bg-gray-800 px-1.5 py-0.5 rounded whitespace-nowrap">{t}</span>)} <span className="text-blue-400 font-bold flex items-center gap-0.5"><Users size={10} /> {master.followers.toLocaleString()}</span> <span className="text-gray-500"></span></div>{master.monthlyFee > 0 ? <span className="text-[10px] text-yellow-500 font-bold">${master.monthlyFee}/mo</span> : <span className="text-[10px] text-green-500 font-bold">Free</span>}</div></div>
+                                    <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`text-[10px] font-bold px-3 py-1.5 rounded-lg shadow shrink-0 ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white hover:bg-red-600" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"} `}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Stop" : "Copy"}</button>
                                 </div>
                             ))
                         }
@@ -945,12 +1041,34 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
             ) : (
                 // 📊 PORTFOLIO VIEW
                 <div className="space-y-6 animate-in slide-in-from-right">
-                    <div className="bg-gray-900 rounded-2xl p-5 border border-gray-800 space-y-4">
+                    <div
+                        onClick={() => {
+                            if (session?.user) {
+                                onViewProfile({
+                                    id: 0, // Pseudo-ID for self
+                                    name: session.user.name || "My Profile",
+                                    userId: session.user.id, // Crucial
+                                    avatar: session.user.image || "/avatars/default.png",
+                                    desc: "My Trading Analytics",
+                                    riskReward: 0,
+                                    winRate: 0,
+                                    roi: 0,
+                                    followers: 0,
+                                    monthlyFee: 0,
+                                    isVip: false,
+                                    tags: ["ME"],
+                                    minDeposit: masterProfile.minDeposit || 10,
+                                    leverage: brokerAccount?.leverage || 500
+                                } as any);
+                            }
+                        }}
+                        className="bg-gray-900 rounded-2xl p-5 border border-gray-800 space-y-4 hover:border-gray-700 cursor-pointer transition-colors"
+                    >
                         <div className="flex justify-between items-end">
-                            <div><p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Total Equity</p><h2 className="text-3xl font-bold font-mono text-white">${totalEquity.toLocaleString()}</h2></div>
-                            <div className="text-right"><p className="text-[10px] text-gray-400 uppercase font-bold">Unrealized PnL</p><p className={`text-lg font-bold font-mono ${totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}>{totalPnL >= 0 ? "+" : ""}{totalPnL.toFixed(2)}</p></div>
+                            <div><p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Total Equity</p><h2 className="text-3xl font-bold font-mono text-white">{currencySymbol}{totalEquity.toLocaleString()}</h2></div>
+                            <div className="text-right"><p className="text-[10px] text-gray-400 uppercase font-bold">Unrealized PnL</p><p className={`text - lg font - bold font - mono ${totalPnL >= 0 ? "text-green-400" : "text-red-400"} `}>{totalPnL >= 0 ? "+" : ""}{totalPnL.toFixed(2)}</p></div>
                         </div>
-                        <div className="space-y-1"><div className="flex justify-between text-[9px] font-bold"><span className="text-gray-400">Available: <span className="text-white">${walletBalance.toLocaleString()}</span></span><span className="text-gray-400">Allocated: <span className="text-blue-400">${totalAllocated.toLocaleString()}</span></span></div><div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden flex"><div className="h-full bg-blue-500" style={{ width: `${(totalAllocated / totalEquity) * 100}%` }}></div><div className="h-full bg-green-500" style={{ width: `${(walletBalance / totalEquity) * 100}%` }}></div></div></div>
+                        <div className="space-y-1"><div className="flex justify-between text-[9px] font-bold"><span className="text-gray-400">Available: <span className="text-white">{currencySymbol}{availableBalance.toLocaleString()}</span></span><span className="text-gray-400">Allocated: <span className="text-blue-400">{currencySymbol}{totalAllocated.toLocaleString()}</span></span></div><div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden flex"><div className="h-full bg-blue-500" style={{ width: `${(totalAllocated / totalEquity) * 100}% ` }}></div><div className="h-full bg-green-500" style={{ width: `${(availableBalance / totalEquity) * 100}% ` }}></div></div></div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -962,10 +1080,23 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                         <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wide">Active Portfolios</h3>
                         {activeSessions.length === 0 ? (<div className="text-center py-10 text-gray-500 space-y-2 border border-dashed border-gray-800 rounded-2xl"><Briefcase className="mx-auto opacity-50" size={40} /><p className="text-xs">No active copies.</p></div>) : (
                             activeSessions.map((session) => (
-                                <ActiveSessionWidget key={session.id} master={session.master} time={ticketTime} risk={session.risk} allocation={session.allocation} onStop={() => onStopCopy(session.master.id)} isVip={isVip} session={session} />
+                                <ActiveSessionWidget
+                                    key={session.id}
+                                    master={session.master}
+                                    time={ticketTime}
+                                    risk={session.risk}
+                                    allocation={session.allocation}
+                                    onStop={() => onStopCopy(session.master.id)}
+                                    isVip={isVip}
+                                    session={session}
+                                    onClick={() => onViewProfile(session.master)} // ✅ Navigation
+                                    currencySymbol={currencySymbol}
+                                />
 
                             ))
                         )}
+
+                        {/* Removed Open Positions Table from here */}
                     </div>
 
                     {activeSessions.length > 0 && (
@@ -985,11 +1116,14 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     allocation={allocation}
                     setAllocation={setAllocation}
                     onClose={() => setSafetyModalOpen(false)}
-                    onConfirm={confirmCopy}
                     maxAlloc={walletBalance}
-                    showWelcomeOption={!isVip && !hasUsed7DayTrial} // Show if not VIP and ticket available
+                    showWelcomeOption={(userRole === "FOLLOWER" && !ticketStatus.welcomeUsed && !ticketStatus.dailyUsed)}
                     useWelcome={useWelcomeTicket}
                     setUseWelcome={setUseWelcomeTicket}
+                    onConfirm={() => {
+                        setSafetyModalOpen(false); // Close modal
+                        confirmCopy(); // Trigger copy
+                    }}
                 />
             )}
             {TicketPopup}
@@ -1009,9 +1143,11 @@ interface MasterFlowProps {
     onOpenWallet: () => void;
     onBecomeMaster: () => void;
     followers?: Follower[];
+    brokerAccount: BrokerAccount | null; // ✅ Added Prop
+    isVip: boolean;
 }
 
-function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [] }: MasterFlowProps) {
+function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [], brokerAccount, isVip }: MasterFlowProps) {
     const [showUpgradeMaster, setShowUpgradeMaster] = useState(false);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
@@ -1056,14 +1192,18 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
         drawdown: 0,
         profitFactor: 0,
         avatar: profile.avatar,
-        isVip: true,
+        isVip: isVip, // ✅ Dynamic VIP Status
         desc: profile.desc,
         tags: profile.tags,
         joined: "2023",
         currentOrders: [],
         monthlyFee: profile.monthlyFee,
         isPremium: profile.monthlyFee > 0,
-        isPublic: true // ✅ Default to true for preview
+        isPublic: profile.isPublic ?? true,
+        aum: profile.aum, // ✅ Fix TS
+        minDeposit: profile.minDeposit || 10, // ✅ Use Profile Setting (Default 10)
+        leverage: brokerAccount?.leverage || 500, // ✅ Use Real Leverage or Default
+        riskReward: 1.5 // ✅ Fix TS
     };
 
     if (viewMyProfile) {
@@ -1074,7 +1214,6 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                 requireAuth={() => { }} // No auth needed for preview
                 onStartCopy={() => alert("You cannot copy yourself!")}
                 onStopCopy={() => { }}
-                isPreview={true}
             />
         )
     }
@@ -1125,17 +1264,15 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                 onClick={() => setViewMyProfile(true)}
                 className="bg-gray-900 rounded-2xl p-5 border border-gray-800 relative overflow-hidden cursor-pointer hover:border-gray-600 transition-colors group"
             >
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${userRole === "MASTER" ? "from-purple-500 to-indigo-600" : "from-gray-700 to-gray-600"}`}></div>
+                <div className={`absolute top - 0 left - 0 w - full h - 1 bg - gradient - to - r ${userRole === "MASTER" ? "from-purple-500 to-indigo-600" : "from-gray-700 to-gray-600"} `}></div>
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center font-bold text-xl border-4 border-gray-900 shadow-xl relative z-10">MK</div>
                     <div>
                         <h2 className="text-lg font-bold flex items-center gap-2 group-hover:text-purple-300 transition-colors">
                             {profile.name} {userRole === "MASTER" && <BadgeCheck size={16} className="text-blue-400" fill="currentColor" color="black" />}
                         </h2>
-                        {userRole === "MASTER" ? (
+                        {userRole === "MASTER" && (
                             <span className="bg-purple-900/30 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded border border-purple-500/30">TIER: {profile.tier}</span>
-                        ) : (
-                            <span className="bg-gray-800 text-gray-500 text-[9px] font-bold px-2 py-0.5 rounded border border-gray-700">DRAFT MODE</span>
                         )}
                     </div>
                     <div className="ml-auto"><Eye size={16} className="text-gray-600 group-hover:text-white" /></div>
@@ -1159,7 +1296,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                                 <span className={followerPercent >= 90 ? "text-red-400" : "text-white"}>{profile.followersCount} / {profile.followersLimit}</span>
                             </div>
                             <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all duration-1000 ${followerPercent >= 90 ? "bg-red-500" : "bg-blue-500"}`} style={{ width: `${followerPercent}%` }}></div>
+                                <div className={`h - full rounded - full transition - all duration - 1000 ${followerPercent >= 90 ? "bg-red-500" : "bg-blue-500"} `} style={{ width: `${followerPercent}% ` }}></div>
                             </div>
                         </div>
                         <div className="space-y-1">
@@ -1168,7 +1305,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                                 <span className={aumPercent >= 90 ? "text-red-400" : "text-white"}>${profile.aum.toLocaleString()} / ${profile.aumLimit.toLocaleString()}</span>
                             </div>
                             <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full transition-all duration-1000 ${aumPercent >= 90 ? "bg-red-500" : "bg-green-500"}`} style={{ width: `${aumPercent}%` }}></div>
+                                <div className={`h - full rounded - full transition - all duration - 1000 ${aumPercent >= 90 ? "bg-red-500" : "bg-green-500"} `} style={{ width: `${aumPercent}% ` }}></div>
                             </div>
                             {/* Hover Overlay Hint */}
                             <div className="hidden group-hover/capacity:flex absolute inset-0 bg-purple-900/10 backdrop-blur-[1px] items-center justify-center rounded-xl">
@@ -1181,21 +1318,37 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                     </div>
                 )}
 
-                <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-                    <div className="bg-black/30 p-3 rounded-xl"><p className="text-[10px] text-gray-500 uppercase">Followers</p><p className="text-xl font-bold font-mono text-white">{userRole === "MASTER" ? profile.followersCount : "-"}</p></div>
+                <div className="mt-6 grid grid-cols-2 gap-4">
+                    {/* 👥 Followers Stat */}
+                    <div className="glass-panel p-4 rounded-xl flex flex-col items-center justify-center space-y-1">
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                            <Users size={12} className="text-gray-500" />
+                            Followers
+                        </div>
+                        <p className="text-2xl font-bold font-mono text-white">{userRole === "MASTER" ? profile.followersCount : "-"}</p>
+                    </div>
+
+                    {/* 💰 Wallet / GP Earned Stat */}
                     <div
                         onClick={(e) => { e.stopPropagation(); if (userRole === "MASTER") onOpenWallet(); }}
-                        className={`relative overflow-hidden group p-3 rounded-xl transition-all duration-300 ${userRole === "MASTER" ? "cursor-pointer bg-gradient-to-br from-gray-900 to-gray-950 border border-gray-800 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]" : "bg-black/30"}`}
+                        className={`relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center space-y-1 transition-all duration-300 group/wallet ${userRole === "MASTER"
+                            ? "cursor-pointer bg-gradient-to-br from-gray-900 via-gray-900 to-purple-900/20 border border-purple-500/30 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]"
+                            : "bg-black/30 border border-white/5 opacity-50"
+                            }`}
                     >
-                        <p className="text-[10px] text-gray-500 uppercase flex items-center justify-center gap-1.5 mb-1 group-hover:text-green-400 transition-colors">
-                            <Wallet size={12} className={userRole === "MASTER" ? "group-hover:rotate-12 transition-transform" : ""} />
-                            GP Earned
-                        </p>
+                        {userRole === "MASTER" && (
+                            <div className="absolute top-0 right-0 p-1.5 opacity-0 group-hover/wallet:opacity-100 transition-opacity">
+                                <ArrowUpRight size={10} className="text-green-400" />
+                            </div>
+                        )}
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider group-hover/wallet:text-green-400 transition-colors">
+                            <Wallet size={12} className={userRole === "MASTER" ? "group-hover/wallet:rotate-12 transition-transform text-gray-500 group-hover/wallet:text-green-500" : "text-gray-600"} />
+                            My Wallet
+                        </div>
                         <div className="flex items-center justify-center gap-2">
-                            <p className={`text-xl font-bold font-mono ${userRole === "MASTER" ? "text-green-400 group-hover:text-green-300 group-hover:scale-105 transition-all" : "text-gray-500"}`}>
+                            <p className={`text-2xl font-bold font-mono ${userRole === "MASTER" ? "text-green-400 group-hover/wallet:text-green-300 group-hover/wallet:scale-105 transition-all" : "text-gray-600"}`}>
                                 {userRole === "MASTER" ? "$0.00" : "$0.00"}
                             </p>
-                            {userRole === "MASTER" && <ChevronRight size={14} className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-transform" />}
                         </div>
                     </div>
                 </div>
@@ -1224,7 +1377,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                         followers.map((follower) => (
                             <div key={follower.id} onClick={() => onViewFollower(follower)} className="bg-gray-900 p-3 rounded-xl border border-gray-800 flex justify-between items-center hover:bg-gray-800 transition-colors cursor-pointer">
                                 <div className="flex items-center gap-3"><img src={follower.avatar} alt={follower.name} className="w-10 h-10 rounded-full bg-gray-800" /><div><p className="font-bold text-sm text-white">{follower.name}</p><p className="text-[10px] text-gray-500">Joined {follower.joined}</p></div></div>
-                                <div className="text-right"><p className={`font-mono font-bold text-sm ${follower.pnl.includes('+') ? 'text-green-400' : 'text-red-400'}`}>{follower.pnl}</p><p className="text-[9px] text-gray-500">PnL</p></div>
+                                <div className="text-right"><p className={`font - mono font - bold text - sm ${follower.pnl.includes('+') ? 'text-green-400' : 'text-red-400'} `}>{follower.pnl}</p><p className="text-[9px] text-gray-500">PnL</p></div>
                             </div>
                         ))
                     )}
@@ -1283,7 +1436,7 @@ function FollowerDetailView({ follower, onBack }: FollowerDetailProps) {
             <div className="p-6 text-center space-y-6">
                 <div className="w-24 h-24 mx-auto rounded-full border-4 border-gray-800 overflow-hidden"><img src={follower.avatar} alt={follower.name} className="w-full h-full" /></div>
                 <div><h2 className="text-2xl font-bold text-white">{follower.name}</h2><p className="text-gray-500 text-sm">Subscribed since {follower.joined}</p></div>
-                <div className="grid grid-cols-2 gap-3"><div className="bg-gray-900 p-4 rounded-2xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase">Equity</p><p className="text-xl font-bold text-white">${follower.equity}</p></div><div className="bg-gray-900 p-4 rounded-2xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase">Profit Made</p><p className={`text-xl font-bold ${follower.pnl.includes('+') ? 'text-green-400' : 'text-red-400'}`}>{follower.pnl}</p></div></div>
+                <div className="grid grid-cols-2 gap-3"><div className="bg-gray-900 p-4 rounded-2xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase">Equity</p><p className="text-xl font-bold text-white">${follower.equity}</p></div><div className="bg-gray-900 p-4 rounded-2xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase">Profit Made</p><p className={`text - xl font - bold ${follower.pnl.includes('+') ? 'text-green-400' : 'text-red-400'} `}>{follower.pnl}</p></div></div>
                 <div className="p-4 bg-gray-900/50 border border-gray-800 rounded-xl text-left"><p className="text-xs text-gray-500 text-center">View-only mode. Privacy protected.</p></div>
             </div>
         </div>
@@ -1307,6 +1460,7 @@ export default function BridgeTradeApp() {
     const [walletBalance, setWalletBalance] = useState(INITIAL_BALANCE);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [activeSessions, setActiveSessions] = useState<CopySession[]>([]);
+    const [brokerAccount, setBrokerAccount] = useState<BrokerAccount | null>(null); // ✅ Added State
 
     // 🎟️ TICKET STATE
     const [dailyTicketUsed, setDailyTicketUsed] = useState(false);
@@ -1315,6 +1469,15 @@ export default function BridgeTradeApp() {
     const [goldenTicketExpiry, setGoldenTicketExpiry] = useState<number>(0);
     const [goldenTickets, setGoldenTickets] = useState(0);
     const [favorites, setFavorites] = useState<number[]>([]);
+
+    // 🛡️ RISK STATE
+    const [dailyLoss, setDailyLoss] = useState<string | number>("");
+    const [minEquity, setMinEquity] = useState<string | number>("");
+    const [aiGuardRisk, setAiGuardRisk] = useState<string | number>("Balanced"); // Default risk
+    const [allocation, setAllocation] = useState<string | number>(1000); // Default alloc
+    const [useWelcomeTicket, setUseWelcomeTicket] = useState(false);
+    const [safetyModalOpen, setSafetyModalOpen] = useState(false);
+    const [selectedMaster, setSelectedMaster] = useState<Master | null>(null);
 
     const [masterProfile, setMasterProfile] = useState<MasterProfile>({
         name: "",
@@ -1327,6 +1490,7 @@ export default function BridgeTradeApp() {
         aum: 0,
         aumLimit: 10000,
         monthlyFee: 0,
+        minDeposit: 10, // ✅ Default
         userId: ""
     });
     const [showActivationModal, setShowActivationModal] = useState(false);
@@ -1356,6 +1520,7 @@ export default function BridgeTradeApp() {
                     }
                     if (user.brokerAccount) {
                         setAccountStatus("CONNECTED");
+                        setBrokerAccount(user.brokerAccount); // ✅ Set State
                     }
                 }
             });
@@ -1399,7 +1564,7 @@ export default function BridgeTradeApp() {
 
     const handleWithdrawal = (amount: number, bankDetails: any = {}) => {
         const newTx: Transaction = {
-            id: `tx_${Date.now()}`,
+            id: `tx_${Date.now()} `,
             type: "WITHDRAWAL",
             title: "Withdrawal Request",
             amount: -amount,
@@ -1429,13 +1594,12 @@ export default function BridgeTradeApp() {
 
     const [realMasters, setRealMasters] = useState<Master[]>([]); // ✅ Lifted State (Moved Up)
 
-    // 🔍 VIEWING STATE (Refactored to ID for Real-Time Updates)
-    const [viewingProfileId, setViewingProfileId] = useState<number | null>(null);
-    const viewingProfile = useMemo(() => realMasters.find(m => m.id === viewingProfileId) || null, [realMasters, viewingProfileId]);
+    // 🔍 VIEWING STATE (Refactored to Object for Self-View Support)
+    const [viewingProfile, setViewingProfile] = useState<Master | null>(null);
 
     const [viewingFollower, setViewingFollower] = useState<any | null>(null);
     const [startOnBroker, setStartOnBroker] = useState(false);
-    const [brokerAccount, setBrokerAccount] = useState<any | null>(null);
+
 
 
     useEffect(() => {
@@ -1489,12 +1653,20 @@ export default function BridgeTradeApp() {
                     if (account) {
                         setBrokerAccount(account);
                         setAccountStatus(account.status as AccountStatus);
-                        // setWalletBalance(account.balance); // Optional: Sync wallet if strictly tied
+                        setWalletBalance(account.balance); // ✅ Sync wallet balance for real-time updates
                     }
                 });
 
-                // 2. Refresh Masters (Follower Counts/ROI)
-                fetchMasters().then(setRealMasters).catch(console.error);
+                // 2. Refresh Masters (Follower Counts/ROI) & Sync Viewed Profile
+                fetchMasters().then(masters => {
+                    setRealMasters(masters);
+                    setViewingProfile(current => {
+                        if (current && current.id !== 0) {
+                            return masters.find(m => m.id === current.id) || current;
+                        }
+                        return current;
+                    });
+                }).catch(console.error);
             }, 5000);
 
             return () => clearInterval(poller);
@@ -1511,12 +1683,13 @@ export default function BridgeTradeApp() {
     const handleSwitchView = (targetMode: UserRole) => {
         requireAuth(() => {
             if (userRole === "MASTER" && targetMode === "FOLLOWER") {
-                setViewMode(targetMode); setViewingProfileId(null); setViewingFollower(null);
+                setViewMode(targetMode); setViewingProfile(null); setViewingFollower(null);
             } else {
-                setViewMode(targetMode); setViewingProfileId(null); setViewingFollower(null);
+                setViewMode(targetMode); setViewingProfile(null); setViewingFollower(null);
             }
         });
     };
+
 
     const handleToggleFavorite = (e?: React.MouseEvent, masterId?: number) => {
         if (e) e.stopPropagation();
@@ -1624,7 +1797,13 @@ export default function BridgeTradeApp() {
             toast.error("Error: Master ID missing");
             return;
         }
-        startCopySession(currentUserId!, master.userId, amount, Number(risk), sessionType as SessionType) // Casting logic
+        startCopySession(
+            currentUserId!,
+            master.userId,
+            amount,
+            Number(risk),
+            sessionType as SessionType
+        ) // Casting logic
             .then(res => {
                 if (res.success && res.data) {
                     toast.success("Investment Active! 🚀", { id: toastId, description: "Funds allocated to Master." });
@@ -1755,7 +1934,7 @@ export default function BridgeTradeApp() {
             fetchMasters(); // 🔄 Trigger re-fetch (cache invalidation hint if needed, or just let re-mount handle it)
             // Note: setRealMasters is not available here as it's in FollowerFlow. 
             // When user switches view, FollowerFlow will remount and fetch fresh data.
-            toast.success("Welcome, Master!", { id: toastId, description: `Your subscription fee is set to $${fee}/month.` });
+            toast.success("Welcome, Master!", { id: toastId, description: `Your subscription fee is set to $${fee} /month.` });
         } else {
             toast.error("Activation Failed", { id: toastId, description: result.error });
 
@@ -1777,6 +1956,24 @@ export default function BridgeTradeApp() {
             setShowSettings(true);
             return;
         }
+
+        // 🛡️ GUARD: Stop Copies before Upgrade
+        if (activeSessions.length > 0) {
+            openGlobalModal(
+                "⚠️ Active Copies Detected",
+                "To become a Master, you must stop copying other traders.\n\nProceed to STOP ALL sessions and continue?",
+                async () => {
+                    await confirmStopAll(); // 🛑 Stop Everything
+
+                    // Then Proceed
+                    setShowSettings(true);
+                    setTimeout(() => setShowActivationModal(true), 300);
+                },
+                "danger"
+            );
+            return;
+        }
+
         setShowSettings(true);
         setTimeout(() => setShowActivationModal(true), 300);
     };
@@ -1803,10 +2000,11 @@ export default function BridgeTradeApp() {
                 onOpenVIP={() => requireAuth(() => setShowVIP(true))}
                 onLogin={() => setShowLogin(true)}
                 onBecomeMaster={userRole === "FOLLOWER" ? () => requireAuth(handleBecomeMasterRequest) : undefined}
+                onOpenWallet={() => requireAuth(() => setShowWallet(true))}
             />}
             {!isClient && <div className="h-20 bg-gray-900 border-b border-gray-800 animate-pulse"></div>}
 
-            <div className="pt-24 px-4 max-w-md mx-auto">
+            <div className="pt-24 px-4 max-w-7xl mx-auto">
                 {isClient && isLoggedIn && accountStatus === "ERROR" && <div onClick={() => setShowSettings(true)} className="bg-red-900/20 border border-red-500/50 p-4 rounded-xl mb-4 flex items-center justify-between animate-pulse cursor-pointer"><div className="flex items-center gap-3"><AlertTriangle className="text-red-500" /><div><p className="font-bold text-sm text-red-400">Connection Error</p><p className="text-[10px] text-gray-400">Tap to reconnect.</p></div></div><span className="text-xs font-bold text-red-500 underline">Fix</span></div>}
 
                 {isClient && userRole === "MASTER" && viewMode === "FOLLOWER" && (
@@ -1820,7 +2018,7 @@ export default function BridgeTradeApp() {
                 {isClient && viewMode === "FOLLOWER" ? (
                     viewingProfile ? (
                         <MasterProfileView
-                            master={viewingProfile} onBack={() => setViewingProfileId(null)} requireAuth={requireAuth}
+                            master={viewingProfile} onBack={() => setViewingProfile(null)} requireAuth={requireAuth}
                             isFav={favorites.includes(viewingProfile.id)} onToggleFav={() => handleToggleFavorite(undefined, viewingProfile.id)}
                             onStartCopy={startCopying} onStopCopy={stopCopying} isCopying={activeSessions.some(s => s.master.id === viewingProfile.id)}
                             maxAlloc={walletBalance} isVip={isUserVip}
@@ -1834,7 +2032,7 @@ export default function BridgeTradeApp() {
                         />
                     ) : (
                         <FollowerFlow
-                            requireAuth={requireAuth} onViewProfile={(master) => setViewingProfileId(master.id)}
+                            requireAuth={requireAuth} onViewProfile={(master) => setViewingProfile(master)}
                             activeSessions={activeSessions} onStopCopy={stopCopying} onStartCopy={startCopying}
                             favorites={favorites} walletBalance={walletBalance}
                             onOpenVIP={() => requireAuth(() => setShowVIP(true))}
@@ -1846,6 +2044,7 @@ export default function BridgeTradeApp() {
                             hasUsed7DayTrial={hasUsed7DayTrial}
                             brokerAccount={brokerAccount}
                             masters={realMasters} // ✅ Pass State
+                            masterProfile={masterProfile} // ✅ Pass Master Profile
                         />
                     )
                 ) : isClient ? (
@@ -1861,6 +2060,8 @@ export default function BridgeTradeApp() {
                             onOpenWallet={() => setShowWallet(true)}
                             onBecomeMaster={handleBecomeMasterRequest}
                             followers={[]} // Using real data (empty initially)
+                            brokerAccount={brokerAccount} // ✅ Pass Broker Account
+                            isVip={isUserVip} // ✅ Pass VIP Status
                         />
                 ) : null}
             </div>

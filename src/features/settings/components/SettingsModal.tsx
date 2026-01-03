@@ -231,7 +231,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                         {activeTab === "ACCOUNT" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
                     </button>
                     <button onClick={() => setActiveTab("PROFILE")} className={`flex-1 py-4 text-xs font-bold transition-all relative ${activeTab === "PROFILE" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}>
-                        Public Profile {role === "FOLLOWER" && "(Draft)"}
+                        Public Profile
                         {activeTab === "PROFILE" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
                     </button>
                 </div>

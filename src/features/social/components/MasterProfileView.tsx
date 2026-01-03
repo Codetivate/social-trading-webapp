@@ -1,15 +1,25 @@
-import { useState } from "react";
-import { ChevronLeft, Heart, Bot, Crown, BadgeCheck, AreaChart, PlayCircle, StopCircle, Ticket, Sparkles, EyeOff } from "lucide-react";
+"use client";
+
+// ... (imports remain)
+import { useState, useEffect } from "react";
+import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Master, SessionType, UserRole, AccountStatus } from "@/types";
 import { SafetyGuardModal } from "@/features/trading/components/SafetyGuardModal";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import TraderAnalysisDashboard from "@/features/social/components/TraderAnalysisDashboard";
+import { getUserIdByName } from "@/app/actions/data";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 interface MasterProfileViewProps {
     master: Master;
     onBack: () => void;
     requireAuth: (action: () => void) => void;
-    isPreview?: boolean;
+    // Removing isPreview
     isFav?: boolean;
     onToggleFav?: () => void;
     onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType) => void;
@@ -25,20 +35,30 @@ interface MasterProfileViewProps {
     hasUsed7DayTrial?: boolean;
     accountStatus?: AccountStatus;
     onOpenSettings?: () => void;
-    dailyTicketUsed?: boolean; // ✅ New Prop
+    dailyTicketUsed?: boolean;
 }
 
-export function MasterProfileView({ master, onBack, requireAuth, isPreview = false, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, isVip, isGoldenActive, hasUsed7DayTrial, userRole, onOpenVIP, goldenTickets = 0, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
+export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, isVip, isGoldenActive, hasUsed7DayTrial, userRole, onOpenVIP, goldenTickets = 0, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
     const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
     const [allocation, setAllocation] = useState<number | string>(1000);
     const [selectedSessionType, setSelectedSessionType] = useState<SessionType>("DAILY");
-    const [useWelcomeTicket, setUseWelcomeTicket] = useState(false); // ✅ New State
+    const [useWelcomeTicket, setUseWelcomeTicket] = useState(false);
+    const [resolvedUserId, setResolvedUserId] = useState<string | null>(master.masterUserId || master.userId || null);
+
+    useEffect(() => {
+        if (master.masterUserId || master.userId) {
+            setResolvedUserId(master.masterUserId || master.userId || null);
+            return;
+        }
+        let isMounted = true;
+        getUserIdByName(master.name).then(id => {
+            if (isMounted && id) setResolvedUserId(id);
+        });
+        return () => { isMounted = false; };
+    }, [master]);
 
     const isPremium = master.monthlyFee > 0;
-    const hasTicket = goldenTickets > 0;
-
-    // Logic: Available if Premium AND User hasn't used trial AND User doesn't have an active Golden pass/VIP
     const canUse7DayTrial = isPremium && !hasUsed7DayTrial && !isGoldenActive && !isVip;
 
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; type: "info" | "danger" | "success" | "warning"; onConfirm: () => void }>({ isOpen: false, title: "", message: "", type: "info", onConfirm: () => { } });
@@ -49,35 +69,35 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
 
     const handleCopyAction = () => {
         if (userRole === "MASTER") {
-            openConfirm("Spy Mode", "👀 You are in Master View (Spy Mode).\nActions are disabled.", () => { }, "warning");
+            openConfirm("Spy Mode", "👀 You are in Master View (Spy Mode).\nCopying is disabled for your role.", () => { }, "warning");
             return;
         }
+
+        // Is this my own profile (even as follower)?
+        // FTMODashboard handles "isOwnProfile", but for copying...
+        // A user shouldn't copy themselves, but the ID check (Master vs User) handles that usually.
 
         if (isCopying) {
             openConfirm("Stop Copying?", `Are you sure you want to stop copying ${master.name}?`, () => { onStopCopy(master.id); onBack(); }, "danger");
         }
         else {
-            // 🔒 CHECK: BROKER CONNECTION
-            if (accountStatus !== "CONNECTED" && !isPreview) {
+            if (accountStatus !== "CONNECTED") {
                 toast.error("Broker Not Connected", { description: "Please connect your MT5 Broker Account first!" });
                 if (onOpenSettings) onOpenSettings();
                 return;
             }
 
-            // 1. Golden Ticket / VIP Active (Highest Priority)
             if (isGoldenActive || isVip) {
                 setSelectedSessionType("GOLDEN");
                 requireAuth(() => setSafetyModalOpen(true));
                 return;
             }
 
-            // 2. Premium Master Logic
             if (isPremium) {
-                // 2.1 First Time 7-Day Trial
                 if (canUse7DayTrial) {
                     openConfirm(
                         "🎁 Special 7-Day Trial",
-                        `Start your 7-Day Free Trial with ${master.name}?\n\n⚠️ IMPORTANT: This is a one-time use. If you Stop this session, the trial is BURNED forever.\n\n(After 7 days, subscription required)`,
+                        `Start your 7-Day Free Trial with ${master.name}?\n\nThis is a one-time offer.`,
                         () => {
                             setSelectedSessionType("TRIAL_7DAY");
                             requireAuth(() => setSafetyModalOpen(true));
@@ -86,14 +106,10 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                         "success"
                     );
                 } else {
-                    // 2.2 Trial Used -> Upsell VIP or Paid
                     openConfirm(
                         "💰 Premium Access Required",
-                        `Subscription Required: $${master.monthlyFee}/month\n\nOr Unlock VIP (Golden Ticket) to copy for FREE!`,
+                        `Subscription Required: $${master.monthlyFee}/month\n\nOr Unlock VIP to copy for FREE!`,
                         () => {
-                            // Check if user wants to pay or upgrade? 
-                            // Simplified flow: Prompt for Payment vs Upgrade
-                            // For now, let's open VIP upgrade as default upsell
                             if (onOpenVIP) {
                                 onOpenVIP();
                                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -105,174 +121,140 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                 return;
             }
 
-            // 3. Free Master (Daily Pass)
             setSelectedSessionType("DAILY");
-
-            // ✅ Auto-Select Welcome Ticket if Daily is Used (and Welcome is available)
             if (dailyTicketUsed && !hasUsed7DayTrial) {
                 setUseWelcomeTicket(true);
             } else {
                 setUseWelcomeTicket(false);
             }
-
             requireAuth(() => setSafetyModalOpen(true));
         }
     };
 
     return (
-        <div className={`fixed inset-0 bg-void z-50 overflow-y-auto pb-32 ${isPreview ? "absolute rounded-3xl" : ""}`}>
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto pb-32 animate-in fade-in duration-200">
 
-            {/* Header Transparent */}
-            <div className="sticky top-0 z-40 p-4 flex items-center justify-between pointer-events-none">
-                <button
-                    onClick={onBack}
-                    className="bg-black/20 backdrop-blur-md p-2 rounded-full text-white hover:bg-black/40 pointer-events-auto transition-all border border-white/10 active:scale-95"
-                >
-                    <ChevronLeft size={24} />
-                </button>
-                {!isPreview && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onToggleFav) onToggleFav();
-                        }}
-                        className={`p-2 rounded-full transition-all pointer-events-auto backdrop-blur-md border border-white/10 active:scale-95 ${isFav ? "bg-red-500/20 text-red-500 border-red-500/50" : "bg-black/20 text-white"}`}
-                    >
-                        <Heart size={24} fill={isFav ? "currentColor" : "none"} />
-                    </button>
-                )}
-            </div>
-
-            {/* Cover Image & Avatar */}
-            <div className="relative -mt-20">
-                <div className="h-56 w-full bg-gradient-to-b from-indigo-900 via-purple-900 to-gray-950 opacity-80"></div>
-                <div className="absolute -bottom-14 left-0 right-0 flex justify-center">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-neon-purple blur-2xl opacity-40 rounded-full"></div>
-                        <img src={master.avatar} alt={master.name} className="w-32 h-32 rounded-full border-[6px] border-void bg-space shadow-2xl relative z-10" />
-                        {master.type === "AI_BOT" && <div className="absolute bottom-2 right-2 bg-neon-cyan text-black p-1.5 rounded-full border-4 border-void z-20"><Bot size={16} /></div>}
-                        {isPremium && <div className="absolute top-1 right-1 bg-yellow-400 text-black p-1.5 rounded-full border-4 border-void shadow-lg z-20"><Crown size={14} fill="black" /></div>}
-                    </div>
+            {/* HEADER */}
+            <div className="border-b border-border sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
+                    <Button variant="ghost" size="icon" onClick={onBack}>
+                        <ChevronLeft className="h-6 w-6" />
+                    </Button>
+                    <div className="font-semibold text-sm uppercase tracking-widest text-muted-foreground">Trader Profile</div>
+                    <Button variant="ghost" size="icon" onClick={onToggleFav} className={isFav ? "text-red-500 hover:text-red-600" : ""}>
+                        <Heart className="h-6 w-6" fill={isFav ? "currentColor" : "none"} />
+                    </Button>
                 </div>
             </div>
 
-            {/* Profile Info */}
-            <div className="mt-16 px-6 text-center space-y-5">
-                <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center justify-center gap-2 mb-1">
-                        {master.name}
-                        {master.isVip && <BadgeCheck className="text-blue-500" size={24} fill="currentColor" color="black" />}
-                        {!master.isPublic && (
-                            <div className="bg-red-500/20 border border-red-500/40 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                                <EyeOff size={12} /> PRIVATE
+            <div className="max-w-7xl mx-auto p-6 space-y-8">
+
+                {/* 1. PROFILE HEADER CARD */}
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <Avatar className="h-24 w-24 border-4 border-background shadow-xl">
+                        <AvatarImage src={master.avatar} />
+                        <AvatarFallback>{master.name.substring(0, 2)}</AvatarFallback>
+                    </Avatar>
+
+                    <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-3xl font-bold tracking-tight">{master.name}</h1>
+                            {master.isVip && <Badge variant="default" className="bg-blue-600 hover:bg-blue-700"><ShieldCheck className="w-3 h-3 mr-1" /> Verified</Badge>}
+                            {master.type === "AI_BOT" && <Badge variant="secondary" className="gap-1"><Bot className="w-3 h-3" /> AI System</Badge>}
+                            {!master.isPublic && <Badge variant="destructive" className="gap-1">Private</Badge>}
+                        </div>
+                        <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+                            {master.desc}
+                        </p>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                            {master.tags?.filter(t => t !== "DRAFT MODE").map(tag => (
+                                <Badge key={tag} variant="outline" className="text-xs px-2 py-0.5 border-dashed">
+                                    {tag}
+                                </Badge>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Quick Stats Grid (Top Right) */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-auto">
+                        <Card className="bg-muted/50 border-none shadow-none">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                <Users className="h-4 w-4 text-muted-foreground mb-1" />
+                                <div className="text-lg font-bold">{master.followers.toLocaleString()}</div>
+                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Copiers</div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-muted/50 border-none shadow-none">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                <Wallet className="h-4 w-4 text-muted-foreground mb-1" />
+                                <div className="text-lg font-bold">${master.minDeposit}</div>
+                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Min Deposit</div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-muted/50 border-none shadow-none">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                <TrendingUp className="h-4 w-4 text-muted-foreground mb-1" />
+                                <div className="text-lg font-bold">1:{master.leverage || 500}</div>
+                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Leverage</div>
+                            </CardContent>
+                        </Card>
+                        <Card className="bg-muted/50 border-none shadow-none">
+                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                                <Copy className="h-4 w-4 text-muted-foreground mb-1" />
+                                <div className="text-lg font-bold">{isPremium ? `$${master.monthlyFee}` : "Free"}</div>
+                                <div className="text-[10px] uppercase text-muted-foreground font-medium">{isPremium ? "Monthly" : "Access"}</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+
+                <Separator className="bg-white/10" />
+
+                {/* 2. TRADER ANALYSIS DASHBOARD (FTMO Style) */}
+                <div className="min-h-[500px]">
+                    {resolvedUserId ? (
+                        <TraderAnalysisDashboard
+                            masterId={resolvedUserId}
+                            isOwnProfile={master.id === 0}
+                        />
+                    ) : (
+                        <div className="h-96 flex flex-col items-center justify-center text-muted-foreground bg-white/5 rounded-2xl border border-dashed border-white/10 glass-panel">
+                            <div className="animate-spin mb-4 text-neon-purple">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
                             </div>
-                        )}
-                    </h1>
-                    <p className="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">{master.desc}</p>
-                </div>
-
-
-                {/* 📊 METRICS GRID */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-neon-cyan/50 transition-colors">
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Profit</p>
-                        <p className="text-xl font-bold text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.5)]">+{master.roi}%</p>
-                    </div>
-                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-red-500/50 transition-colors">
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Max Drawdown</p>
-                        <p className="text-xl font-bold text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.5)]">{master.drawdown}%</p>
-                    </div>
-                    <div className="glass-panel p-4 rounded-2xl text-center hover:border-neon-purple/50 transition-colors">
-                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Investors</p>
-                        <p className="text-xl font-bold text-neon-purple drop-shadow-[0_0_5px_rgba(139,92,246,0.5)]">{master.followers.toLocaleString()}</p>
-                    </div>
-                </div>
-
-                {/* Tags */}
-                <div className="flex justify-center flex-wrap gap-2">
-                    {master.tags?.map((t: string, i: number) => <span key={i} className="bg-gray-800/80 text-gray-300 text-[10px] px-3 py-1 rounded-full border border-gray-700 font-medium">{t}</span>)}
-                </div>
-
-                {/* Charts Area */}
-                {/* Charts Area */}
-                <div className="bg-space/80 backdrop-blur-sm p-6 rounded-3xl border border-white/5 shadow-inner">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-sm flex items-center gap-2 text-white"><AreaChart size={18} className="text-purple-500" /> Performance</h3>
-                        <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-1 rounded-lg">All Time</span>
-                    </div>
-                    <div className="h-40 w-full flex items-end gap-1 relative p-1">
-                        {/* Fake Grid Lines */}
-                        <div className="absolute inset-0 flex flex-col justify-between opacity-10 pointer-events-none">
-                            <div className="border-t border-white w-full"></div>
-                            <div className="border-t border-white w-full"></div>
-                            <div className="border-t border-white w-full"></div>
+                            <p className="font-mono text-sm">Initializing Data Feed...</p>
                         </div>
-                        <svg className="absolute inset-0 w-full h-full text-purple-500/20" fill="currentColor" preserveAspectRatio="none" viewBox="0 0 350 160"><path d="M0,160 L20,140 L40,145 L60,110 L80,115 L100,80 L120,90 L140,50 L160,60 L180,30 L200,40 L220,10 L350,5 L350,160 Z" /></svg>
-                        <svg className="absolute inset-0 w-full h-full text-purple-500 stroke-current stroke-[3px] fill-none drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" preserveAspectRatio="none" viewBox="0 0 350 160"><path d="M0,160 L20,140 L40,145 L60,110 L80,115 L100,80 L120,90 L140,50 L160,60 L180,30 L200,40 L220,10 L350,5" /></svg>
-                    </div>
+                    )}
                 </div>
+
             </div>
 
-            {/* ✨ NEW FLOATING ACTION BAR (CENTERED & MODERN) */}
-            {!isPreview && userRole !== "MASTER" && (
-                <div className="fixed bottom-6 left-0 w-full flex justify-center z-50 px-4 pointer-events-none">
-                    <div className="pointer-events-auto w-full max-w-sm glass-panel rounded-[2rem] p-2 pl-5 pr-2 flex items-center justify-between gap-4 transition-all transform hover:scale-[1.01] hover:border-white/20">
-
-                        {/* Left: Info */}
-                        <div className="flex flex-col">
-                            {isCopying ? (
-                                <div className="animate-pulse">
-                                    <p className="text-[10px] text-green-400 font-bold uppercase tracking-widest mb-0.5">● Active</p>
-                                    <p className="text-sm font-bold text-white">Running...</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">
-                                        {isPremium ? "Subscription" : "Service Fee"}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        {isPremium ? (
-                                            <>
-                                                <span className="text-xl font-bold text-white">${master.monthlyFee}</span>
-                                                <span className="text-xs text-gray-500 font-medium">/mo</span>
-                                            </>
-                                        ) : (
-                                            <span className="text-xl font-bold text-green-400 flex items-center gap-1">FREE <span className="text-xs text-gray-500 font-normal">access</span></span>
-                                        )}
-                                    </div>
-
-                                    {/* Badge Logic */}
-                                    {isGoldenActive && <p className="text-[9px] text-yellow-400 animate-pulse font-bold mt-1 flex items-center gap-1"><Ticket size={10} /> Golden Ticket Active</p>}
-                                    {canUse7DayTrial && <p className="text-[9px] text-purple-400 animate-pulse font-bold mt-1 flex items-center gap-1"><Sparkles size={10} /> 7-Day Free Trial Available</p>}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Right: Big Button */}
-                        <button
-                            onClick={handleCopyAction}
-                            className={`h-14 px-8 rounded-[1.5rem] font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 whitespace-nowrap
-                                ${isCopying
-                                    ? "bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20"
-                                    : isGoldenActive
-                                        ? "bg-gradient-to-r from-yellow-300 to-amber-500 text-black shadow-amber-500/30 hover:brightness-110"
-                                        : canUse7DayTrial
-                                            ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-purple-500/30 hover:brightness-110"
-                                            : "bg-white text-black hover:bg-gray-200 shadow-white/10"
+            {/* 3. STICKY FOOTER (ACTION BAR) - Hide if Own Profile (id === 0) */}
+            {userRole !== "MASTER" && master.id !== 0 && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border z-50">
+                    <div className="max-w-xl mx-auto flex items-center justify-center gap-4">
+                        <Button
+                            size="lg"
+                            className={`w-full md:w-auto font-bold shadow-lg ${isCopying ? "bg-red-600 hover:bg-red-700 text-white" :
+                                isGoldenActive ? "bg-amber-400 hover:bg-amber-500 text-black" :
+                                    canUse7DayTrial ? "bg-purple-600 hover:bg-purple-700 text-white" :
+                                        "bg-primary hover:bg-primary/90"
                                 }`}
+                            onClick={handleCopyAction}
                         >
                             {isCopying ? (
-                                <><StopCircle size={20} /> Stop</>
-                            ) : !master.isPublic ? (
-                                <><EyeOff size={20} /> Private</>
+                                <>Stop Copying</>
+                            ) : isGoldenActive ? (
+                                <><Ticket className="mr-2 h-4 w-4" /> Use Golden Ticket</>
+                            ) : canUse7DayTrial ? (
+                                <><Sparkles className="mr-2 h-4 w-4" /> Start 7-Day Trial</>
                             ) : (
-                                <>{isGoldenActive ? <Ticket size={20} fill="black" /> : canUse7DayTrial ? <Sparkles size={20} /> : <PlayCircle size={20} fill="currentColor" />}
-                                    <span className="text-base">
-                                        {isGoldenActive ? "Use Ticket" : canUse7DayTrial ? "Start Trial" : "Copy Now"}
-                                    </span>
-                                </>
+                                "Start Copying"
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -285,8 +267,6 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                     setAllocation={setAllocation}
                     onClose={() => setSafetyModalOpen(false)}
                     onConfirm={() => {
-                        // Priority: VIP/Golden > User Selection (Welcome) > Selected Type (Daily/Trial)
-                        // If selected is DAILY and user checked Welcome, switch to TRIAL_7DAY
                         const finalType = (selectedSessionType === "DAILY" && useWelcomeTicket) ? "TRIAL_7DAY" : selectedSessionType;
                         onStartCopy(master, Number(allocation), aiGuardRisk, finalType);
                         setSafetyModalOpen(false);
@@ -294,7 +274,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isPreview = fal
                         onBack();
                     }}
                     maxAlloc={maxAlloc || 0}
-                    showWelcomeOption={!isVip && !hasUsed7DayTrial && selectedSessionType === "DAILY"} // Only show for Daily default
+                    showWelcomeOption={!isVip && !hasUsed7DayTrial && selectedSessionType === "DAILY"}
                     useWelcome={useWelcomeTicket}
                     setUseWelcome={setUseWelcomeTicket}
                 />

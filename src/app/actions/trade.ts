@@ -9,7 +9,9 @@ export async function startCopySession(
     masterUserId: string,
     amount: number,
     risk: number,
-    type: SessionType
+    type: SessionType,
+    dailyLoss?: number, // 🛡️ Daily Loss Limit
+    minEquity?: number  // 🛡️ Hard Stop Equity
 ) {
     if (!followerId || !masterUserId) return { success: false, error: "Invalid IDs" };
     if (amount <= 0) return { success: false, error: "Invalid amount" };
@@ -41,12 +43,25 @@ export async function startCopySession(
                 return { success: false, error: "You are already copying this master." };
             }
 
+            // 3.5 🛡️ UPDATE RISK GUARDS (Global for Account)
+            // Since we only support 1 Broker Account per user in this demo:
+            if (dailyLoss !== undefined || minEquity !== undefined) {
+                await tx.brokerAccount.updateMany({
+                    where: { userId: followerId, status: "CONNECTED" },
+                    data: {
+                        maxDailyLoss: dailyLoss || 0,
+                        minEquity: minEquity || 0
+                    }
+                });
+            }
+
             // 4. Create new COPY SESSION
             const session = await tx.copySession.create({
                 data: {
                     followerId: followerId,
                     masterId: masterUserId,
                     allocation: amount,
+                    currentEquity: amount, // ✅ Init Shadow Equity
                     riskFactor: risk,
                     type: type,
                     isActive: true,
@@ -61,16 +76,23 @@ export async function startCopySession(
 
             // 5. 🎟️ DYNAMIC PROMOTION TRACKING
             if (type === "DAILY") {
+                // Update or Create the single UserPromotion record
                 await tx.userPromotion.upsert({
-                    where: { userId_type: { userId: followerId, type: "DAILY" } },
-                    update: { lastUsed: new Date() },
-                    create: { userId: followerId, type: "DAILY", lastUsed: new Date() }
+                    where: { userId: followerId },
+                    update: { dailyUsed: true, dailyActivated: new Date() },
+                    create: { userId: followerId, dailyUsed: true, dailyActivated: new Date() }
                 });
             } else if (type === "TRIAL_7DAY") {
                 await tx.userPromotion.upsert({
-                    where: { userId_type: { userId: followerId, type: "WELCOME" } },
-                    update: { usageCount: { increment: 1 } },
-                    create: { userId: followerId, type: "WELCOME", usageCount: 1 }
+                    where: { userId: followerId },
+                    update: { welcomeUsed: true, welcomeActivated: new Date() },
+                    create: { userId: followerId, welcomeUsed: true, welcomeActivated: new Date() }
+                });
+            } else if (type === "GOLDEN") {
+                // 🎫 Deduct Golden Ticket
+                await tx.user.update({
+                    where: { id: followerId },
+                    data: { goldenTickets: { decrement: 1 } }
                 });
             }
             // VIP is typically handled by subscription purchase, but we could track usage/expiry here if needed.
@@ -130,18 +152,22 @@ export async function getActiveSessions(userId: string) {
             }
         });
 
-        return sessions.map(s => {
+        return await Promise.all(sessions.map(async s => {
             const mp = s.master.masterProfile;
+
+            // 📊 PnL from Shadow Equity
+            const realizedPnl = (s.currentEquity || s.allocation) - s.allocation;
+
             return {
                 id: s.id,
                 master: {
                     id: mp?.id || 0,
-                    userId: s.masterId, // Important for actions
+                    userId: s.masterId,
                     name: mp?.name || s.master.name || "Unknown Master",
                     type: "HUMAN",
                     winRate: mp?.winRate || 0,
                     roi: mp?.roi || 0,
-                    pnlText: "0%", // Todo
+                    pnlText: "0%",
                     followers: mp?.followersCount || 0,
                     balance: 0,
                     risk: mp?.riskScore || 0,
@@ -159,13 +185,13 @@ export async function getActiveSessions(userId: string) {
                 allocation: s.allocation,
                 risk: s.riskFactor,
                 startTime: s.createdAt.getTime(),
-                pnl: 0, // Todo: Real PnL from positions
+                pnl: realizedPnl, // ✅ Realized PnL
                 orders: [],
                 isTrial: s.isTrial,
                 type: s.type,
                 expiry: s.expiry ? s.expiry.getTime() : null
             };
-        });
+        }));
     } catch (e) {
         console.error("Failed to fetch sessions:", e);
         return [];
@@ -312,19 +338,24 @@ export async function forceStopMasterSessions(masterUserId: string) {
 
 
 // 🎟️ DYNAMIC TICKET STATUS CHECK
+// 🎟️ DYNAMIC TICKET STATUS CHECK
 export async function getTicketStatuses(userId: string) {
     if (!userId) return null;
 
     try {
-        const promos = await prisma.userPromotion.findMany({
+        const promo = await prisma.userPromotion.findUnique({
             where: { userId }
         });
 
-        // Convert to easy lookup map
-        const statusMap = promos.reduce((acc: Record<string, typeof promos[0]>, p) => {
-            acc[p.type] = p;
-            return acc;
-        }, {});
+        if (!promo) {
+            return {
+                dailyUsed: false,
+                welcomeUsed: false,
+                isVipActive: false,
+                vipStart: null,
+                vipExpiry: null,
+            };
+        }
 
         // 🕒 Calculate Midnight GMT+7 in UTC
         const now = new Date();
@@ -334,29 +365,28 @@ export async function getTicketStatuses(userId: string) {
         localTime.setUTCHours(0, 0, 0, 0); // Midnight GMT+7
         const midnightGmt7InUtc = new Date(localTime.getTime() - offset);
 
-        const dailyPromo = statusMap["DAILY"];
-        const welcomePromo = statusMap["WELCOME"];
-        const vipPromo = statusMap["VIP"];
-
         // Check Logic
-        const dailyUsed = dailyPromo?.lastUsed ? dailyPromo.lastUsed >= midnightGmt7InUtc : false;
-        const welcomeUsed = (welcomePromo?.usageCount || 0) > 0;
+        // For dailyUsed, we just check the boolean flag, OR if we want to be stricter, check 'dailyActivated' vs midnight.
+        // The schema has 'dailyUsed' boolean, let's rely on that first, but for 'DAILY resets', checking timestamp is better.
+        // If 'dailyActivated' is BEFORE midnight today, then it should be considered NOT used (reset).
 
-        // VIP Check: Exists AND Expiry is future
-        const isVipActive = vipPromo?.expiry ? vipPromo.expiry > now : false;
+        let isDailyUsed = promo.dailyUsed;
+        if (promo.dailyActivated && promo.dailyActivated < midnightGmt7InUtc) {
+            isDailyUsed = false; // Reset if last activation was yesterday
+        }
 
-        // 🗓️ Extract Dates for UI
-        const vipStart = vipPromo?.createdAt ? vipPromo.createdAt.getTime() : null;
-        const vipExpiry = vipPromo?.expiry ? vipPromo.expiry.getTime() : null;
+        // Welcome Used is simple boolean
+        const isWelcomeUsed = promo.welcomeUsed;
+
+        // VIP Check
+        const isVipActive = promo.isVipActive && promo.vipExpiry ? promo.vipExpiry > now : false;
 
         return {
-            dailyUsed,
-            welcomeUsed,
+            dailyUsed: isDailyUsed,
+            welcomeUsed: isWelcomeUsed,
             isVipActive,
-            vipStart,
-            vipExpiry,
-            // Pass raw map for future flexibility if frontend needs it
-            _raw: statusMap
+            vipStart: promo.createdAt.getTime(), // Using creation as start surrogate if needed
+            vipExpiry: promo.vipExpiry ? promo.vipExpiry.getTime() : null,
         };
 
     } catch (e) {
