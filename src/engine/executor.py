@@ -6,7 +6,7 @@ import json
 import os
 from dotenv import load_dotenv
 load_dotenv() # 📥 Load .env file
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as d_time
 
 import argparse
 import psycopg2
@@ -14,13 +14,14 @@ import hashlib
 
 # ⚙️ CONFIGURATION
 PORT = "3000"
-# Try user's IP first, then localhost as fallback
 HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1"] 
 DATABASE_URL = os.getenv("DATABASE_URL") 
 
-# 🔧 ARGUMENT PARSING (Multi-Tenant Support)
+# 🔧 ARGUMENT PARSING (Disruptive Cloud Model)
 parser = argparse.ArgumentParser(description='Hydra Executor Worker')
-parser.add_argument('--user-id', type=str, required=True, help='Target User ID (Follower)')
+parser.add_argument('--mode', type=str, default='SINGLE', choices=['SINGLE', 'BATCH', 'TURBO'], help='Execution Mode: SINGLE (Legacy), BATCH (Free Cloud), TURBO (Paid Cloud)')
+parser.add_argument('--user-id', type=str, help='Target User ID (Required for SINGLE mode)')
+parser.add_argument('--batch-id', type=int, default=0, help='Shard ID for Batch processing (e.g. 0-9)')
 parser.add_argument('--secret', type=str, help='Bridge API Secret', default=os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro"))
 parser.add_argument('--mt5-path', type=str, help='Specific MT5 Terminal Path', default=os.getenv("MT5_PATH", ""))
 parser.add_argument('--dry-run', action='store_true', help='Disable trade execution')
@@ -28,10 +29,19 @@ parser.add_argument('--dry-run', action='store_true', help='Disable trade execut
 args = parser.parse_args()
 
 BRIDGE_SECRET = args.secret
-MY_FOLLOWER_ID = args.user_id
 MT5_PATH_ARG = args.mt5_path
-POLL_INTERVAL = 1.0 # Seconds
-DRY_RUN = args.dry_run # ⚠️ SAFETY: Set to False to actually execute trades
+EXECUTION_MODE = args.mode
+MY_FOLLOWER_ID = args.user_id # Only relevant in SINGLE mode
+TARGET_LOGIN_ID = None # Stores the numeric Login ID (int) for verification
+POLL_INTERVAL = 1.0 
+DRY_RUN = args.dry_run
+
+print(f"🚀 Hydra Engine Starting in {EXECUTION_MODE} Mode...")
+if EXECUTION_MODE == 'BATCH':
+    print(f"   🚌 Standard Cloud: Processing High-Density Batch #{args.batch_id}")
+elif EXECUTION_MODE == 'TURBO':
+    print(f"   🏎️ Turbo Cloud: Low-Latency Worker Swarm Active")
+
 
 def get_api_url(host):
     return f"http://{host}:{PORT}/api/engine/poll"
@@ -55,18 +65,23 @@ def fetch_subscriptions(follower_id):
     
     try:
         cur = conn.cursor()
+        print(f"[DEBUG] Fetching subscriptions for Follower: '{follower_id}'") # Verify ID
         query = """
-            SELECT "masterId" FROM "CopySession"
-            WHERE "followerId" = %s AND "isActive" = true
+            SELECT "masterId", "timeConfig", "expiry" FROM "CopySession"
+            WHERE "followerId" = %s 
+              AND "isActive" = true
+              AND ("expiry" IS NULL OR "expiry" > NOW() - INTERVAL '1 DAY') -- Fetch recently expired for auto-renew detection
         """
         cur.execute(query, (follower_id,))
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [row[0] for row in rows]
+        print(f"[DEBUG] Found {len(rows)} active subscriptions.")
+        # Return Dict: { str(masterId): {'config': timeConfig, 'expiry': expiry} }
+        return {str(row[0]): {'config': row[1], 'expiry': row[2]} for row in rows}
     except Exception as e:
         print(f"[ERROR] Fetch Subscriptions Failed: {e}")
-        return []
+        return {}
 
 def fetch_credentials():
     print("[INFO] Fetching credentials from Cloud...")
@@ -87,11 +102,13 @@ def fetch_credentials():
 
 def login_mt5(creds):
     if not creds: return False
+    global TARGET_LOGIN_ID
     
     # Check if already logged in
     info = mt5.account_info()
     if info and str(info.login) == str(creds['login']):
         print(f"[OK] Already logged in as {creds['login']}")
+        TARGET_LOGIN_ID = int(creds['login'])
         return True
 
     print(f"[INFO] Logging in as {creds['login']}...")
@@ -107,6 +124,7 @@ def login_mt5(creds):
     
     if authorized:
         print(f"[OK] Login Successful: {creds['login']}")
+        TARGET_LOGIN_ID = int(creds['login'])
         return True
     
     print(f"[WARN] Explicit Login Failed: {mt5.last_error()}")
@@ -128,6 +146,255 @@ def login_mt5(creds):
 
 
     
+# 🕰️ TIME UTILS
+
+def is_within_trading_hours(time_config):
+    """
+    Validates if current UTC time is within the allowed window.
+    Supports: "24/7", "CUSTOM", "LONDON", "NY", "ASIA".
+    """
+    if not time_config: return True # Default to Allow if no config
+    
+    mode = time_config.get('mode', '24/7')
+    if mode == '24/7': return True
+    
+    now = datetime.utcnow().time()
+    
+    # Parse Start/End
+    try:
+        s_str = time_config.get('start', '00:00')
+        e_str = time_config.get('end', '23:59')
+        
+        sh, sm = map(int, s_str.split(':'))
+        eh, em = map(int, e_str.split(':'))
+        
+        start_time = d_time(sh, sm)
+        end_time = d_time(eh, em)
+        
+        # Handle Midnight Crossing (e.g. 23:00 to 02:00)
+        if start_time <= end_time:
+            return start_time <= now <= end_time
+        else:
+            # Crosses midnight: Active if > Start OR < End
+            return now >= start_time or now <= end_time
+            
+    except Exception as e:
+        print(f"[WARN] Time Parse Error: {e}")
+        return False # Fail CLOSED (Safety First)
+
+RESET_HOUR = 4 # 04:00 AM UTC (NY Close)
+
+
+def close_session_trades(master_id, reason="Session Expired"):
+    """
+    🛑 FORCE CLOSE logic for Expired Sessions.
+    Closes all open positions associated with the given Master ID.
+    """
+    print(f"[🛑] Force Closing trades for Master {master_id} (Reason: {reason})...")
+    
+    # 1. Get Master's Known Tickets from Redis to identify matching trades
+    if not r_client: return
+    key = f"state:master:{master_id}:tickets"
+    data = r_client.get(key)
+    if not data:
+         print(f"   [WARN] No state found for Master {master_id}. Cannot identify specific trades to close.")
+         return
+
+    try:
+        state = json.loads(data)
+        # Handle both list and dict formats
+        master_tickets = set()
+        if isinstance(state.get("tickets"), list):
+             master_tickets = set(map(str, state['tickets']))
+        elif isinstance(state.get("positions"), dict):
+             master_tickets = set(state['positions'].keys())
+        
+        if not master_tickets:
+             print(f"   [ℹ️] No active signals known for Master {master_id}.")
+             return
+
+        # 2. Scan Local Positions
+        local_positions = mt5.positions_get()
+        if not local_positions: return
+
+        closed_count = 0
+        for pos in local_positions:
+            if pos.magic == 234000 and "CPY:" in pos.comment:
+                try:
+                    # Extract Ticket
+                    t_id = pos.comment.split(':')[1]
+                    if t_id in master_tickets:
+                        # MATCH! Close it.
+                        print(f"   [CLOSING] Expired Trade: {pos.symbol} (Ticket: {t_id})")
+                        
+                        req = {
+                            "action": mt5.TRADE_ACTION_DEAL,
+                            "symbol": pos.symbol,
+                            "volume": pos.volume,
+                            "type": mt5.ORDER_TYPE_SELL if pos.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY,
+                            "position": pos.ticket,
+                            "price": mt5.symbol_info_tick(pos.symbol).bid if pos.type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(pos.symbol).ask,
+                            "magic": 234000,
+                            "comment": f"EXP:{reason}",
+                        }
+                        res = mt5.order_send(req)
+                        if res.retcode == mt5.TRADE_RETCODE_DONE:
+                            closed_count += 1
+                except:
+                    pass
+        
+        print(f"   [✅] Closed {closed_count} positions for Master {master_id}.")
+
+    except Exception as e:
+        print(f"   [ERR] Close Session Failed: {e}")
+
+def check_daily_resets(follower_id):
+    """
+    🔄 SMART AUTO-RENEWAL & EXPIRY ENFORCEMENT
+    Checks for expired 'Standard' (4h) and 'Welcome' (7-Day) tickets.
+    """
+    conn = get_db_connection()
+    if not conn: return
+
+    try:
+        cur = conn.cursor()
+
+        # ---------------------------------------------------------
+        # 1. 🛑 HARD EXPIRY (Welcome / Trial / Non-Renewable)
+        # ---------------------------------------------------------
+        # Fetch expired sessions that must die immediately
+        # Explicitly checking for TRIAL_7DAY, WELCOME, or AutoRenew=False
+        fetch_stop_q = """
+            SELECT "id", "masterId", "type" 
+            FROM "CopySession"
+            WHERE "followerId" = %s
+              AND "isActive" = true
+              AND "expiry" < NOW()
+              AND (
+                  "type" IN ('TRIAL_7DAY') 
+                  OR "autoRenew" = false
+              )
+        """
+        cur.execute(fetch_stop_q, (follower_id,))
+        stop_rows = cur.fetchall()
+
+        for row in stop_rows:
+            sid, mid, stype = row
+            print(f"[🛑] EXPIRED: Session {sid} ({stype}). Soft Stop (Deactivating Session, KEEPING TRADES OPEN).")
+            
+            try:
+                # B. Deactivate in DB (Soft Stop)
+                cur.execute('UPDATE "CopySession" SET "isActive" = false WHERE "id" = %s', (sid,))
+                conn.commit()
+                
+                # 📡 REAL-TIME UI NOTIFICATION
+                if r_client:
+                    # Notify Frontend Hook (useRealTimeData)
+                    payload = json.dumps({
+                        "type": "SESSION_EXPIRED",
+                        "sessionId": sid,
+                        "masterId": mid,
+                        "reason": "EXPIRY_SOFT_STOP"
+                    })
+                    # Publish to User's private channel
+                    r_client.publish(f"events:user:{follower_id}", payload)
+                    print(f"   [📡] Published SESSION_EXPIRED event to events:user:{follower_id}")
+
+            except Exception as e:
+                print(f"   [ERR] Failed to deactivate {sid}: {e}")
+            
+            # Legacy Code: Force Close (Disabled by User Request)
+            # if acquire_terminal_lock():
+            #     try:
+            #         close_session_trades(mid, reason="Ticket Expired")
+            #     finally:
+            #         release_terminal_lock()
+
+        # ---------------------------------------------------------
+        # 2. 🔄 DAILY RENEWAL (Standard + AutoRenew=True)
+        # ---------------------------------------------------------
+        # Fetch only STANDARD/DAILY sessions that are renewable
+        query = """
+            SELECT "id", "timeConfig", "expiry", "isActive", "type"
+            FROM "CopySession"
+            WHERE "followerId" = %s
+              AND "autoRenew" = true
+              AND "type" NOT IN ('TRIAL_7DAY', 'PAID') -- Exclude non-daily types
+        """
+        cur.execute(query, (follower_id,))
+        rows = cur.fetchall()
+        
+        now = datetime.utcnow()
+        
+        for row in rows:
+            sid, config, expiry, is_active, session_type = row
+            
+            # Scenario A: Session is Active but Expired
+            if is_active and expiry and expiry < now:
+                # 1. Intra-Day Continuity Check 🔄
+                if is_within_trading_hours(config):
+                     new_expiry = now + timedelta(hours=4)
+                     update_q = 'UPDATE "CopySession" SET "expiry" = %s WHERE "id" = %s'
+                     cur.execute(update_q, (new_expiry, sid))
+                     conn.commit()
+                     print(f"[🔄] Mid-Session Renewal for {sid} -> New Expiry: {new_expiry}")
+                     continue 
+                else:
+                    # 2. Window Closed -> sleep 💤
+                    update_q = 'UPDATE "CopySession" SET "isActive" = false WHERE "id" = %s'
+                    cur.execute(update_q, (sid,))
+                    conn.commit()
+                    print(f"[] Window Closed. Putting Session {sid} to Sleep (Inactive). Waiting for Daily Reset.")
+                    continue
+
+            # Scenario B: Session is Sleeping (Inactive)
+            if not is_active:
+                # 3. Daily Reset Logic (Wake Up) ⏰
+                
+                # Parse Window Start
+                mode = config.get('mode', '24/7') if config else '24/7'
+                start_str = config.get('start', '00:00') if config else '00:00'
+                
+                now_hour_val = now.hour
+                
+                if mode == '24/7':
+                     # If it's before 04:00, wait.
+                     if now_hour_val < RESET_HOUR:
+                         continue
+                     
+                     new_expiry = now + timedelta(hours=4)
+                     update_q = 'UPDATE "CopySession" SET "expiry" = %s, "isActive" = true WHERE "id" = %s'
+                     cur.execute(update_q, (new_expiry, sid))
+                     conn.commit()
+                     print(f"[☀️] 24/7 Daily Wake Up for Session {sid} -> New Expiry: {new_expiry}")
+                     continue
+
+                try:
+                    sh, sm = map(int, start_str.split(':'))
+                except:
+                    sh, sm = 0, 0
+                    
+                target_start = now.replace(hour=sh, minute=sm, second=0, microsecond=0)
+                
+                if target_start + timedelta(hours=4) < now:
+                    target_start += timedelta(days=1)
+                
+                if now < target_start:
+                    continue
+                
+                # WAKE UP! ☀️
+                new_expiry = target_start + timedelta(hours=4)
+                
+                update_q = 'UPDATE "CopySession" SET "expiry" = %s, "isActive" = true WHERE "id" = %s'
+                cur.execute(update_q, (new_expiry, sid))
+                conn.commit()
+                print(f"[☀️] Strict Wake Up for Session {sid} -> Active! Expiry: {new_expiry}")
+
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[ERROR] Auto-Renew Failed: {e}")
+
 def initialize_mt5():
     # Optional: Path to specific terminal (Crucial for running multiple instances)
     mt5_path = MT5_PATH_ARG 
@@ -171,6 +438,44 @@ def initialize_mt5():
         # Verify
         info = mt5.account_info()
         print(f"[OK] Exec-Engine Online. Account: {info.login if info else 'Unknown'}")
+
+def is_within_trading_hours(config):
+    """
+    🕒 Checks if current UTC time is within allowed trading hours.
+    Config schema: { mode: "24/7" | "CUSTOM", start: "HH:MM", end: "HH:MM" }
+    """
+    if not config: return True # Default 24/7
+    
+    # Handle Text Modes passed as string (e.g. from older or simple inputs)
+    if isinstance(config, str):
+         if config == "24/7": return True
+         return True # Default open if format unknown
+         
+    mode = config.get("mode", "24/7")
+    if mode == "24/7": return True
+    
+    start_str = config.get("start", "00:00")
+    end_str = config.get("end", "23:59")
+    
+    # Current Time (UTC is safer for server-side)
+    # But User expects "London Session", "NY Session".
+    # The UI presets set specific UTC times for these.
+    # So comparing UTC here is correct if UI sends UTC.
+    now = datetime.utcnow().time() 
+    
+    try:
+        s_h, s_m = map(int, start_str.split(':'))
+        e_h, e_m = map(int, end_str.split(':'))
+        start_time = d_time(s_h, s_m)
+        end_time = d_time(e_h, e_m)
+        
+        if start_time < end_time:
+            return start_time <= now <= end_time
+        else: # Cross-midnight (e.g. 22:00 to 06:00)
+            return now >= start_time or now <= end_time
+    except Exception as e:
+        print(f"[WARN] Invalid Time Config: {config} ({e})")
+        return True # Fail Open
 
 
 def acknowledge_signal(signal_id, status="EXECUTED", ticket=None, comment=None):
@@ -472,6 +777,19 @@ def execute_trade(signal, api_url):
 
     market_price = current_tick.ask if trade_type == "BUY" else current_tick.bid
     
+    # 🛡️ CRITICAL: Verify Account Match BEFORE ACTION
+    current_account = mt5.account_info()
+    expected_login = TARGET_LOGIN_ID
+    
+    if not current_account or (expected_login and str(current_account.login) != str(expected_login)):
+        print(f"   [CRITICAL] Account Mismatch! Expected {expected_login}, Found {current_account.login if current_account else 'None'}. ABORTING.")
+        # Attempt Re-login? No, safety first. Fail the trade.
+        # Actually, in run_executor loop, we try to switch. If we are here, switch FAILED or was reverted.
+        # Let's try one last emergency switch?
+        # NO. Be strict.
+        send_ack(api_url, signal_id, "FAILED", 0, "Account Mismatch on Execution")
+        return
+
     # Check difference between Master's Entry Price (signal['price']) and Current Market Price
     master_price = signal.get('price')
     MAX_SLIPPAGE_POINTS = 50 # Configurable: 50 points = 5 pips
@@ -753,7 +1071,9 @@ def sync_balance(api_url):
 # Avoid duplicate processing
 processed_signals = set()
 # ⚙️ REDIS CONFIGURATION (Loaded from .env)
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+# 9. Initialize Redis
+# Use 127.0.0.1 to be safe against IPv6 issues on Windows
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379")
 import redis
 try:
     r_client = redis.from_url(REDIS_URL, decode_responses=True)
@@ -866,10 +1186,13 @@ def acquire_lock(account_id):
 # Ensures only ONE Executor operates on the physical terminal at a time.
 # Crucial for 1:50 shared terminal setups.
 def acquire_terminal_lock():
-    if not r_client or not MT5_PATH_ARG: return True # Fallback
+    if not r_client: return True # Fallback (Redis required)
+    
+    # 🔒 ROBUST LOCKING: Handle empty path
+    lock_seed = MT5_PATH_ARG if MT5_PATH_ARG else "default"
     
     # Hash path to create unique lock key
-    path_hash = hashlib.md5(MT5_PATH_ARG.encode()).hexdigest()
+    path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
     key = f"lock:terminal:{path_hash}"
     
     # Fast Spinlock (Wait up to 10s)
@@ -891,9 +1214,10 @@ def acquire_terminal_lock():
     return False
 
 def release_terminal_lock():
-    if not r_client or not MT5_PATH_ARG: return
+    if not r_client: return
     
-    path_hash = hashlib.md5(MT5_PATH_ARG.encode()).hexdigest()
+    lock_seed = MT5_PATH_ARG if MT5_PATH_ARG else "default"
+    path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
     key = f"lock:terminal:{path_hash}"
     
     # Only release if WE own it
@@ -920,7 +1244,7 @@ def release_lock(account_id):
         r_client.delete(f"lock:executor:{account_id}")
         print(f"[LOCK] 🔓 Released Lock for {account_id}")
 
-def reconcile_initial_state(api_url):
+def reconcile_initial_state(api_url, cached_subs=None):
     """
     startup-check: Fetches Master's active state from Redis and executes any missed trades.
     Only executes if Slippage is within acceptable limits.
@@ -928,8 +1252,8 @@ def reconcile_initial_state(api_url):
     print("[RECON] 🧐 Checking for missed trades...")
     if not r_client: return
 
-    # Get subscriptions
-    subs = fetch_subscriptions(MY_FOLLOWER_ID)
+    # Get subscriptions (Use Cache if available to save DB hits)
+    subs = cached_subs if cached_subs else fetch_subscriptions(MY_FOLLOWER_ID)
     if not subs: return
 
     for sub_master_id in subs: # sub_master_id is just the master ID string
@@ -976,6 +1300,15 @@ def reconcile_initial_state(api_url):
                     }
                     
 
+                    
+                    # 🚦 SESSION TIME CHECK:
+                    # Catch-up must also respect Trading Hours!
+                    # subs is { masterId_str: { 'config': ..., 'expiry': ... } }
+                    if sub_master_id in subs:
+                        session_ctx = subs[sub_master_id]
+                        if not is_within_trading_hours(session_ctx['config']):
+                            print(f"   [SKIP] Catch-up for {m_ticket} skipped. Outside Trading Hours.")
+                            continue
                     
                     # 🚦 UNSUB CHECK: Before executing catch-up, ensure we are still subscribed!
                     # "active_master_ids" isn't passed here, so we check "subs" directly.
@@ -1067,27 +1400,35 @@ def run_executor():
     
     RECON_INTERVAL = 2.0 # Check for ghosts every 2 seconds (Fast)
     SYNC_INTERVAL = 3.0
-    RECON_INTERVAL = 2.0 # Check for ghosts every 2 seconds (Fast)
+    RESET_CHECK_INTERVAL = 1.0 # ⚡ Check renew/expiry every second (Real-Time)
+    last_reset_check_time = 0
+    SUBS_REFRESH_INTERVAL = 3.0 # 🔄 Check for Unsubscribe/Pause every 3s (Was 10s)
     SYNC_INTERVAL = 3.0
     SUBS_REFRESH_INTERVAL = 3.0 # 🔄 Check for Unsubscribe/Pause every 3s (Was 10s)
 
     # Keep track of what we are listening to
-    active_master_ids = set()
+    # 🧹 PRE-FLIGHT CHECK: Enforce VIP/Paid Expiry BEFORE Subscribing
+    # This ensures we don't accidentally subscribe to "Forbidden" channels on startup.
+    check_daily_resets(MY_FOLLOWER_ID)
+    
+    active_subscriptions = {} # Dict: { masterId: timeConfig }
     initial_subs = fetch_subscriptions(MY_FOLLOWER_ID)
     if initial_subs:
-        active_master_ids = set(initial_subs) # fetch_subscriptions returns list of master IDs directly
-        for mid in active_master_ids:
+        active_subscriptions = initial_subs 
+        for mid in active_subscriptions.keys():
             channel = f"signals:master:{mid}"
             pubsub.subscribe(channel)
             print(f"   -> Subscribed to {channel}")
     else:
         print("[ℹ️] No active subscriptions found. Waiting for updates...")
-
+    
     print(f"[OK] Subscribed to Channels: follower:{MY_FOLLOWER_ID}") # Removed 'all_followers'
 
     # ⚡ CATCH-UP PHASE
     # Now that we are online and subscribed, check what we missed.
-    reconcile_initial_state(api_url)
+    # ⚡ CATCH-UP PHASE
+    # Now that we are online and subscribed, check what we missed.
+    reconcile_initial_state(api_url, active_subscriptions)
 
     print("[READY] Waiting for High-Speed Signals... 🚄")
 
@@ -1099,38 +1440,71 @@ def run_executor():
             refresh_lock(MY_FOLLOWER_ID)
             
             # 1. Process Redis Messages (Non-Blocking)
-            message = pubsub.get_message()
-            if message:
-                if message['type'] == 'message':
-                    data = message['data']
-                    try:
-                        signal = json.loads(data)
-                        
-                        # 🚨 EMERGENCY KILL SWITCH
-                        if signal.get('action') == "KILL":
-                             print(f"🔥 [REDIS] RECEIVED KILL SWITCH! REASON: {signal.get('reason')}")
-                             emergency_close_all(signal.get('reason', 'Remote Kill Switch'))
-                             continue
+            # 1. Process Redis Messages (Batch Optimization)
+            # Drain the queue to fetch multiple signals (up to 10)
 
-                        # 🛡️ SECURITY: Verify Subscription status
-                        # Even if we got the Redis msg (race condition), ignore if not active.
-                        # Broadcaster sends "masterId".
-                        sig_master_id = signal.get("masterId")
-                        if sig_master_id and sig_master_id not in active_master_ids:
-                             # print(f"[IGNORING] Signal from {sig_master_id} - Not Subscribed.")
-                             continue
+            # 1. Check Redis Messages (Real-Time)
+            if pubsub:
+                message = pubsub.get_message(ignore_subscribe_messages=True)
+                if message:
+                    if message['type'] == 'message':
+                        # 💥 SIGNAL RECEIVED!
+                        payload = message['data']
+                        if payload:
+                            signal = json.loads(payload)
+                            master_id = signal.get('masterId') or signal.get('ticket') # Fallback
+                            
+                            # 🕒 CHECK TRADING HOURS & EXPIRY
+                            # Check Trading Hours & Expiry
+                            master_key = str(master_id)
+                            
+                            # DEBUG: Trace Signal Match
+                            if master_key not in active_subscriptions:
+                                print(f"   [DEBUG] ❌ Signal MasterID '{master_key}' NOT IN Subscriptions: {list(active_subscriptions.keys())}")
+                            else:
+                                print(f"   [DEBUG] ✅ Signal Matched Subscription: {master_key}")
 
-                        print(f"[⚡ REDIS SIGNAL] {signal.get('action')} {signal.get('symbol')} (Ticket: {signal.get('ticket')})")
-                        
-                        # 🔐 MUTEX: Serialize Trade Execution
-                        # Ensure we own the terminal before trying to login/trade
-                        if acquire_terminal_lock():
-                            try:
-                                execute_trade(signal, api_url)
-                            finally:
-                                release_terminal_lock()
-                    except json.JSONDecodeError:
-                        pass
+                            session_ctx = active_subscriptions.get(master_key)
+                            
+                            if not session_ctx:
+                                 # Maybe subs refreshed but local validation lag?
+                                 print(f"[SKIP] Unsubscribed Master {master_id}")
+                                 continue
+                                 
+                            time_config = session_ctx['config']
+                            expiry = session_ctx.get('expiry')
+                            
+                            # 1. Check Window
+                            if not is_within_trading_hours(time_config):
+                                print(f"[SKIP] Signal from {master_id} skipped. Outside Trading Hours.")
+                                continue
+                                
+                            # 2. Check Expiry (Standard Ticket Limit)
+                            # Implicit: If expiry set, valid trade time is [expiry - 4h, expiry]
+                            if expiry:
+                                now_utc = datetime.utcnow()
+                                if now_utc > expiry:
+                                     print(f"[SKIP] Signal from {master_id} skipped. Ticket Expired at {expiry}")
+                                     continue
+                                     
+                                # Optional: Check Implicit Start? (expiry - 4h)
+                                # If expiry is tomorrow, (expiry - 4h) is tomorrow start.
+                                # If now < (expiry - 4h), we are too early.
+                                implicit_start = expiry - timedelta(hours=4)
+                                if now_utc < implicit_start:
+                                     print(f"[SKIP] Signal from {master_id} skipped. Waiting for Start Time {implicit_start}")
+                                     continue
+                                
+                            print(f"[⚡] SIGNAL: {signal.get('action')} {signal.get('symbol')} (Master: {master_id})")
+                            
+                            # 🔐 MUTEX: Serialize Terminal Access
+                            if acquire_terminal_lock():
+                                try:
+                                    execute_trade(signal, api_url or "http://localhost:3000") 
+                                except Exception as e:
+                                    print(f"[ERR] Exec Error: {e}")
+                                finally:
+                                    release_terminal_lock()
             
             # 2. Safety & Reconciliation (Timestamp based)
             if current_time - last_recon_time > RECON_INTERVAL:
@@ -1145,7 +1519,7 @@ def run_executor():
                                  print("[WARN] Main Loop: Terminal Disconnected. Reconnecting...")
                                  initialize_mt5()
                              
-                             reconcile_positions(api_url)
+                             reconcile_initial_state(api_url, active_subscriptions)
                          finally:
                              release_terminal_lock()
                      
@@ -1165,12 +1539,13 @@ def run_executor():
                  # If empty list [], means we follow NO ONE.
                  if new_subs is not None:
                      # Update the active set so filtering works in the Main Loop
-                     old_masters = active_master_ids
-                     active_master_ids = set(new_subs)
+                     old_masters = set(active_subscriptions.keys())
+                     active_subscriptions = new_subs # Replace Dict
+                     new_masters = set(active_subscriptions.keys())
                      
                      # Log changes
-                     added = active_master_ids - old_masters
-                     removed = old_masters - active_master_ids
+                     added = new_masters - old_masters
+                     removed = old_masters - new_masters
                      
                      if added or removed:
                          print(f"[REFRESH] 🔄 Subs Updated. Added: {added}, Removed: {removed}")
@@ -1186,6 +1561,11 @@ def run_executor():
                              pubsub.unsubscribe(f"signals:master:{m_id}")
                              print(f"   -> Unsubscribed from signals:master:{m_id}")
                  last_subs_refresh_time = current_time
+
+            # 5. Check Daily Resets 🔄
+            if current_time - last_reset_check_time > RESET_CHECK_INTERVAL:
+                 check_daily_resets(MY_FOLLOWER_ID)
+                 last_reset_check_time = current_time
 
             time.sleep(0.01) # Ultra Low Latency Loop
 

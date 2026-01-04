@@ -25,49 +25,64 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
     if (!isOpen) return null;
 
-    let icon = <AlertTriangle className="text-blue-500" size={24} />;
-    let confirmBtnClass = "bg-blue-600 hover:bg-blue-500 text-white";
+    // 🎨 Leonardo Theme Mappings
+    let icon = <AlertTriangle className="text-neon-cyan drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" size={28} />;
+    let glowColor = "bg-neon-cyan/20";
+    let confirmBtnClass = "bg-neon-cyan hover:bg-cyan-400 text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]";
 
     if (type === "danger") {
-        icon = <AlertTriangle className="text-red-500" size={24} />;
-        confirmBtnClass = "bg-red-600 hover:bg-red-500 text-white";
+        icon = <AlertTriangle className="text-destructive drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" size={28} />;
+        glowColor = "bg-destructive/20";
+        confirmBtnClass = "bg-destructive hover:bg-red-600 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]";
     } else if (type === "success") {
-        icon = <CheckCircle2 className="text-green-500" size={24} />;
-        confirmBtnClass = "bg-green-600 hover:bg-green-500 text-white";
+        icon = <CheckCircle2 className="text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" size={28} />;
+        glowColor = "bg-emerald-500/20";
+        confirmBtnClass = "bg-emerald-500 hover:bg-emerald-400 text-black shadow-[0_0_15px_rgba(52,211,153,0.4)]";
     } else if (type === "warning") {
-        icon = <AlertTriangle className="text-yellow-500" size={24} />;
-        confirmBtnClass = "bg-yellow-600 hover:bg-yellow-500 text-black";
+        icon = <AlertTriangle className="text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" size={28} />;
+        glowColor = "bg-amber-500/20";
+        confirmBtnClass = "bg-amber-500 hover:bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.4)]";
     }
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in zoom-in-95 duration-200">
-            <div className="bg-gray-900 border border-gray-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-[#0b0c14] border border-white/10 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden relative group">
+
+                {/* 🌟 Ambient Glow Effect */}
+                <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 ${glowColor} blur-xl group-hover:blur-2xl transition-all duration-700`}></div>
+
                 {/* Header */}
-                <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-950/50">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full bg-gray-800/50`}>
+                <div className="p-6 pb-0 flex justify-between items-start">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-2xl bg-white/5 border border-white/5 ${glowColor} backdrop-blur-xl`}>
                             {icon}
                         </div>
-                        <h3 className="font-bold text-lg text-white">{title}</h3>
+                        <h3 className="font-bold text-xl text-white tracking-tight">{title}</h3>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors">
-                        <X size={16} />
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors">
+                        <X size={20} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 text-center space-y-4">
-                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+                <div className="p-6 pt-4 text-left">
+                    <p className="text-gray-400 text-[15px] leading-relaxed font-medium whitespace-pre-line">
                         {message}
                     </p>
                 </div>
 
                 {/* Footer */}
-                <div className="p-5 border-t border-gray-800 bg-gray-950/30 flex gap-3">
-                    <button onClick={onClose} className="flex-1 bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white rounded-xl py-6 font-bold transition-colors">
+                <div className="p-6 pt-2 flex gap-3">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 hover:text-white rounded-xl py-4 font-bold transition-all text-sm tracking-wide"
+                    >
                         {cancelText}
                     </button>
-                    <button onClick={() => { onConfirm(); onClose(); }} className={`flex-1 rounded-xl py-6 font-bold shadow-lg transition-transform active:scale-95 ${confirmBtnClass}`}>
+                    <button
+                        onClick={() => { onConfirm(); onClose(); }}
+                        className={`flex-1 rounded-xl py-4 font-bold transition-all active:scale-95 text-sm tracking-wide ${confirmBtnClass}`}
+                    >
                         {confirmText}
                     </button>
                 </div>

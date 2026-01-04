@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { MasterProfile } from "@/types"; // Ensure this type matches your Prisma schema or is mapped correctly
+import { revalidatePath } from "next/cache";
 
 // --- 📥 GET USER PROFILE ---
 export async function getUserProfile(userId: string) {
@@ -25,8 +26,6 @@ export async function getUserProfile(userId: string) {
             email: user.email,
             image: user.image,
             role: user.role as UserRole,
-            isVip: user.isVip,
-            goldenTickets: user.goldenTickets,
             masterProfile: user.masterProfile,
             brokerAccount: user.brokerAccounts?.[0] || null // Return the first/primary broker account if exists
         };
@@ -299,3 +298,5 @@ export async function getOpenPositions(userId: string) {
         return [];
     }
 }
+
+// (VIP Logic Removed)

@@ -10,6 +10,8 @@ export async function startCopySession(
     amount: number,
     risk: number,
     type: SessionType,
+    autoRenew: boolean = true, // ⚙️ Default Auto-Recopy
+    timeConfig: any = null,    // 🕒 Trading Hours (JSON)
     dailyLoss?: number, // 🛡️ Daily Loss Limit
     minEquity?: number  // 🛡️ Hard Stop Equity
 ) {
@@ -18,61 +20,130 @@ export async function startCopySession(
 
     try {
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Check Follower Wallet (DISABLED FOR SELF-HOSTED DEMO)
+            // 1. Check Follower (Wallet Check Disabled)
             const follower = await tx.user.findUnique({ where: { id: followerId } });
             if (!follower) throw new Error("Follower not found");
-            // if (follower.walletBalance < amount) throw new Error("Insufficient wallet balance");
 
-            // 2. Deduct from Follower (DISABLED)
-            // await tx.user.update({
-            //     where: { id: followerId },
-            //     data: { walletBalance: { decrement: amount } }
-            // });
+            // 1.5 Fetch Master Profile for Tier Check ⚡
+            const masterUser = await tx.user.findUnique({
+                where: { id: masterUserId },
+                include: { masterProfile: true }
+            });
+            if (!masterUser || !masterUser.masterProfile) throw new Error("Master not found");
+
+            const masterTier = masterUser.masterProfile.tier; // ROOKIE, PRO, TYCOON
+
+            // ⛔ Constraint: Standard Ticket (Daily) cannot follow Paid Masters
+            if (type === "DAILY" && masterUser.masterProfile.monthlyFee > 0) {
+                throw new Error("Standard Ticket is for Free Masters only. Please subscribe to copy this Master.");
+            }
+
+            // 🏎️ DYNAMIC ALLOCATION LOGIC
+            // Money buys Speed.
+            const isPaidSession = type === "PAID";
+            const isTrial = type === "TRIAL_7DAY"; // Hook them with speed
+            const isPremiumMaster = masterTier === "PRO" || masterTier === "TYCOON";
+
+            const lane = (isPaidSession || isTrial || isPremiumMaster)
+                ? "TURBO"
+                : "STANDARD";
+
+            // 2. Financial Logic (Wallet Deduction) 💳
+            // "deduct the money from the card" (Simulated via Wallet Balance)
+
+            let totalCost = amount; // Base Allocation
+            let fee = 0;
+
+            // Add Monthly Fee if Paid Session
+            if (type === "PAID" && masterUser.masterProfile.monthlyFee > 0) {
+                fee = masterUser.masterProfile.monthlyFee;
+                totalCost += fee;
+            }
+
+            // Check Balance
+            if (follower.walletBalance < totalCost) {
+                // 🛡️ DISABLED: Strict Funds Check (User Request)
+                // throw new Error(`Insufficient funds. Required: $${totalCost.toFixed(2)} (Alloc: $${amount} + Fee: $${fee})`);
+                console.warn(`[TEST MODE] Insufficient funds ignored. Required: $${totalCost.toFixed(2)}`);
+            }
+
+            // Deduct
+            await tx.user.update({
+                where: { id: followerId },
+                data: { walletBalance: { decrement: totalCost } }
+            });
 
             // 3. Create OR Reactivate Copy Session
-            // Check if there is already an active session for this pair
+            // User: "if the users resubscribed... update back the status isActive to be true"
+            // We check for an existing INACTIVE session to reactivate, preserving history/settings?
+            // Or just create new?
+            // Strategy: Upsert-like behavior. If exists, Update. If not, Create.
+            // Actually, `create` is safer for simple logic, but to satisfy "update back", let's try to reuse if ID matches?
+            // For now, standard flow is: New Session ID = New Subscription.
+            // But let's check if we have a very recent inactive one? 
+            // Stick to Creation for robustness unless explicitly asked to Merge. 
+            // *Wait*, User said "update back the status".
+            // Let's Find ANY session for this master/follower pair.
+
             const existingSession = await tx.copySession.findFirst({
                 where: {
                     followerId: followerId,
                     masterId: masterUserId,
-                    isActive: true
-                }
+                    // We don't filter by isActive: true here because we want to see if we can revive one.
+                },
+                orderBy: { createdAt: 'desc' } // Get latest
             });
 
-            if (existingSession) {
-                return { success: false, error: "You are already copying this master." };
-            }
+            let session;
 
-            // 3.5 🛡️ UPDATE RISK GUARDS (Global for Account)
-            // Since we only support 1 Broker Account per user in this demo:
-            if (dailyLoss !== undefined || minEquity !== undefined) {
-                await tx.brokerAccount.updateMany({
-                    where: { userId: followerId, status: "CONNECTED" },
+            if (existingSession) {
+                if (existingSession.isActive) {
+                    return { success: false, error: "You are already copying this master." };
+                }
+
+                // REACTIVATE ⚡
+                // Update the *existing* session
+                session = await tx.copySession.update({
+                    where: { id: existingSession.id },
                     data: {
-                        maxDailyLoss: dailyLoss || 0,
-                        minEquity: minEquity || 0
+                        isActive: true,
+                        allocation: amount, // Update alloc
+                        currentEquity: amount, // Reset equity tracking
+                        riskFactor: risk,
+                        type: type,
+                        executionLane: lane,
+                        autoRenew: autoRenew,
+                        timeConfig: timeConfig ?? existingSession.timeConfig, // Keep old config if null passed? Or overwrite? 
+                        // Usually Start args > Old args.
+
+                        expiry: type === "DAILY" ? new Date(Date.now() + 4 * 60 * 60 * 1000)
+                            : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                : type === "PAID" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Paid = 30 Days default
+                                    : null
+                    }
+                });
+            } else {
+                // CREATE NEW
+                session = await tx.copySession.create({
+                    data: {
+                        followerId: followerId,
+                        masterId: masterUserId,
+                        allocation: amount,
+                        currentEquity: amount,
+                        riskFactor: risk,
+                        type: type,
+                        isActive: true,
+                        executionLane: lane,
+                        shardId: Math.floor(Math.random() * 10),
+                        autoRenew: autoRenew,
+                        timeConfig: timeConfig,
+                        expiry: type === "DAILY" ? new Date(Date.now() + 4 * 60 * 60 * 1000)
+                            : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                                : type === "PAID" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                                    : null,
                     }
                 });
             }
-
-            // 4. Create new COPY SESSION
-            const session = await tx.copySession.create({
-                data: {
-                    followerId: followerId,
-                    masterId: masterUserId,
-                    allocation: amount,
-                    currentEquity: amount, // ✅ Init Shadow Equity
-                    riskFactor: risk,
-                    type: type,
-                    isActive: true,
-                    // 🕒 Expiration Logic
-                    expiry: type === "DAILY" ? new Date(Date.now() + 4 * 60 * 60 * 1000)
-                        : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-                            : type === "GOLDEN" ? new Date(Date.now() + 24 * 60 * 60 * 1000)
-                                : type === "VIP" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Default 30 days for VIP session if not infinite
-                                    : null,
-                }
-            });
 
             // 5. 🎟️ DYNAMIC PROMOTION TRACKING
             if (type === "DAILY") {
@@ -87,12 +158,6 @@ export async function startCopySession(
                     where: { userId: followerId },
                     update: { welcomeUsed: true, welcomeActivated: new Date() },
                     create: { userId: followerId, welcomeUsed: true, welcomeActivated: new Date() }
-                });
-            } else if (type === "GOLDEN") {
-                // 🎫 Deduct Golden Ticket
-                await tx.user.update({
-                    where: { id: followerId },
-                    data: { goldenTickets: { decrement: 1 } }
                 });
             }
             // VIP is typically handled by subscription purchase, but we could track usage/expiry here if needed.
@@ -351,9 +416,6 @@ export async function getTicketStatuses(userId: string) {
             return {
                 dailyUsed: false,
                 welcomeUsed: false,
-                isVipActive: false,
-                vipStart: null,
-                vipExpiry: null,
             };
         }
 
@@ -378,15 +440,9 @@ export async function getTicketStatuses(userId: string) {
         // Welcome Used is simple boolean
         const isWelcomeUsed = promo.welcomeUsed;
 
-        // VIP Check
-        const isVipActive = promo.isVipActive && promo.vipExpiry ? promo.vipExpiry > now : false;
-
         return {
             dailyUsed: isDailyUsed,
             welcomeUsed: isWelcomeUsed,
-            isVipActive,
-            vipStart: promo.createdAt.getTime(), // Using creation as start surrogate if needed
-            vipExpiry: promo.vipExpiry ? promo.vipExpiry.getTime() : null,
         };
 
     } catch (e) {

@@ -48,6 +48,24 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
 
     useEffect(() => {
         const fetchStats = async () => {
+            if (!masterId) {
+                // If no ID (not connected), show defaults immediately
+                setStats({
+                    totalTrades: 0,
+                    winRate: 0,
+                    profitFactor: 0,
+                    sharpe: 0,
+                    expectancy: 0,
+                    avgWin: 0,
+                    avgLoss: 0,
+                    maxDrawdown: 0,
+                    rrr: 0,
+                    totalProfit: 0,
+                });
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
             const data = await getAnalytics(masterId);
             if (data) {
@@ -55,6 +73,20 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                 setEquityCurve(data.equityCurve);
                 setMonthly(data.monthlyResults);
                 setSymbols(data.symbolDist);
+            } else {
+                // Fallback to zeros if fetch fails or returns null
+                setStats({
+                    totalTrades: 0,
+                    winRate: 0,
+                    profitFactor: 0,
+                    sharpe: 0,
+                    expectancy: 0,
+                    avgWin: 0,
+                    avgLoss: 0,
+                    maxDrawdown: 0,
+                    rrr: 0,
+                    totalProfit: 0,
+                });
             }
             setLoading(false);
         };
@@ -63,7 +95,9 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
 
     // Dynamic Pie Config
     const { pieData, pieConfig } = useMemo(() => {
-        const colors = ["#2dd4bf", "#3b82f6", "#a855f7", "#f43f5e", "#eab308"];
+        // Use a single Teal color for all segments to match the monochromatic "Donut" look if intended, 
+        // OR keep colorful. The image shows ONE color. I will use a Teal palette.
+        const colors = ["#2dd4bf", "#14b8a6", "#0d9488", "#0f766e", "#115e59"];
         const config = { ...symbolConfigBase };
         const data = symbols.map((s, i) => {
             const key = s.symbol.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -78,13 +112,20 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
         return { pieData: data, pieConfig: config };
     }, [symbols]);
 
-    if (loading) return <Skeleton className="w-full h-[600px] rounded-xl bg-white/5" />;
-
-    if (!stats) return (
-        <div className="p-12 text-center bg-white/5 rounded-xl border border-white/10 border-dashed">
-            <p className="text-gray-400">No trading data available.</p>
+    if (loading) return (
+        <div className="h-[600px] flex flex-col items-center justify-center text-muted-foreground bg-white/5 rounded-xl border border-dashed border-white/10 glass-panel animate-in fade-in duration-500">
+            <div className="animate-spin mb-4 text-neon-purple">
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+            </div>
+            <p className="font-mono text-sm tracking-widest uppercase animate-pulse">Initializing Data Feed...</p>
         </div>
     );
+
+    // If stats is still null (shouldn't happen with defaults), render nothing or fallback
+    if (!stats) return null;
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -157,17 +198,15 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                     <h3 className="text-sm font-bold text-premium uppercase tracking-wider pl-1">Trades Distribution</h3>
                     <Card className="glass-panel border-none p-6 flex flex-col items-center justify-center">
                         <div className="h-[300px] w-full">
-                            <ChartContainer config={pieConfig} className="mx-auto aspect-square max-h-[300px]">
+                            <ChartContainer config={pieConfig} className="mx-auto aspect-square max-h-[250px] pb-0 [&_.recharts-pie-label-text]:fill-foreground">
                                 <PieChart>
-                                    <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
+                                    <ChartTooltip content={<ChartTooltipContent hideLabel />} />
                                     <Pie
                                         data={pieData}
                                         dataKey="count"
                                         nameKey="symbol"
                                         innerRadius={60}
-                                        outerRadius={100}
-                                        strokeWidth={2}
-                                        stroke="rgba(0,0,0,0.5)"
+                                        strokeWidth={5}
                                     >
                                         <Label
                                             content={({ viewBox }) => {
@@ -175,7 +214,7 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                                                     return (
                                                         <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
                                                             <tspan x={viewBox.cx} y={viewBox.cy} className="fill-white text-3xl font-bold">
-                                                                {pieData.reduce((acc, curr) => acc + curr.count, 0)}
+                                                                {stats.totalTrades.toLocaleString()}
                                                             </tspan>
                                                             <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 24} className="fill-gray-400 text-xs">
                                                                 Trades
@@ -186,7 +225,6 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                                             }}
                                         />
                                     </Pie>
-                                    <ChartLegend content={<ChartLegendContent nameKey="displaySymbol" />} className="flex-wrap gap-2 mt-4" />
                                 </PieChart>
                             </ChartContainer>
                         </div>

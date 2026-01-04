@@ -14,19 +14,7 @@ import { startCopySession, getActiveSessions, stopCopySession, stopAllActiveSess
 import { BrokerAccount } from "@prisma/client";
 // import { Session } from '@prisma/client'; // ❌ Removing Prisma Session to avoid conflict. Using custom type.
 
-import {
-    ShieldCheck, Zap, Clock, Users, Lock,
-
-    PlayCircle, StopCircle, BarChart3,
-    AlertTriangle, Settings, CheckCircle2,
-    X, AlertOctagon, Wallet, Layers,
-    Briefcase, UserCircle2, Info, Crown, LogOut, ChevronRight,
-    Search, Bot, AreaChart, ChevronLeft,
-    BadgeCheck, Edit3, Image as ImageIcon, TrendingUp,
-    Server, LogIn, Heart, Radio, Moon, Monitor, CreditCard,
-    Save, Eye, DollarSign, Ticket, Sparkles, CalendarDays, ZapIcon,
-    SlidersHorizontal, ArrowUpDown, CheckCircle, ArrowUpRight
-} from "lucide-react";
+import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp, Radio, AlertTriangle, ArrowUpRight, BadgeCheck, Edit3, Briefcase, SlidersHorizontal, Lock, CheckCircle2, ChevronRight, Search, X, CalendarDays, Crown, Zap, PieChart, Sprout, ArrowUpDown, CreditCard, AlertOctagon, DollarSign, CheckCircle, Layers, Clock, Eye, Server } from "lucide-react";
 import { MasterWalletModal } from "@/features/wallet/components/MasterWalletModal";
 import { MasterProfileView } from "@/features/social/components/MasterProfileView";
 import { ActiveSessionWidget } from "@/features/trading/components/ActiveSessionWidget";
@@ -34,8 +22,14 @@ import { SafetyGuardModal } from "@/features/trading/components/SafetyGuardModal
 import { LoginModal } from "@/features/auth/components/LoginModal";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { SettingsModal } from "@/features/settings/components/SettingsModal";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { getUserIdByName } from "@/app/actions/data";
+import { updateMasterPlan } from "@/app/actions/plan";
+import { Button } from "@/components/ui/button";
 import { Transaction } from "@/features/wallet/types";
 import { Navbar } from "@/components/layout/Navbar";
 import { OpenPositionsTable } from "@/features/trading/components/OpenPositionsTable";
@@ -172,19 +166,19 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     {/* 1. Sort By */}
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1"><ArrowUpDown size={12} /> Sort By</label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             {(["RECOMMENDED", "PROFIT", "SAFE", "POPULAR"] as const).map((type) => (
                                 <button
                                     key={type}
                                     onClick={() => handleSort(type)}
-                                    className={`py - 2.5 px - 3 rounded - xl text - xs font - bold transition - all border ${config.sortBy === type ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-gray-800 border-transparent text-gray-400 hover:bg-gray-700"} `}
+                                    className={`h-12 px-4 rounded-xl text-sm font-bold transition-all border flex items-center justify-center ${config.sortBy === type ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-gray-800/40 border-transparent text-gray-400 hover:bg-gray-700/50"} `}
                                 >
-                                    {type === "RECOMMENDED" && "✨ Recommended"}
-                                    {type === "PROFIT" && "📈 Highest Profit"}
-                                    {type === "SAFE" && "🛡️ Lowest Risk"}
-                                    {type === "POPULAR" && "🔥 Most Popular"}
+                                    {type === "RECOMMENDED" && "Recommended"}
+                                    {type === "PROFIT" && "Highest Profit"}
+                                    {type === "SAFE" && "Lowest Risk"}
+                                    {type === "POPULAR" && "Most Popular"}
                                 </button>
                             ))}
                         </div>
@@ -197,7 +191,7 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                             <label>Max Profit (ROI)</label>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-2 border border-gray-700 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
+                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                 <span className="text-sm font-bold text-green-400 select-none">+</span>
                                 <input
                                     type="number"
@@ -207,8 +201,8 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                                 />
                                 <span className="text-sm font-bold text-gray-600 select-none text-[10px]">%</span>
                             </div>
-                            <div className="w-4 h-0.5 bg-gray-700"></div>
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-2 border border-gray-700 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
+                            <div className="w-4 h-0.5 bg-gray-700/50"></div>
+                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
                                 <span className="text-sm font-bold text-green-400 select-none">+</span>
                                 <input
                                     type="number"
@@ -229,7 +223,7 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                             <label>Max Monthly Fee</label>
                         </div>
                         <div className="flex items-center gap-3">
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-2 border border-gray-700 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
+                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
                                 <span className="text-sm font-bold text-yellow-400 select-none">$</span>
                                 <input
                                     type="number"
@@ -238,8 +232,8 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                                     className="w-full bg-transparent text-left text-sm font-bold text-yellow-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                             </div>
-                            <div className="w-4 h-0.5 bg-gray-700"></div>
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800 rounded-lg px-2 py-2 border border-gray-700 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
+                            <div className="w-4 h-0.5 bg-gray-700/50"></div>
+                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
                                 <span className="text-sm font-bold text-yellow-400 select-none">$</span>
                                 <input
                                     type="number"
@@ -252,13 +246,7 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
                         </div>
                     </div>
 
-                    {/* 4. Toggles */}
-                    <div onClick={() => setConfig({ ...config, freeOnly: !config.freeOnly })} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl border border-gray-800 cursor-pointer hover:bg-gray-800 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className={`w - 10 h - 6 rounded - full p - 1 transition - colors ${config.freeOnly ? "bg-green-500" : "bg-gray-700"} `}><div className={`w - 4 h - 4 bg - white rounded - full shadow - sm transition - transform ${config.freeOnly ? "translate-x-4" : ""} `} /></div>
-                            <span className="font-bold text-sm text-gray-300">Free Services Only</span>
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Footer */}
@@ -274,59 +262,55 @@ function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalPr
 // 3. MAIN PAGE COMPONENT
 // ----------------------------------------------------------------------
 
+// function VIPUpgradeModal - Removed
+
 function UniversalPaymentModal({ onClose, onSuccess, planDetails }: PaymentModalProps) {
     const isMasterUpgrade = !!planDetails;
 
-    const [step, setStep] = useState<"PLAN" | "METHOD" | "PAYING" | "SUCCESS">(
-        isMasterUpgrade ? "METHOD" : "PLAN"
-    );
+    // Default to Payment Method since VIP is gone
+    const [step, setStep] = useState<"PLAN" | "METHOD" | "PAYING" | "SUCCESS">("METHOD");
 
     const [paymentMethod, setPaymentMethod] = useState<"QR" | "CARD">("QR");
 
-    const title = isMasterUpgrade ? `Upgrade to ${planDetails?.name} ` : "Unlock VIP Access";
-    const price = isMasterUpgrade ? planDetails?.priceVal : 15;
-    const features = isMasterUpgrade ? ["Higher Limits", "Lower GP Fee", "Premium Badge"] : ["Unlimited Copy", "AI Guard", "Golden Ticket (30 Days)"];
+    // Only supports Master Upgrades now
+    if (!isMasterUpgrade) return null;
 
-    const handlePay = () => { setStep("PAYING"); setTimeout(() => { setStep("SUCCESS"); setTimeout(() => { if (onSuccess) onSuccess(); }, 1500); }, 2000); };
+    const title = `Upgrade to ${planDetails?.name}`;
+    const price = planDetails?.priceVal;
+
+    // ... Payment Logic (simplified for Master Plan only)
+    const handlePay = async () => {
+        setStep("PAYING");
+
+        // Mock Success for Master Plan (Actual logic handles backend trigger elsewhere or placeholder)
+        setTimeout(() => {
+            setStep("SUCCESS");
+            setTimeout(() => { if (onSuccess) onSuccess(); }, 1500);
+        }, 1500);
+    };
 
     return (
         <div className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
             <div className="bg-space w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-neon-cyan/50 blur-lg"></div>
                 <div className="p-4 flex items-center justify-between border-b border-white/5 bg-space/50 backdrop-blur z-20">
-                    {step !== "PLAN" && step !== "SUCCESS" && step !== "PAYING" ? (<button onClick={() => setStep("PLAN")} className="p-2 -ml-2 text-gray-400 hover:text-white"><ChevronLeft size={20} /></button>) : <div className="w-8"></div>}
-                    <h3 className="font-bold text-white text-premium">{step === "PLAN" ? "Choose Plan" : step === "METHOD" ? "Payment" : step === "PAYING" ? "Processing..." : "Success!"}</h3>
+                    <div className="w-8"></div>
+                    <h3 className="font-bold text-white text-premium">{step === "METHOD" ? "Payment" : step === "PAYING" ? "Processing..." : "Success!"}</h3>
                     <button onClick={onClose} className="bg-white/5 p-2 rounded-full text-gray-400 hover:text-white"><X size={16} /></button>
                 </div>
-
-                {step === "PLAN" && !isMasterUpgrade && (
-                    <div className="p-5 space-y-4 overflow-y-auto">
-                        <div className="text-center mb-2"><div className="w-14 h-14 bg-gradient-to-tr from-yellow-400 to-orange-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-orange-500/20 rotate-3 mb-3"><Ticket size={28} className="text-black" /></div><h2 className="text-xl font-bold text-white">Golden Ticket (30 Days)</h2><p className="text-gray-400 text-xs mt-1">Unlimited Copying for 30 Days.</p></div>
-                        <div className="relative group cursor-pointer rounded-2xl p-4 border transition-all hover:scale-[1.02] active:scale-95 bg-gray-800 border-yellow-500/50 shadow-lg shadow-yellow-900/10" onClick={() => setStep("METHOD")}>
-                            <div className="flex justify-between items-start mb-2"><div><h3 className="font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-600">30-Day Pass</h3><p className="text-[10px] text-gray-400">Flexible Access</p></div><div className="text-right"><p className="text-lg font-bold text-white">$15</p><p className="text-[9px] text-gray-500">/ 30 days</p></div></div>
-                            <ul className="space-y-1">{features.map((f, i) => <li key={i} className="flex items-center gap-2 text-[10px] text-gray-300"><CheckCircle2 size={12} className="text-yellow-500" /> {f}</li>)}</ul>
-                        </div>
-                    </div>
-                )}
 
                 {step === "METHOD" && (
                     <div className="p-6 space-y-6 animate-in slide-in-from-right">
                         <div className="bg-gray-800 p-4 rounded-xl flex justify-between items-center border border-gray-700"><div><p className="text-xs text-gray-400">Item</p><p className="font-bold text-white">{title}</p></div><p className="text-xl font-bold text-green-400">${price}</p></div>
-                        <div className="space-y-3"><p className="text-xs text-gray-400 font-bold uppercase">Select Payment Method</p><button onClick={() => setPaymentMethod("QR")} className={`w - full p - 4 rounded - xl border flex items - center justify - between transition - all ${paymentMethod === "QR" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-white p-1.5 rounded"><Radio size={20} className="text-blue-900" /></div><div className="text-left"><p className="font-bold text-sm text-white">Thai QR Payment</p><p className="text-[10px] text-gray-400">Scan with any bank app</p></div></div>{paymentMethod === "QR" && <CheckCircle2 className="text-blue-500" size={18} />}</button><button onClick={() => setPaymentMethod("CARD")} className={`w - full p - 4 rounded - xl border flex items - center justify - between transition - all ${paymentMethod === "CARD" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-gray-700 p-1.5 rounded"><CreditCard size={20} className="text-white" /></div><div className="text-left"><p className="font-bold text-sm text-white">Credit / Debit Card</p><p className="text-[10px] text-gray-400">Visa, Mastercard, JCB</p></div></div>{paymentMethod === "CARD" && <CheckCircle2 className="text-blue-500" size={18} />}</button></div>
+                        <div className="space-y-3"><p className="text-xs text-gray-400 font-bold uppercase">Select Payment Method</p><button onClick={() => setPaymentMethod("QR")} className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all ${paymentMethod === "QR" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-white p-1.5 rounded"><Radio size={20} className="text-blue-900" /></div><div className="text-left"><p className="font-bold text-sm text-white">Thai QR Payment</p><p className="text-[10px] text-gray-400">Scan with any bank app</p></div></div>{paymentMethod === "QR" && <CheckCircle2 className="text-blue-500" size={18} />}</button><button onClick={() => setPaymentMethod("CARD")} className={`w-full p-4 rounded-xl border flex items - center justify - between transition - all ${paymentMethod === "CARD" ? "bg-blue-600/10 border-blue-500 ring-1 ring-blue-500" : "bg-gray-900 border-gray-700 hover:bg-gray-800"} `}><div className="flex items-center gap-3"><div className="bg-gray-700 p-1.5 rounded"><CreditCard size={20} className="text-white" /></div><div className="text-left"><p className="font-bold text-sm text-white">Credit / Debit Card</p><p className="text-[10px] text-gray-400">Visa, Mastercard, JCB</p></div></div>{paymentMethod === "CARD" && <CheckCircle2 className="text-blue-500" size={18} />}</button></div>
                         <button onClick={handlePay} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">Pay ${price}</button>
                     </div>
                 )}
 
                 {step === "PAYING" && (<div className="p-10 flex flex-col items-center justify-center space-y-4 animate-in fade-in h-[400px]"><div className="relative"><div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"></div><div className="absolute inset-0 flex items-center justify-center"><Zap size={20} className="text-blue-500 animate-pulse" /></div></div><div className="text-center"><h3 className="text-white font-bold text-lg">Processing...</h3><p className="text-gray-500 text-xs">Confirming transaction</p></div></div>)}
-                {step === "SUCCESS" && (<div className="p-10 flex flex-col items-center justify-center space-y-6 animate-in zoom-in h-[400px]"><div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/50 animate-bounce"><CheckCircle2 size={48} className="text-white" /></div><div className="text-center space-y-2"><h3 className="text-2xl font-bold text-white">Payment Success!</h3><p className="text-gray-400 text-sm">{isMasterUpgrade ? "Plan upgraded successfully." : "Golden Ticket Active!"}</p></div></div>)}
+                {step === "SUCCESS" && (<div className="p-10 flex flex-col items-center justify-center space-y-6 animate-in zoom-in h-[400px]"><div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/50 animate-bounce"><CheckCircle2 size={48} className="text-white" /></div><div className="text-center space-y-2"><h3 className="text-2xl font-bold text-white">Payment Success!</h3><p className="text-gray-400 text-sm">{isMasterUpgrade ? "Plan upgraded successfully." : "Success!"}</p></div></div>)}
             </div>
         </div>
-    );
-}
-
-function VIPUpgradeModal({ onClose, onSuccess }: VIPUpgradeModalProps) {
-    return (
-        <UniversalPaymentModal onClose={onClose} onSuccess={onSuccess} />
     );
 }
 
@@ -418,29 +402,106 @@ function MasterActivationModal({ onClose, onConfirm }: MasterActivationModalProp
 
 function MasterPlanModal({ onClose, currentTier, onSelectPlan }: MasterPlanModalProps) {
     const plans = [
-        { id: "ROOKIE", name: "Rookie 🌱", price: "FREE", limit: "50 Followers", aum: "$50k AUM", fee: "30% GP Share", current: currentTier === "ROOKIE", newLimit: 50, newAum: 50000, priceVal: 0 },
-        { id: "PRO", name: "Pro Trader 🚀", price: "$30 / mo", limit: "500 Followers", aum: "$500k AUM", fee: "20% GP Share", current: currentTier === "PRO", rec: true, newLimit: 500, newAum: 500000, priceVal: 30 },
-        { id: "TYCOON", name: "Tycoon 🏢", price: "$99 / mo", limit: "Unlimited", aum: "Unlimited", fee: "10% GP Share", current: currentTier === "TYCOON", newLimit: 99999, newAum: 9999999, priceVal: 99 }
+        { id: "ROOKIE", name: "Rookie", icon: <Sprout size={24} />, price: "Free", limit: 10, aum: 50000, fee: "20%", desc: "Start building your track record with essential tools.", current: currentTier === "ROOKIE", newLimit: 10, newAum: 50000 },
+        { id: "PRO", name: "Pro Trader", icon: <Zap size={24} />, price: "$30/mo", limit: 500, aum: 500000, fee: "10%", desc: "Expand your reach with higher limits and lower fees.", current: currentTier === "PRO", rec: true, newLimit: 500, newAum: 500000 },
+        { id: "TYCOON", name: "Tycoon", icon: <Crown size={24} />, price: "$99/mo", limit: "Unlimited", aum: "Unlimited", fee: "5%", desc: "Maximum scale for institutional leaders.", current: currentTier === "TYCOON", newLimit: 999999, newAum: 999999999 }
     ];
 
     return (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
-            <div className="bg-space w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-neon-cyan/50 blur-lg"></div>
-                <div className="p-5 border-b border-white/5 flex justify-between items-center">
-                    <h3 className="font-bold text-premium text-white flex items-center gap-2"><TrendingUp className="text-neon-cyan" /> Expand Business</h3>
-                    <button onClick={onClose} className="bg-white/5 p-2 rounded-full text-gray-400 hover:text-white"><X size={16} /></button>
+        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden font-sans">
+
+                {/* Header - Soft & Clean */}
+                <div className="p-8 border-b border-white/5 flex justify-between items-center bg-zinc-950">
+                    <div>
+                        <h3 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                            <TrendingUp size={24} className="text-green-500" />
+                            Expand Business
+                        </h3>
+                        <p className="text-zinc-400 text-sm mt-1.5 font-medium">Select a plan to increase your capacity and keep more of your earnings.</p>
+                    </div>
+                    <button onClick={onClose} className="p-2.5 bg-zinc-900 rounded-full hover:bg-zinc-800 transition-colors text-zinc-500 hover:text-white">
+                        <X size={20} />
+                    </button>
                 </div>
-                <div className="p-5 space-y-4 overflow-y-auto">
-                    <div className="text-center space-y-2 mb-4"><p className="text-gray-400 text-xs text-balance">Your store is growing fast! Upgrade your plan to support more followers and get a bigger revenue share.</p></div>
-                    <div className="space-y-3">
+
+                {/* Content - Cards */}
+                <div className="overflow-y-auto p-6 md:p-10 bg-black/50">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {plans.map((plan) => (
-                            <div key={plan.id} className={`relative p - 4 rounded - 2xl border transition - all ${plan.current ? "bg-neon-cyan/10 border-neon-cyan ring-1 ring-neon-cyan shadow-[0_0_15px_rgba(6,182,212,0.2)]" : "bg-white/5 border-white/10 opacity-60 hover:opacity-100"} `}>
-                                {plan.rec && <div className="absolute -top-2 right-4 bg-neon-cyan text-black text-[9px] font-bold px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]">RECOMMENDED</div>}
-                                {plan.current && <div className="absolute top-4 right-4 text-neon-cyan"><CheckCircle2 size={18} /></div>}
-                                <div className="flex justify-between items-end mb-2"><h4 className="font-bold text-lg text-white">{plan.name}</h4><span className="font-bold text-sm text-gray-300">{plan.price}</span></div>
-                                <ul className="space-y-1.5"><li className="text-xs text-gray-400 flex items-center gap-2"><Users size={12} /> Max {plan.limit}</li><li className="text-xs text-gray-400 flex items-center gap-2"><Wallet size={12} /> Max {plan.aum}</li><li className="text-xs text-green-400 flex items-center gap-2 font-bold"><Zap size={12} /> {plan.fee}</li></ul>
-                                {!plan.current && <button onClick={() => onSelectPlan(plan)} className="w-full mt-3 bg-white text-black font-bold py-2 rounded-lg text-xs hover:bg-gray-200 shadow-[0_0_10px_rgba(255,255,255,0.2)]">Upgrade</button>}
+                            <div
+                                key={plan.id}
+                                className={`relative p-8 rounded-2xl border transition-all duration-300 flex flex-col justify-between min-h-[400px] group
+                                    ${plan.current
+                                        ? "border-green-500/50 bg-zinc-900/50 shadow-[0_0_30px_rgba(34,197,94,0.1)]"
+                                        : "border-white/5 bg-zinc-950 hover:border-white/10 hover:-translate-y-1 hover:shadow-xl"
+                                    }
+                                    ${plan.rec && !plan.current ? "border-purple-500/30" : ""}
+                                `}
+                            >
+                                {plan.rec && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">Most Popular</div>}
+
+                                <div>
+                                    <div className={`mb-6 p-4 rounded-2xl w-fit shadow-inner ${plan.current ? "bg-green-500/10 text-green-400" : "bg-zinc-900 text-zinc-400 group-hover:text-white transition-colors"}`}>
+                                        {plan.icon}
+                                    </div>
+
+                                    <h4 className="font-bold text-2xl text-white mb-2 tracking-tight">{plan.name}</h4>
+                                    <p className="text-sm text-zinc-500 mb-8 leading-relaxed font-medium min-h-[40px]">{plan.desc}</p>
+
+                                    <div className="space-y-4 mb-8">
+                                        <div className="flex items-center justify-between text-sm group/item">
+                                            <div className="flex items-center gap-3 text-zinc-400">
+                                                <Users size={16} />
+                                                <span className="font-medium">Investor Limit</span>
+                                            </div>
+                                            <span className="text-white font-bold">{typeof plan.limit === 'number' ? plan.limit.toLocaleString() : plan.limit}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm group/item">
+                                            <div className="flex items-center gap-3 text-zinc-400">
+                                                <Wallet size={16} />
+                                                <span className="font-medium">Capital Managed</span>
+                                            </div>
+                                            <span className="text-white font-bold">{typeof plan.aum === 'number' ? `$${(plan.aum / 1000)}k` : plan.aum}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm group/item">
+                                            <div className="flex items-center gap-3 text-zinc-400">
+                                                <PieChart size={16} />
+                                                <span className="font-medium">Platform Fee</span>
+                                            </div>
+                                            <span className="text-green-400 font-bold">{plan.fee}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm group/item pt-3 border-t border-white/5">
+                                            <div className="flex items-center gap-3 text-zinc-400">
+                                                <Server size={16} />
+                                                <span className="font-medium">Speed</span>
+                                            </div>
+                                            <span className={`font-bold ${plan.id === "ROOKIE" ? "text-zinc-400" : "text-blue-400"}`}>
+                                                {plan.id === "ROOKIE" ? "Standard Cloud" : "Turbo Cloud ⚡"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="text-2xl font-bold text-white mb-5 text-center tracking-tight">{plan.price}</div>
+                                    {!plan.current ? (
+                                        <button
+                                            onClick={() => onSelectPlan(plan)}
+                                            className={`w-full py-4 rounded-xl font-bold text-sm transition-all shadow-lg hover:shadow-xl
+                                                ${plan.rec
+                                                    ? "bg-white text-black hover:bg-zinc-200 hover:scale-[1.02]"
+                                                    : "bg-zinc-800 text-white hover:bg-zinc-700 hover:scale-[1.02]"}
+                                            `}
+                                        >
+                                            Upgrade now
+                                        </button>
+                                    ) : (
+                                        <div className="w-full py-4 rounded-xl bg-green-500/10 text-green-500 font-bold text-sm flex items-center justify-center gap-2 cursor-default border border-green-500/20">
+                                            <CheckCircle2 size={16} /> Current Plan
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -482,11 +543,9 @@ interface FollowerFlowProps {
     onViewProfile: (master: Master) => void;
     activeSessions: CopySession[];
     onStopCopy: (id: number) => void;
-    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType) => void;
+    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => void;
     favorites: number[];
     walletBalance: number;
-    onOpenVIP: () => void;
-    isVip: boolean;
     onStopAll: () => void;
     dailyTicketUsed: boolean;
     setDailyTicketUsed: (used: boolean) => void;
@@ -496,14 +555,18 @@ interface FollowerFlowProps {
     brokerAccount: any;
     masters: Master[]; // ✅ Added Prop
     masterProfile: MasterProfile; // ✅ Added Prop
+    setHasUsed7DayTrial: (used: boolean) => void;
 }
 
-function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onOpenVIP, isVip, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, brokerAccount, masters, masterProfile }: FollowerFlowProps) {
+function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, setHasUsed7DayTrial, brokerAccount, masters, masterProfile }: FollowerFlowProps) {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState<"DISCOVER" | "PORTFOLIO">("DISCOVER");
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false); // ✅ New State
-    const [goldenTickets, setGoldenTickets] = useState(0); // 🎫 Golden Tickets
     const [searchTerm, setSearchTerm] = useState("");
+
+    // ⚙️ Advanced Settings State (Lifted for Dashboard)
+    const [autoRenew, setAutoRenew] = useState(true); // Default ON
+    const [timeConfig, setTimeConfig] = useState<any>({ mode: "24/7", start: "09:00", end: "17:00" }); // Default 24/7
 
     // 🔍 Advanced Filter Logic
     // 🔍 Advanced Filter Logic
@@ -567,7 +630,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             <ul className="space-y-2">
                                 {selectedTicket.benefits && selectedTicket.benefits.map((benefit: string, i: number) => (
                                     <li key={i} className="flex items-center gap-2 text-sm text-gray-300">
-                                        <CheckCircle size={14} className={selectedTicket.type === 'VIP' ? 'text-yellow-500' : 'text-green-500'} />
+                                        <CheckCircle size={14} className="text-green-500" />
                                         {benefit}
                                     </li>
                                 ))}
@@ -665,20 +728,33 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         }
     }, [brokerAccount]);
 
+    // ⚡ SYNC REAL-TIME DATA TO LOCAL STATE
     useEffect(() => {
         if (realTimeStats && mergedBrokerAccount) {
-            setMergedBrokerAccount((prev: any) => {
-                if (!prev) return null;
-                return {
-                    ...prev,
-                    balance: realTimeStats.balance,
-                    equity: realTimeStats.equity,
-                    leverage: realTimeStats.leverage,
-                    // If broker API returns positions, we could sync them too, 
-                    // but OpenPositionsTable handles its own polling or we can pass it down.
-                    // realTimeStats.positions is available.
-                };
-            });
+            // Avoid infinite loop: Only update if strictly different
+            // 🛡️ DATA SAFETY: Don't overwrite valid data with Zeros (unless account is empty)
+            // If we have existing data ($4000) and incoming is $0, it's likely a glitch/loading state.
+            const incomingEquity = realTimeStats.equity || 0;
+            const currentEquity = mergedBrokerAccount.equity || 0;
+
+            if (incomingEquity === 0 && currentEquity > 0) {
+                // Ignore "Zero Flash"
+                return;
+            }
+
+            const newVal = {
+                ...mergedBrokerAccount,
+                balance: realTimeStats.balance,
+                equity: realTimeStats.equity,
+                leverage: realTimeStats.leverage,
+                // Also ensure activeSessions are synced if present in RealTimeStats
+                activeSessions: realTimeStats.activeSessions || mergedBrokerAccount.activeSessions
+            };
+
+            // Simple JSON comparison to prevent "Maximum update depth"
+            if (JSON.stringify(newVal) !== JSON.stringify(mergedBrokerAccount)) {
+                setMergedBrokerAccount(newVal);
+            }
         }
     }, [realTimeStats, mergedBrokerAccount]);
 
@@ -689,18 +765,13 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                 if (data) {
                     // Handle any profile-specific updates if needed
                     // console.log("Profile Loaded for:", data.name);
-                    setGoldenTickets(data.goldenTickets || 0);
                 }
             });
 
             // 2. Get Ticket Statuses
             getTicketStatuses(session.user.id).then(status => {
                 if (status) {
-                    setTicketStatus({
-                        dailyUsed: status.dailyUsed,
-                        welcomeUsed: status.welcomeUsed,
-                        isVipActive: status.isVipActive
-                    });
+                    setHasUsed7DayTrial(status.welcomeUsed);
                     // Force Sync: If DB says used, UI must be used.
                     if (status.dailyUsed) setDailyTicketUsed(true);
                 }
@@ -722,11 +793,26 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         // For quick copy, directly open safety setup (after auth check)
         requireAuth(() => {
             setSelectedMasterId(master.id);
-            // ✅ Auto-Select Welcome Ticket if Daily is Used
-            if (dailyTicketUsed && !hasUsed7DayTrial && !isVip) {
-                setUseWelcomeTicket(true);
+            // ✅ SMART TICKET SELECTION
+            const isFeeMaster = master.monthlyFee > 0;
+            const canUseWelcome = !hasUsed7DayTrial;
+
+            if (isFeeMaster) {
+                // 💰 Fee Master: MUST use Welcome Ticket (Standard not allowed)
+                if (canUseWelcome) {
+                    setUseWelcomeTicket(true);
+                } else {
+                    // Trial Used + Fee Master = Paid Subscription Required. 
+                    // We set to false (Standard), but SafetyGuard/Backend will catch and prompt for Payment.
+                    setUseWelcomeTicket(false);
+                }
             } else {
-                setUseWelcomeTicket(false);
+                // 🆓 Free Master: Standard First, then Welcome
+                if (dailyTicketUsed && canUseWelcome) {
+                    setUseWelcomeTicket(true); // Fallback to Welcome
+                } else {
+                    setUseWelcomeTicket(false); // Default to Standard
+                }
             }
             setSafetyModalOpen(true);
         });
@@ -734,14 +820,15 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
     const confirmCopy = () => {
         if (selectedMaster) {
-            // Priority: VIP > Golden > Welcome > Daily
+            // Priority: Welcome > Daily
             let sessionType = "DAILY"; // Default
-            if (isVip) sessionType = "VIP";
-            else if (goldenTickets > 0) sessionType = "GOLDEN"; // 🌟 Auto-use Golden if available
-            else if (useWelcomeTicket) sessionType = "TRIAL_7DAY";
+            if (useWelcomeTicket) sessionType = "TRIAL_7DAY";
 
-            onStartCopy(selectedMaster, Number(allocation), aiGuardRisk, sessionType as SessionType);
-            setSafetyModalOpen(false);
+            // If auto-renew is on, but we are using Welcome Ticket, standard 24/7 applies?
+            // Actually, we enforce 1 Master limit elsewhere.
+
+            // ⚡ Execute Copy
+            onStartCopy(selectedMaster, Number(allocation), aiGuardRisk, sessionType as SessionType, { autoRenew: autoRenew, timeConfig: timeConfig }); setSafetyModalOpen(false);
             setUseWelcomeTicket(false); // Reset
             setActiveTab("PORTFOLIO");
         }
@@ -805,15 +892,11 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
     // Calculate visible tickets for dynamic grid layout
     const showWelcome = !hasUsed7DayTrial;
-    const showVIP = !isVip;
-    const showGolden = goldenTickets > 0 && !isVip;
 
-    const visibleTicketsCount = 1 + (showWelcome ? 1 : 0) + (showVIP ? 1 : 0) + (showGolden ? 1 : 0);
+    const visibleTicketsCount = 1 + (showWelcome ? 1 : 0);
 
     let gridColsClass = "grid-cols-1";
     if (visibleTicketsCount === 2) gridColsClass = "grid-cols-2";
-    if (visibleTicketsCount >= 3) gridColsClass = "grid-cols-1 sm:grid-cols-3"; // Responsive: 1 col mobile, 3 desktop
-    if (visibleTicketsCount === 4) gridColsClass = "grid-cols-2 sm:grid-cols-4";
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -833,13 +916,13 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             onClick={() => setSelectedTicket({
                                 type: 'STANDARD',
                                 title: "Standard Ticket",
-                                subtitle: isVip ? "Unlimited Access Active" : "Free Follow Master 4hrs",
-                                description: isVip ? "You have full VIP access. Enjoy unlimited copy trading with all masters." : "Perfect for testing the waters. Get 4 hours of unrestricted copying access to any master trader.",
-                                benefits: isVip ? ["Unlimited Access", "Priority Support", "All Masters Included"] : ["4 Hours Access", "Real Account Compatible", "Copy Free Master"],
-                                buttonText: isVip ? "VIP ACTIVE" : (dailyTicketUsed ? "QUOTA USED" : "UNLOCK 4 HOURS"),
-                                action: isVip || dailyTicketUsed ? undefined : onOpenVIP
+                                subtitle: "Free Follow Master 4hrs",
+                                description: "Perfect for testing the waters. Get 4 hours of unrestricted copying access to any master trader.",
+                                benefits: ["4 Hours Access", "Real Account Compatible", "Copy Free Master"],
+                                buttonText: dailyTicketUsed ? "QUOTA USED" : "UNLOCK 4 HOURS",
+                                action: dailyTicketUsed ? undefined : undefined
                             })}
-                            className={`glass-panel overflow-hidden transition-all duration-300 group ${isVip || dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:border-neon-cyan/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-1"} `}
+                            className={`glass-panel overflow-hidden transition-all duration-300 group ${dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:border-neon-cyan/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-1"} `}
                         >
                             <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
                                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -847,16 +930,14 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 </div>
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
                                     <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                        <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-neon-purple" : "text-white"} `}>Standard</h4>
-                                        <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">{isVip ? "Unlimited Access" : "Free Follow Master 4hrs"}</p>
+                                        <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full text-white`}>Standard</h4>
+                                        <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Free Follow Master 4hrs</p>
                                     </div>
-                                    <div className={`p-2 rounded-full ${isVip ? "bg-neon-purple/20 text-neon-purple" : "bg-neon-cyan/20 text-neon-cyan"} `}>
+                                    <div className="p-2 rounded-full bg-neon-cyan/20 text-neon-cyan">
                                         <Zap className={`w-3 h-3 sm:w-4 sm:h-4`} />
                                     </div>
                                 </div>
-                                {isVip ? (
-                                    <button className="w-full py-2 rounded-lg bg-neon-purple/10 text-neon-purple border border-neon-purple/20 text-xs font-bold cursor-default whitespace-nowrap glow-purple">VIP ACTIVE</button>
-                                ) : (dailyTicketUsed || ticketStatus.dailyUsed) ? (
+                                {dailyTicketUsed || ticketStatus.dailyUsed ? (
                                     <button className="w-full py-2 rounded-lg bg-gray-800 text-gray-500 text-[10px] font-bold cursor-not-allowed border border-gray-700 whitespace-nowrap flex items-center justify-center gap-1">
                                         <Clock size={10} /> Reset in {formatTime(timeUntilReset)}
                                     </button>
@@ -867,37 +948,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                         </Card>
 
 
-                        {/* 🌟 Golden Ticket */}
-                        {goldenTickets > 0 && !isVip && (
-                            <Card
-                                onClick={() => setSelectedTicket({
-                                    type: 'GOLDEN',
-                                    title: "Golden Ticket",
-                                    subtitle: `${goldenTickets} Available`,
-                                    description: "Premium 24-hour access to any master. Use your tickets to bypass daily limits.",
-                                    benefits: ["24 Hours Unlimited Access", "Priority Execution", "Keeps 100% Profit"],
-                                    buttonText: "USE TICKET",
-                                    action: undefined // Logic handled in modal
-                                })}
-                                className="glass-panel overflow-hidden transition-all duration-300 group cursor-pointer hover:border-yellow-400/50 hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:-translate-y-1"
-                            >
-                                <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <Ticket className="w-24 h-24 text-yellow-400" />
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
-                                        <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                            <h4 className="text-[10px] sm:text-xs font-bold truncate w-full text-yellow-400">Golden Ticket</h4>
-                                            <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">{goldenTickets} Left</p>
-                                        </div>
-                                        <div className="p-2 rounded-full bg-yellow-400/20 text-yellow-400">
-                                            <Ticket className="w-3 h-3 sm:w-4 sm:h-4" />
-                                        </div>
-                                    </div>
-                                    <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 text-xs font-bold group-hover:bg-yellow-400 group-hover:text-black transition-all shadow-[0_0_15px_rgba(250,204,21,0.15)] whitespace-nowrap">USE TICKET</button>
-                                </CardContent>
-                            </Card>
-                        )}
+
 
                         {/* 2. Welcome (renamed from 7-Day Trial) */}
                         {showWelcome && (
@@ -909,7 +960,9 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     description: "A special one-time welcome gift. Get unlimited copy trading access for a full week.",
                                     benefits: ["7 Days Unlimited Access", "One-Time Use", "All Masters Included"],
                                     buttonText: "CLAIM FREE 7 DAYS",
-                                    action: undefined // Todo: implement claim logic
+                                    action: () => requireAuth(() => {
+                                        toast.info("Select a Master to Claim", { description: "Choose a master and click Copy to use your free trial." });
+                                    })
                                 })}
                                 className={`glass-panel overflow-hidden transition-all duration-300 group ${ticketStatus.welcomeUsed ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-pink/50 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:-translate-y-1"} `}
                             >
@@ -936,43 +989,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                         )}
 
                         {/* 3. VIP (Renamed Subtitle) */}
-                        {showVIP && (
-                            <Card
-                                onClick={() => setSelectedTicket({
-                                    type: 'VIP',
-                                    title: "VIP Access",
-                                    subtitle: "Free Access All Master 30 Days",
-                                    description: "The ultimate trading experience. Get a full month of unrestricted access to all master traders.",
-                                    benefits: ["30 Days Unlimited Access", "One-Time Use", "Priority Support", "All Masters Included"],
-                                    buttonText: isVip ? "ACTIVE" : "GET ACCESS",
-                                    action: undefined
-                                })}
-                                className={`glass-panel overflow-hidden transition-all duration-300 group relative ${isVip || ticketStatus.isVipActive ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-purple/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:-translate-y-1"} `}
-                            >
-                                {/* Gold Glow Base */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-transparent opacity-50 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-                                <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <Crown className="w-24 h-24 text-neon-purple" />
-                                    </div>
-                                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
-                                        <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                            <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full ${isVip ? "text-gray-400" : "text-neon-purple"} `}>VIP</h4>
-                                            <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Access All 30 Days</p>
-                                        </div>
-                                        <div className="p-2 rounded-full bg-neon-purple/20 text-neon-purple">
-                                            <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
-                                        </div>
-                                    </div>
-                                    {isVip ? (
-                                        <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-gray-800 text-gray-500 text-xs font-bold cursor-not-allowed whitespace-nowrap">ACTIVE</button>
-                                    ) : (
-                                        <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-gradient-to-r from-neon-purple to-indigo-600 text-white border border-neon-purple/20 text-xs font-bold shadow-lg shadow-neon-purple/30 hover:scale-[1.02] transition-transform whitespace-nowrap">ACCESS</button>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
 
                     </div>
 
@@ -1012,7 +1029,6 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                         <div className="text-center mt-4 mb-3">
                                             <div className="relative inline-block">
                                                 <img src={master.avatar} alt={master.name} className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-neon-purple transition-colors mx-auto mb-2" />
-                                                {master.isVip && <div className="absolute bottom-0 right-0 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black text-[8px] px-1 rounded-full font-bold shadow-lg">PRO</div>}
                                             </div>
                                             <h4 className="font-bold text-xs leading-tight line-clamp-1 mb-1 text-white group-hover:text-neon-purple transition-colors">{master.name}</h4>
                                             <p className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.3)]' : 'text-red-400'} `}>+{master.roi}%</p>
@@ -1055,7 +1071,6 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     roi: 0,
                                     followers: 0,
                                     monthlyFee: 0,
-                                    isVip: false,
                                     tags: ["ME"],
                                     minDeposit: masterProfile.minDeposit || 10,
                                     leverage: brokerAccount?.leverage || 500
@@ -1072,8 +1087,8 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Active Masters</p><div className="flex items-center gap-2"><Users size={16} className="text-blue-400" /><span className="font-bold text-sm text-white">{activeSessions.length} {isVip ? "/ ∞" : "/ 1"}</span></div></div>
-                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Time Remaining</p><div className="flex items-center gap-2"><Clock size={16} className={isVip ? "text-yellow-400" : "text-green-400"} /><span className="font-bold text-sm text-white">{isVip ? "Unlimited" : formatTime(ticketTime)}</span></div></div>
+                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Active Masters</p><div className="flex items-center gap-2"><Users size={16} className="text-blue-400" /><span className="font-bold text-sm text-white">{activeSessions.length} / 1</span></div></div>
+                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Time Remaining</p><div className="flex items-center gap-2"><Clock size={16} className="text-green-400" /><span className="font-bold text-sm text-white">{formatTime(ticketTime)}</span></div></div>
                     </div>
 
                     <div className="space-y-4 pb-24">
@@ -1087,7 +1102,6 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     risk={session.risk}
                                     allocation={session.allocation}
                                     onStop={() => onStopCopy(session.master.id)}
-                                    isVip={isVip}
                                     session={session}
                                     onClick={() => onViewProfile(session.master)} // ✅ Navigation
                                     currencySymbol={currencySymbol}
@@ -1111,18 +1125,34 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
             {safetyModalOpen && selectedMaster && (
                 <SafetyGuardModal
-                    risk={aiGuardRisk}
-                    setRisk={setAiGuardRisk}
-                    allocation={allocation}
-                    setAllocation={setAllocation}
+                    initialRisk={aiGuardRisk}
+                    initialAllocation={allocation}
+                    maxAlloc={availableBalance} // ✅ Fixed: Use local availableBalance
+                    initialAutoRenew={true}
+                    initialTimeConfig={null} // Default
+                    initialUseWelcome={useWelcomeTicket} // ✅ Pass Auto-Selection
+                    showWelcomeOption={!hasUsed7DayTrial}
                     onClose={() => setSafetyModalOpen(false)}
-                    maxAlloc={walletBalance}
-                    showWelcomeOption={(userRole === "FOLLOWER" && !ticketStatus.welcomeUsed && !ticketStatus.dailyUsed)}
-                    useWelcome={useWelcomeTicket}
-                    setUseWelcome={setUseWelcomeTicket}
-                    onConfirm={() => {
-                        setSafetyModalOpen(false); // Close modal
-                        confirmCopy(); // Trigger copy
+                    onConfirm={(data) => {
+                        // 1. Update State (for UI consistency next open)
+                        setAiGuardRisk(data.risk);
+                        setAllocation(data.allocation);
+                        setAutoRenew(data.autoRenew);
+                        setTimeConfig(data.timeConfig);
+                        if (data.useWelcome) setUseWelcomeTicket(true);
+
+
+                        // 2. Logic from confirmCopy() but using FREH 'data'
+                        let sessionType = "DAILY";
+                        if (data.useWelcome) sessionType = "TRIAL_7DAY";
+
+                        if (selectedMaster) {
+                            onStartCopy(selectedMaster, Number(data.allocation), data.risk, sessionType as SessionType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
+                        }
+
+                        setSafetyModalOpen(false);
+                        setUseWelcomeTicket(false);
+                        setActiveTab("PORTFOLIO");
                     }}
                 />
             )}
@@ -1140,14 +1170,13 @@ interface MasterFlowProps {
     userRole: UserRole;
     profile: MasterProfile;
     setProfile: (p: MasterProfile) => void;
-    onOpenWallet: () => void;
-    onBecomeMaster: () => void;
+    onBecomeMaster?: () => void;
+    onOpenWallet?: () => void;
     followers?: Follower[];
     brokerAccount: BrokerAccount | null; // ✅ Added Prop
-    isVip: boolean;
 }
 
-function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [], brokerAccount, isVip }: MasterFlowProps) {
+function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [], brokerAccount }: MasterFlowProps) {
     const [showUpgradeMaster, setShowUpgradeMaster] = useState(false);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
@@ -1164,17 +1193,26 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
         setPaymentModalOpen(true);
     }
 
-    const handleUpgradeSuccess = () => {
+    const handleUpgradeSuccess = async () => {
         setPaymentModalOpen(false);
         if (selectedPlan) {
-            // 🎉 Simulate Magic Upgrade
-            setProfile({
-                ...profile,
-                tier: selectedPlan.id,
-                followersLimit: selectedPlan.newLimit,
-                aumLimit: selectedPlan.newAum
-            });
-            toast.success("Upgrade Successful! 🎉", { description: `You are now a ${selectedPlan.name}. Limits increased!` });
+            // ⚡ Real Backend Upgrade
+            try {
+                const result = await updateMasterPlan(profile.userId || "", selectedPlan.id);
+                if (result.success) {
+                    setProfile({
+                        ...profile,
+                        tier: selectedPlan.id,
+                        followersLimit: selectedPlan.newLimit,
+                        aumLimit: selectedPlan.newAum
+                    });
+                    toast.success("Upgrade Successful! 🎉", { description: `You are now a ${selectedPlan.name}. Limits increased!` });
+                } else {
+                    toast.error("Upgrade Failed", { description: result.error });
+                }
+            } catch (e) {
+                toast.error("Upgrade Error", { description: "Connection failed" });
+            }
         }
     }
 
@@ -1192,7 +1230,6 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
         drawdown: 0,
         profitFactor: 0,
         avatar: profile.avatar,
-        isVip: isVip, // ✅ Dynamic VIP Status
         desc: profile.desc,
         tags: profile.tags,
         joined: "2023",
@@ -1330,7 +1367,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
 
                     {/* 💰 Wallet / GP Earned Stat */}
                     <div
-                        onClick={(e) => { e.stopPropagation(); if (userRole === "MASTER") onOpenWallet(); }}
+                        onClick={(e) => { e.stopPropagation(); if (userRole === "MASTER" && onOpenWallet) onOpenWallet(); }}
                         className={`relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center space-y-1 transition-all duration-300 group/wallet ${userRole === "MASTER"
                             ? "cursor-pointer bg-gradient-to-br from-gray-900 via-gray-900 to-purple-900/20 border border-purple-500/30 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]"
                             : "bg-black/30 border border-white/5 opacity-50"
@@ -1450,7 +1487,6 @@ export default function BridgeTradeApp() {
     const { data: session, status } = useSession();
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isUserVip, setIsUserVip] = useState(false);
     const [viewMode, setViewMode] = useState<UserRole>("FOLLOWER");
     const [isClient, setIsClient] = useState(false);
 
@@ -1465,9 +1501,6 @@ export default function BridgeTradeApp() {
     // 🎟️ TICKET STATE
     const [dailyTicketUsed, setDailyTicketUsed] = useState(false);
     const [hasUsed7DayTrial, setHasUsed7DayTrial] = useState(false);
-    const [goldenTicketStart, setGoldenTicketStart] = useState<number | undefined>(undefined);
-    const [goldenTicketExpiry, setGoldenTicketExpiry] = useState<number>(0);
-    const [goldenTickets, setGoldenTickets] = useState(0);
     const [favorites, setFavorites] = useState<number[]>([]);
 
     // 🛡️ RISK STATE
@@ -1495,6 +1528,55 @@ export default function BridgeTradeApp() {
     });
     const [showActivationModal, setShowActivationModal] = useState(false);
 
+    // ⚡ REAL-TIME SYNC
+    const { stats: realTimeStats } = useRealTimeData();
+
+    useEffect(() => {
+        if (realTimeStats?.activeSessions) {
+            const activeMap = new Map(realTimeStats.activeSessions.map(s => [s.id, s]));
+
+            setActiveSessions(prev => {
+                const now = Date.now();
+                // 1. Keep sessions that are:
+                //    a) In the backend response (still active)
+                //    b) Optimistic (ID > 1700000000000) AND Created < 15s ago (Give backend time to catch up)
+                const merged = prev.filter(s => {
+                    const isConfirmed = activeMap.has(s.id);
+                    // Check if optimistic: ID looks like timestamp?
+                    const isOptimistic = typeof s.id === 'number' && s.id > 1700000000000;
+                    // Note: Optimistic sessions use `startTime` as creation time
+                    const isRecent = (now - s.startTime) < 15000;
+
+                    return isConfirmed || (isOptimistic && isRecent);
+                });
+
+                // 2. Add/Update from Backend
+                const final = merged.map(s => {
+                    const fresh = activeMap.get(s.id);
+                    if (fresh && fresh.expiry) {
+                        const freshExpiryNum = typeof fresh.expiry === 'number' ? fresh.expiry : new Date(fresh.expiry).getTime();
+
+                        // Update details: Update expiry if changed
+                        if (freshExpiryNum !== s.expiry) {
+                            return { ...s, expiry: freshExpiryNum };
+                        }
+                        return s;
+                    }
+                    return s;
+                });
+
+                // 3. (Removed) Do not append new sessions from RealTimeStats as they lack distinct Master data.
+                // The global poller (5s) will handle fetching new sessions with full details.
+
+                // Only update state if length changed or deep change
+                if (JSON.stringify(final) !== JSON.stringify(prev)) {
+                    return final;
+                }
+                return prev;
+            });
+        }
+    }, [realTimeStats?.activeSessions]);
+
 
     // 🔄 SYNC WITH DB ON LOGIN
     useEffect(() => {
@@ -1504,7 +1586,6 @@ export default function BridgeTradeApp() {
 
             getUserProfile(session.user.id).then(user => {
                 if (user) {
-                    setIsUserVip(user.isVip);
                     if (user.role) setUserRole(user.role as UserRole);
                     if (user.role === "MASTER") setViewMode("MASTER");
                     if (user.masterProfile) {
@@ -1582,8 +1663,7 @@ export default function BridgeTradeApp() {
         ));
         toast.success("Request Cancelled", { description: "Funds have been returned to your wallet." });
     };
-    // Check if golden ticket is active
-    const isGoldenActive = goldenTicketExpiry > Date.now();
+
 
     // Modals
     const [showSettings, setShowSettings] = useState(false);
@@ -1623,11 +1703,6 @@ export default function BridgeTradeApp() {
                         if (status) {
                             setDailyTicketUsed(status.dailyUsed);
                             setHasUsed7DayTrial(status.welcomeUsed);
-                            setIsUserVip(status.isVipActive); // Sync VIP Status
-
-                            // Sync Dates
-                            if (status.vipStart) setGoldenTicketStart(status.vipStart);
-                            if (status.vipExpiry) setGoldenTicketExpiry(status.vipExpiry);
                         }
                     });
                 });
@@ -1656,17 +1731,6 @@ export default function BridgeTradeApp() {
                         setWalletBalance(account.balance); // ✅ Sync wallet balance for real-time updates
                     }
                 });
-
-                // 2. Refresh Masters (Follower Counts/ROI) & Sync Viewed Profile
-                fetchMasters().then(masters => {
-                    setRealMasters(masters);
-                    setViewingProfile(current => {
-                        if (current && current.id !== 0) {
-                            return masters.find(m => m.id === current.id) || current;
-                        }
-                        return current;
-                    });
-                }).catch(console.error);
             }, 5000);
 
             return () => clearInterval(poller);
@@ -1675,6 +1739,28 @@ export default function BridgeTradeApp() {
             setIsLoggedIn(false);
         }
     }, [status, session, setIsLoggedIn, setShowLogin, setUserRole, setCurrentUserId]);
+
+    // 🔄 GLOBAL POLLING (Masters - Works for Guests too)
+    useEffect(() => {
+        const fetchAllMasters = () => {
+            fetchMasters().then(masters => {
+                setRealMasters(masters);
+                setViewingProfile(current => {
+                    if (current && current.id !== 0) {
+                        return masters.find(m => m.id === current.id) || current;
+                    }
+                    return current;
+                });
+            }).catch(console.error);
+        };
+
+        // Initial Fetch
+        fetchAllMasters();
+
+        // Poll every 5s
+        const interval = setInterval(fetchAllMasters, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
 
 
@@ -1707,7 +1793,7 @@ export default function BridgeTradeApp() {
         });
     };
 
-    const startCopying = (master: Master, amount: number, risk: number | string, sessionType: SessionType) => {
+    const startCopying = (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => {
         // 🔒 0. CHECK: BROKER CONNECTION
         if (accountStatus !== "CONNECTED") {
             toast.error("Broker Not Connected", { description: "Please connect your MT5 Broker Account first!" });
@@ -1732,12 +1818,12 @@ export default function BridgeTradeApp() {
         }
 
         // 🛡️ 2. CHECK: NO DOUBLE DIPPING (Limit 1 Master for Non-VIP)
-        const isUnlimitedUser = isUserVip || sessionType === "GOLDEN";
+        const isUnlimitedUser = sessionType === "PAID";
         if (!isUnlimitedUser && activeSessions.length >= 1) {
             openGlobalModal(
                 "🚫 Limit Reached (1 Master Max)",
-                "You are on a Free/Trial plan. You can only follow 1 Master at a time.\n\nUpgrade to VIP for Unlimited Copying!",
-                () => setShowVIP(true),
+                "You are on a Free/Trial plan. You can only follow 1 Master at a time.\n\nSubscribe to a Paid Signal for Unlimited Copying!",
+                () => { },
                 "warning"
             );
             return;
@@ -1764,7 +1850,6 @@ export default function BridgeTradeApp() {
         // Calculate Expiry
         let expiry: number | null = null;
         if (sessionType === "TRIAL_7DAY") expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
-        else if (sessionType === "GOLDEN") expiry = goldenTicketExpiry; // Sync with user's golden pass
         else if (sessionType === "DAILY") expiry = Date.now() + (4 * 60 * 60 * 1000); // 4 Hours for Daily Pass
 
         const masterUserId = String(master.id); // Assuming Master ID is used as User ID for now, or we need to add a userId to Master interface.
@@ -1783,7 +1868,7 @@ export default function BridgeTradeApp() {
             startTime: Date.now(),
             pnl: 0,
             orders: master.currentOrders,
-            isTrial: sessionType === "TRIAL_7DAY" || sessionType === "GOLDEN",
+            isTrial: sessionType === "TRIAL_7DAY",
             type: sessionType,
             expiry: expiry
         };
@@ -1802,7 +1887,9 @@ export default function BridgeTradeApp() {
             master.userId,
             amount,
             Number(risk),
-            sessionType as SessionType
+            sessionType as SessionType,
+            advanced?.autoRenew ?? true, // Default true
+            advanced?.timeConfig // Pass time config
         ) // Casting logic
             .then(res => {
                 if (res.success && res.data) {
@@ -1812,6 +1899,15 @@ export default function BridgeTradeApp() {
                     setRealMasters(prev => prev.map(m =>
                         m.id === master.id ? { ...m, followers: m.followers + 1 } : m
                     ));
+
+                    // 🔄 FORCE SYNC: Replace Optimistic Session with Real DB Data immediately
+                    getActiveSessions(currentUserId!).then(realSessions => {
+                        if (realSessions) {
+                            // Merge with current state carefully (preserving other optimistics if any)
+                            // But for 'startCopying', replacing completely is safer as this is the authoritative list.
+                            setActiveSessions(realSessions as CopySession[]);
+                        }
+                    });
 
                     // ✅ CRITICAL PATCH: Update the optimistic session with the REAL DB ID & EXPIRY
                     const realSession = (res.data as any);
@@ -1826,19 +1922,22 @@ export default function BridgeTradeApp() {
                     // Rollback
                     setActiveSessions(prev => prev.filter(s => s.id !== newSession.id));
                     setWalletBalance(prev => prev + amount);
+
+                    // ↩️ Rollback Ticket State
+                    if (sessionType === "DAILY") setDailyTicketUsed(false);
+                    if (sessionType === "TRIAL_7DAY") setHasUsed7DayTrial(false);
                 }
+            })
+            .catch(err => {
+                toast.error("Connection Error", { id: toastId, description: "Please try again." });
+                setActiveSessions(prev => prev.filter(s => s.id !== newSession.id));
+                setWalletBalance(prev => prev + amount);
+                if (sessionType === "DAILY") setDailyTicketUsed(false);
+                if (sessionType === "TRIAL_7DAY") setHasUsed7DayTrial(false);
             });
 
         // Update State based on Type
-        if (sessionType === "GOLDEN") {
-            if (goldenTicketExpiry <= Date.now() && goldenTickets > 0) {
-                setGoldenTickets(prev => prev - 1);
-                setGoldenTicketExpiry(Date.now() + (30 * 24 * 60 * 60 * 1000));
-                toast.success("Golden Ticket Activated!", { description: "You have 30 days of unlimited access." });
-            } else {
-                toast.success("Master Added", { description: "Added to your Golden Pass portfolio." });
-            }
-        } else if (sessionType === "TRIAL_7DAY") {
+        if (sessionType === "TRIAL_7DAY") {
             setHasUsed7DayTrial(true);
             toast.success("7-Day Free Trial Started!", { description: "Use it wisely. Copying active." });
         } else if (sessionType === "DAILY") {
@@ -1992,12 +2091,8 @@ export default function BridgeTradeApp() {
             {isClient && <Navbar
                 viewMode={viewMode} onSwitch={handleSwitchView}
                 wallet={walletBalance} status={accountStatus}
-                isLoggedIn={isLoggedIn} isVip={isUserVip}
-                goldenTickets={goldenTickets}
-                goldenTicketExpiry={goldenTicketExpiry}
-                goldenTicketStart={goldenTicketStart}
+                isLoggedIn={isLoggedIn}
                 onOpenSettings={() => requireAuth(() => setShowSettings(true))}
-                onOpenVIP={() => requireAuth(() => setShowVIP(true))}
                 onLogin={() => setShowLogin(true)}
                 onBecomeMaster={userRole === "FOLLOWER" ? () => requireAuth(handleBecomeMasterRequest) : undefined}
                 onOpenWallet={() => requireAuth(() => setShowWallet(true))}
@@ -2021,10 +2116,8 @@ export default function BridgeTradeApp() {
                             master={viewingProfile} onBack={() => setViewingProfile(null)} requireAuth={requireAuth}
                             isFav={favorites.includes(viewingProfile.id)} onToggleFav={() => handleToggleFavorite(undefined, viewingProfile.id)}
                             onStartCopy={startCopying} onStopCopy={stopCopying} isCopying={activeSessions.some(s => s.master.id === viewingProfile.id)}
-                            maxAlloc={walletBalance} isVip={isUserVip}
-                            userRole={userRole} onOpenVIP={() => requireAuth(() => setShowVIP(true))}
-                            goldenTickets={goldenTickets}
-                            isGoldenActive={goldenTicketExpiry > Date.now()}
+                            maxAlloc={walletBalance}
+                            userRole={userRole}
                             hasUsed7DayTrial={hasUsed7DayTrial}
                             accountStatus={accountStatus}
                             onOpenSettings={() => requireAuth(() => { setStartOnBroker(true); setShowSettings(true); })}
@@ -2035,13 +2128,13 @@ export default function BridgeTradeApp() {
                             requireAuth={requireAuth} onViewProfile={(master) => setViewingProfile(master)}
                             activeSessions={activeSessions} onStopCopy={stopCopying} onStartCopy={startCopying}
                             favorites={favorites} walletBalance={walletBalance}
-                            onOpenVIP={() => requireAuth(() => setShowVIP(true))}
-                            isVip={isUserVip} onStopAll={() => setShowStopAll(true)}
+                            onStopAll={() => setShowStopAll(true)}
                             dailyTicketUsed={dailyTicketUsed}
                             setDailyTicketUsed={setDailyTicketUsed} // ✅ Pass Setter
                             userRole={userRole}
                             onToggleFav={handleToggleFavorite}
                             hasUsed7DayTrial={hasUsed7DayTrial}
+                            setHasUsed7DayTrial={setHasUsed7DayTrial} // ✅ Added Prop
                             brokerAccount={brokerAccount}
                             masters={realMasters} // ✅ Pass State
                             masterProfile={masterProfile} // ✅ Pass Master Profile
@@ -2061,28 +2154,17 @@ export default function BridgeTradeApp() {
                             onBecomeMaster={handleBecomeMasterRequest}
                             followers={[]} // Using real data (empty initially)
                             brokerAccount={brokerAccount} // ✅ Pass Broker Account
-                            isVip={isUserVip} // ✅ Pass VIP Status
                         />
                 ) : null}
             </div>
 
-            {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setStartOnBroker(false); }} status={accountStatus} setStatus={setAccountStatus} role={userRole} setRole={setUserRole} setViewMode={setViewMode} onLogout={handleLogout} isVip={isUserVip} setIsVip={setIsUserVip} activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={setBrokerAccount} />}
+            {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setStartOnBroker(false); }} status={accountStatus} setStatus={setAccountStatus} role={userRole} setRole={setUserRole} setViewMode={setViewMode} onLogout={handleLogout}
+                activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={setBrokerAccount} />}
 
             {showActivationModal && <MasterActivationModal onClose={() => setShowActivationModal(false)} onConfirm={confirmActivation} />}
 
-            {showVIP && (
-                <VIPUpgradeModal
-                    onClose={() => setShowVIP(false)}
-                    onSuccess={() => {
-                        setIsUserVip(true);
-                        setGoldenTicketExpiry(Date.now() + (30 * 24 * 60 * 60 * 1000)); // 30 Days
-                        setGoldenTicketStart(Date.now()); // 🕒 Start Date
-                        setShowVIP(false);
-                        setDailyTicketUsed(false);
-                        toast.success("Welcome to VIP Club! 🌟", { description: "Unlimited Access Unlocked." });
-                    }}
-                />
-            )}
+            {showActivationModal && <MasterActivationModal onClose={() => setShowActivationModal(false)} onConfirm={confirmActivation} />}
+            {/* VIP Modal Removed */}
 
             {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLoginSuccess={() => { setIsLoggedIn(true); setShowLogin(false); }} />}
             {showStopAll && <StopAllModal onClose={() => setShowStopAll(false)} onConfirm={confirmStopAll} count={activeSessions.length} />}

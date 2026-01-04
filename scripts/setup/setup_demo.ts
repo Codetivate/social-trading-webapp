@@ -16,7 +16,6 @@ async function main() {
                 email: masterEmail,
                 name: "Master Trader 👑",
                 role: "MASTER",
-                isVip: true,
                 walletBalance: 10000,
             }
         });
@@ -26,18 +25,21 @@ async function main() {
     }
 
     // Ensure Master has a Broker Account
-    const masterBroker = await prisma.brokerAccount.upsert({
-        where: { userId: master.id },
-        update: { balance: 10000 },
-        create: {
-            userId: master.id,
-            login: "206872145", // Demo Login
-            server: "Exness-MT5Trial7",
-            password: "encrypted_pass",
-            balance: 10000,
-            status: "CONNECTED"
-        }
-    });
+    const existingMasterBroker = await prisma.brokerAccount.findFirst({ where: { userId: master.id } });
+    if (existingMasterBroker) {
+        await prisma.brokerAccount.update({ where: { id: existingMasterBroker.id }, data: { balance: 10000 } });
+    } else {
+        await prisma.brokerAccount.create({
+            data: {
+                userId: master.id,
+                login: "206872145",
+                server: "Exness-MT5Trial7",
+                password: "encrypted_pass",
+                balance: 10000,
+                status: "CONNECTED"
+            }
+        });
+    }
 
     // 2. Create/Find Follower
     const followerEmail = "follower@demo.com";
@@ -58,18 +60,21 @@ async function main() {
     }
 
     // Ensure Follower has a Broker Account
-    const followerBroker = await prisma.brokerAccount.upsert({
-        where: { userId: follower.id },
-        update: { balance: 1000 },
-        create: {
-            userId: follower.id,
-            login: "12345678", // Demo Follower Login
-            server: "Exness-MT5Trial7",
-            password: "encrypted_pass",
-            balance: 1000,
-            status: "CONNECTED"
-        }
-    });
+    const existingFollowerBroker = await prisma.brokerAccount.findFirst({ where: { userId: follower.id } });
+    if (existingFollowerBroker) {
+        await prisma.brokerAccount.update({ where: { id: existingFollowerBroker.id }, data: { balance: 1000 } });
+    } else {
+        await prisma.brokerAccount.create({
+            data: {
+                userId: follower.id,
+                login: "12345678",
+                server: "Exness-MT5Trial7",
+                password: "encrypted_pass",
+                balance: 1000,
+                status: "CONNECTED"
+            }
+        });
+    }
 
 
     // 3. Create Copy Session

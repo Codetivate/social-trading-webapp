@@ -105,22 +105,18 @@ def initialize_mt5():
 def follow_signals():
     print(f"[START] Broadcaster Started. Watching Trades for Master {MASTER_ID}...")
     
+    # 🔑 AUTHENTICATION: Fetch Master Credentials Once
+    master_creds = fetch_credentials() # Returns (login, password, server)
+    if not master_creds:
+        print("[ERROR] Could not fetch Master Credentials! Broadcaster cannot enforce account integrity.")
+        # We could retry or exit. Let's retry in loop? No, simplified: retry logic is needed.
+        # But for now, let's just proceed and try to fetch inside loop if needed? 
+        # Safer to just wait for valid creds.
+        pass 
+
     # Store position snapshots: { ticket: { sl, tp, volume, price } }
     known_positions = {}
-    
-    # Initial sync
-    initial_positions = mt5.positions_get()
-    if initial_positions:
-        for p in initial_positions:
-            known_positions[p.ticket] = {
-                "sl": p.sl,
-                "tp": p.tp,
-                "price": p.price_open,
-                "tp": p.tp,
-                "price": p.price_open,
-                "volume": p.volume,
-                "symbol": p.symbol # Store symbol for Close events
-            }
+    is_first_run = True
 
     poll_interval = POLL_INTERVAL # Local var from Global Config
     last_equity_report = 0
@@ -128,6 +124,36 @@ def follow_signals():
 
     while True:
         try:
+            # 🛡️ TERMINAL MUTEX CHECK
+            # Before accessing MT5 or checking login, ensure we are not interrupting an Executor
+            mt5_path = args.mt5_path if args.mt5_path else os.getenv("MT5_PATH", "")
+            
+            # 🔒 ROBUST LOCKING: Even if path is invalid/empty, we share the "default" terminal.
+            # We must sync on a common key.
+            lock_seed = mt5_path if mt5_path else "default"
+            
+            if r_client:
+                import hashlib
+                path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
+                lock_key = f"lock:terminal:{path_hash}"
+                lock_owner = r_client.get(lock_key)
+                
+                # If Locked by SOMEONE ELSE (e.g., Executor), we MUST PAUSE.
+                # We identify ourselves by USER_ID (Broadcaster ID) vs Executor ID.
+                # Actually, Executor uses ITS UserID as the lock value.
+                if lock_owner and lock_owner != USER_ID:
+                    # Allow a grace period of "read-only" checks if we are on the right account?
+                    # NO. If Executor is active, it might be switching accounts. We must NOT touch ANY MT5 function that might interfere.
+                    # Or at least, definitely DO NOT LOGIN.
+                    
+                    # But we simply want to check if we are connected.
+                    # If we are strictly passive, maybe we can read? 
+                    # Use caution. Most MT5 commands are thread-unsafe if account is switching.
+                    # Safest is to spin-wait.
+                    # print(f"[WAIT] Terminal locked by Executor {lock_owner}. Pausing Broadcaster...") # Verbose
+                    time.sleep(0.5)
+                    continue
+
             # 🛡️ CONNECTION GUARD: Prevent "False Closes" if terminal disconnects
             # If terminal is disconnected, positions_get() might return empty or stale data.
             # We must NOT signal closes if we are not connected.
@@ -139,8 +165,27 @@ def follow_signals():
                 time.sleep(1)
                 continue
 
+            # 🛡️ ACCOUNT INTEGRITY CHECK (Critical for Shared Terminal)
+            # Ensure we are logged in as the MASTER, not the Follower
+            # We use a "Sandwich" check to detect if Executor switched account MID-READ.
+            start_info = mt5.account_info()
+            if master_creds:
+                 target_login = master_creds[0]
+                 if not start_info or start_info.login != target_login:
+                     print(f"[WARN] Account Drift (Pre-Check)! Active: {start_info.login if start_info else 'None'}, Target: {target_login}. Re-asserting Login...")
+                     mt5.login(login=target_login, password=master_creds[1], server=master_creds[2])
+                     time.sleep(0.5)
+                     continue 
+
             # 1. Get Current Open Positions
             current_positions_tuple = mt5.positions_get()
+            
+            # 🛡️ POST-READ INTEGRITY CHECK
+            end_info = mt5.account_info()
+            if not end_info or end_info.login != target_login:
+                print(f"[WARN] Race Condition Detected! Account switched during scan. Discarding dirty data.")
+                continue # Discard current_positions_tuple as it implies it might be from Follower
+
             
             if current_positions_tuple is None:
                 if mt5.last_error()[0] != 1: # 1 = Success
@@ -151,6 +196,25 @@ def follow_signals():
             current_positions = list(current_positions_tuple)
             current_tickets = {p.ticket for p in current_positions}
             
+            # --- 0. INITIAL SYNC (Guarded) ---
+            if is_first_run:
+                print(f"[INFO] Initial Sync (Guarded). Found {len(current_positions)} positions.")
+                for p in current_positions:
+                     # 🛡️ SAFETY: Ignore trades opened by the Executor (Magic 234000)
+                    if p.magic == 234000: continue
+                    known_positions[p.ticket] = {
+                        "sl": p.sl,
+                        "tp": p.tp,
+                        "price": p.price_open,
+                        "volume": p.volume,
+                        "symbol": p.symbol,
+                        "type": "BUY" if p.type == 0 else "SELL"
+                    }
+                is_first_run = False
+                # Skip signal generation for this tick
+                time.sleep(poll_interval)
+                continue
+
             # --- A. CHECK FOR NEW POSITIONS ---
             for pos in current_positions:
                 # 🛡️ SAFETY: Ignore trades opened by the Executor (Magic 234000) to avoid Infinite Loop
@@ -371,6 +435,7 @@ def send_signal(payload):
 
 if __name__ == "__main__":
     print("Hydra Master Bridge v2.1 (OTP Support)")
-    initialize_mt5()
+    # Passive attach only to load DLL. Login is handled in main loop (guarded).
+    mt5.initialize() 
     follow_signals()
 

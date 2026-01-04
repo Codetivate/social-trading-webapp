@@ -22,7 +22,6 @@ async function main() {
         update: {
             name: "Master Nes 👑",
             role: "MASTER",
-            isVip: true,
             masterProfile: {
                 upsert: {
                     create: { name: "Master Nes 👑", monthlyFee: 50, roi: 125.5, followersCount: 120 },
@@ -35,7 +34,6 @@ async function main() {
             email: "master.nes@demo.com",
             name: "Master Nes 👑",
             role: "MASTER",
-            isVip: true,
             walletBalance: 5000,
             masterProfile: {
                 create: { name: "Master Nes 👑", monthlyFee: 50, roi: 125.5, followersCount: 120 }
@@ -43,17 +41,13 @@ async function main() {
         }
     });
 
-    // 2. Upsert Broker Account for Master
-    await prisma.brokerAccount.upsert({
-        where: { userId: masterId },
-        update: { ...masterCreds, balance: 10000, status: "CONNECTED" },
-        create: {
-            userId: masterId,
-            ...masterCreds,
-            balance: 10000,
-            status: "CONNECTED"
-        }
-    });
+    // 2. Updated Broker Account for Master
+    const existingMasterBroker = await prisma.brokerAccount.findFirst({ where: { userId: masterId } });
+    if (existingMasterBroker) {
+        await prisma.brokerAccount.update({ where: { id: existingMasterBroker.id }, data: { ...masterCreds, balance: 10000, status: "CONNECTED" } });
+    } else {
+        await prisma.brokerAccount.create({ data: { userId: masterId, ...masterCreds, balance: 10000, status: "CONNECTED" } });
+    }
 
 
     // --- FOLLOWER SETUP ---
@@ -84,16 +78,12 @@ async function main() {
     });
 
     // 2. Upsert Broker Account for Follower
-    await prisma.brokerAccount.upsert({
-        where: { userId: followerId },
-        update: { ...followerCreds, balance: 2000, status: "CONNECTED" },
-        create: {
-            userId: followerId,
-            ...followerCreds,
-            balance: 2000,
-            status: "CONNECTED"
-        }
-    });
+    const existingFollowerBroker = await prisma.brokerAccount.findFirst({ where: { userId: followerId } });
+    if (existingFollowerBroker) {
+        await prisma.brokerAccount.update({ where: { id: existingFollowerBroker.id }, data: { ...followerCreds, balance: 2000, status: "CONNECTED" } });
+    } else {
+        await prisma.brokerAccount.create({ data: { userId: followerId, ...followerCreds, balance: 2000, status: "CONNECTED" } });
+    }
 
 
     // --- COPY SESSION ---
@@ -109,7 +99,7 @@ async function main() {
                 masterId,
                 allocation: 1000,
                 riskFactor: 1.0,
-                type: "VIP",
+                type: "PAID",
                 isActive: true
             }
         });

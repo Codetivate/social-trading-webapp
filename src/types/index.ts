@@ -1,6 +1,6 @@
 export type UserRole = "FOLLOWER" | "MASTER";
 export type AccountStatus = "CONNECTED" | "ERROR" | "DISCONNECTED";
-export type SessionType = "DAILY" | "TRIAL_7DAY" | "GOLDEN" | "PAID" | "VIP";
+export type SessionType = "DAILY" | "TRIAL_7DAY" | "PAID";
 
 export interface Master {
     id: number;
@@ -14,21 +14,20 @@ export interface Master {
     riskReward?: number; // ✅ New
     pnlText: string;
     followers: number;
-    aum: number; // ✅ Added AUM
+    aum?: number; // ✅ Added AUM
     balance: number;
     risk: number;
     drawdown: number;
     profitFactor: number;
     avatar: string;
-    isVip: boolean;
     desc: string;
     tags: string[];
     joined: string;
     currentOrders: Order[];
     monthlyFee: number;
-    minDeposit: number; // ✅ Added
+    minDeposit?: number; // ✅ Added
     isPremium: boolean;
-    isPublic: boolean; // ✅ Added
+    isPublic?: boolean; // ✅ Added
 }
 
 export interface Order {

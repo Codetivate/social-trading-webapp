@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic'; // ⚡ FORCE NO CACHING
+export const revalidate = 0;
+
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
@@ -18,6 +21,45 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = session.user.id;
+
+        // 🛡️ VERIFY CREDENTIALS (Python Script)
+        // Spawn a python process to check connection nicely
+        try {
+            const { spawn } = require('child_process');
+            const pythonProcess = spawn('python', [
+                'src/engine/verify.py',
+                '--login', login,
+                '--password', password,
+                '--server', server
+            ]);
+
+            const verificationResult: any = await new Promise((resolve) => {
+                let dataString = '';
+                pythonProcess.stdout.on('data', (data: any) => {
+                    dataString += data.toString();
+                });
+
+                pythonProcess.on('close', (code: number) => {
+                    try {
+                        resolve(JSON.parse(dataString));
+                    } catch (e) {
+                        // Fallback for non-JSON output
+                        resolve({ success: code === 0, error: "Validation Script Failed" });
+                    }
+                });
+            });
+
+            if (!verificationResult.success) {
+                return NextResponse.json({
+                    error: `Broker Connection Failed: ${verificationResult.error || 'Unknown Error'}`
+                }, { status: 400 });
+            }
+
+        } catch (e) {
+            console.error("Verification Spawn Failed:", e);
+            // Optional: allow bypass if script fails? No, stricter is better.
+            return NextResponse.json({ error: "Verification Service Unavailable" }, { status: 500 });
+        }
 
         // Check for existing account
         const existing = await prisma.brokerAccount.findFirst({
@@ -58,12 +100,20 @@ export async function POST(req: NextRequest) {
 }
 export async function GET(req: NextRequest) {
     try {
-        const secret = req.headers.get("x-bridge-secret");
-        const userId = req.headers.get("x-user-id");
+        // A. AUTH METHOD 1: USER SESSION (Frontend)
+        const session = await auth();
+        let userId = session?.user?.id;
 
-        // 1. Validate Secret (Simple API Key for now)
-        if (secret !== process.env.BROKER_SECRET) {
-            return NextResponse.json({ error: "Invalid Bridge Secret" }, { status: 403 });
+        // B. AUTH METHOD 2: BRIDGE SECRET (Engine)
+        if (!userId) {
+            const secret = req.headers.get("x-bridge-secret");
+            const bridgeUserId = req.headers.get("x-user-id");
+
+            if (secret === process.env.BROKER_SECRET && bridgeUserId) {
+                userId = bridgeUserId;
+            } else {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            }
         }
 
         if (!userId) {
@@ -76,15 +126,21 @@ export async function GET(req: NextRequest) {
             select: {
                 server: true,
                 login: true,
-                password: true // ⚠️ Sending password to trusted local bridge only
+                password: true, // ⚠️ Sending password to trusted local bridge only
             }
+        });
+
+        // 2. Fetch Active Sessions (for Real-Time UI UI)
+        const activeSessions = await prisma.copySession.findMany({
+            where: { followerId: userId, isActive: true },
+            select: { id: true, masterId: true, type: true, expiry: true }
         });
 
         if (!account) {
             return NextResponse.json({ error: "No Broker Account Found" }, { status: 404 });
         }
 
-        return NextResponse.json(account);
+        return NextResponse.json({ ...account, activeSessions });
     } catch (error) {
         console.error("Bridge fetch error:", error);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });

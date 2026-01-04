@@ -26,9 +26,7 @@ enum AccountStatus {
 enum SessionType {
   DAILY
   TRIAL_7DAY
-  GOLDEN
   PAID
-  VIP
 }
 
 enum MasterTier {
@@ -80,11 +78,6 @@ model User {
   emailVerified DateTime?
   kycStatus     KycStatus @default(NOT_SUBMITTED)
   kycData       UserKYC? // One-to-One sensitive data separation
-
-  // 🎫 Feature Flags
-  isVip              Boolean   @default(false)
-  goldenTickets      Int       @default(0)
-  goldenTicketExpiry DateTime?
 
   // 💰 Wallet & Finance
   walletBalance Float               @default(0)
@@ -238,6 +231,12 @@ model MasterProfile {
   followersCount Int   @default(0)
   aum            Float @default(0)
 
+  // 📈 Business Tier Limits
+  tier           MasterTier @default(ROOKIE)
+  followersLimit Int        @default(10) // Default Rookie Limit
+  aumLimit       Float      @default(50000) // Default Rookie Limit
+  gpShare        Float      @default(20) // 20% Profit Split
+
   // Plan
   monthlyFee Float @default(0)
   minDeposit Float @default(10)
@@ -259,6 +258,11 @@ model FollowerProfile {
   joinedAt DateTime @default(now())
 }
 
+enum ExecutionLane {
+  STANDARD // 🚌 Batch Queue (Free)
+  TURBO // 🏎️ Dedicated Worker (Paid)
+}
+
 // 🤝 COPY SESSIONS (Renamed from Session)
 model CopySession {
   id         Int    @id @default(autoincrement())
@@ -277,11 +281,20 @@ model CopySession {
   isTrial Boolean     @default(false)
   expiry  DateTime? // For Trial/Golden
 
+  // ⚡ DISRUPTIVE ARCHITECTURE
+  executionLane ExecutionLane @default(STANDARD) // Dynamic Allocation
+  shardId       Int           @default(0) // For Batch Processing (0-9)
+
+  // ⚙️ ADVANCED SETTINGS
+  autoRenew  Boolean @default(true) // ✅ Default Auto-Renew
+  timeConfig Json? // 🕒 Trading Hours { mode: "24/7" | "LONDON" | "CUSTOM", start: "09:00", end: "17:00" }
+
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   @@index([followerId])
   @@index([masterId])
+  @@index([executionLane, shardId]) // 🔥 Performance Index for Hydra
 }
 
 // 📊 REAL-TIME ORDER POSITIONS
@@ -469,10 +482,6 @@ model UserPromotion {
   id     String @id @default(uuid())
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // VIP Logic
-  isVipActive Boolean   @default(false)
-  vipExpiry   DateTime?
 
   // Welcome Ticket (7-Day Trial)
   welcomeUsed      Boolean   @default(false)

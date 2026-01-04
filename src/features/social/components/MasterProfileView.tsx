@@ -22,28 +22,28 @@ interface MasterProfileViewProps {
     // Removing isPreview
     isFav?: boolean;
     onToggleFav?: () => void;
-    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType) => void;
+    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => void;
     onStopCopy: (id: number) => void;
     isCopying?: boolean;
     maxAlloc?: number;
-    isVip?: boolean;
-    activeCount?: number;
     userRole?: UserRole;
-    onOpenVIP?: () => void;
-    goldenTickets?: number;
-    isGoldenActive?: boolean;
     hasUsed7DayTrial?: boolean;
     accountStatus?: AccountStatus;
     onOpenSettings?: () => void;
     dailyTicketUsed?: boolean;
 }
 
-export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, isVip, isGoldenActive, hasUsed7DayTrial, userRole, onOpenVIP, goldenTickets = 0, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
+export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, hasUsed7DayTrial, userRole, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
     const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
     const [allocation, setAllocation] = useState<number | string>(1000);
     const [selectedSessionType, setSelectedSessionType] = useState<SessionType>("DAILY");
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false);
+
+    // ⚙️ Advanced Settings State (Lifted)
+    const [autoRenew, setAutoRenew] = useState(true); // Default ON
+    const [timeConfig, setTimeConfig] = useState<any>({ mode: "24/7", start: "09:00", end: "17:00" }); // Default 24/7
+
     const [resolvedUserId, setResolvedUserId] = useState<string | null>(master.masterUserId || master.userId || null);
 
     useEffect(() => {
@@ -59,7 +59,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
     }, [master]);
 
     const isPremium = master.monthlyFee > 0;
-    const canUse7DayTrial = isPremium && !hasUsed7DayTrial && !isGoldenActive && !isVip;
+    const canUse7DayTrial = isPremium && !hasUsed7DayTrial;
 
     const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; title: string; message: string; type: "info" | "danger" | "success" | "warning"; onConfirm: () => void }>({ isOpen: false, title: "", message: "", type: "info", onConfirm: () => { } });
 
@@ -87,12 +87,6 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                 return;
             }
 
-            if (isGoldenActive || isVip) {
-                setSelectedSessionType("GOLDEN");
-                requireAuth(() => setSafetyModalOpen(true));
-                return;
-            }
-
             if (isPremium) {
                 if (canUse7DayTrial) {
                     openConfirm(
@@ -106,17 +100,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                         "success"
                     );
                 } else {
-                    openConfirm(
-                        "💰 Premium Access Required",
-                        `Subscription Required: $${master.monthlyFee}/month\n\nOr Unlock VIP to copy for FREE!`,
-                        () => {
-                            if (onOpenVIP) {
-                                onOpenVIP();
-                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                            }
-                        },
-                        "warning"
-                    );
+                    toast.error("Premium Access Required", { description: "You need a subscription to copy this master." });
                 }
                 return;
             }
@@ -159,7 +143,6 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                     <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                             <h1 className="text-3xl font-bold tracking-tight">{master.name}</h1>
-                            {master.isVip && <Badge variant="default" className="bg-blue-600 hover:bg-blue-700"><ShieldCheck className="w-3 h-3 mr-1" /> Verified</Badge>}
                             {master.type === "AI_BOT" && <Badge variant="secondary" className="gap-1"><Bot className="w-3 h-3" /> AI System</Badge>}
                             {!master.isPublic && <Badge variant="destructive" className="gap-1">Private</Badge>}
                         </div>
@@ -212,22 +195,10 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
 
                 {/* 2. TRADER ANALYSIS DASHBOARD (FTMO Style) */}
                 <div className="min-h-[500px]">
-                    {resolvedUserId ? (
-                        <TraderAnalysisDashboard
-                            masterId={resolvedUserId}
-                            isOwnProfile={master.id === 0}
-                        />
-                    ) : (
-                        <div className="h-96 flex flex-col items-center justify-center text-muted-foreground bg-white/5 rounded-2xl border border-dashed border-white/10 glass-panel">
-                            <div className="animate-spin mb-4 text-neon-purple">
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                </svg>
-                            </div>
-                            <p className="font-mono text-sm">Initializing Data Feed...</p>
-                        </div>
-                    )}
+                    <TraderAnalysisDashboard
+                        masterId={resolvedUserId || ""}
+                        isOwnProfile={master.id === 0}
+                    />
                 </div>
 
             </div>
@@ -239,16 +210,13 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                         <Button
                             size="lg"
                             className={`w-full md:w-auto font-bold shadow-lg ${isCopying ? "bg-red-600 hover:bg-red-700 text-white" :
-                                isGoldenActive ? "bg-amber-400 hover:bg-amber-500 text-black" :
-                                    canUse7DayTrial ? "bg-purple-600 hover:bg-purple-700 text-white" :
-                                        "bg-primary hover:bg-primary/90"
+                                canUse7DayTrial ? "bg-purple-600 hover:bg-purple-700 text-white" :
+                                    "bg-primary hover:bg-primary/90"
                                 }`}
                             onClick={handleCopyAction}
                         >
                             {isCopying ? (
                                 <>Stop Copying</>
-                            ) : isGoldenActive ? (
-                                <><Ticket className="mr-2 h-4 w-4" /> Use Golden Ticket</>
                             ) : canUse7DayTrial ? (
                                 <><Sparkles className="mr-2 h-4 w-4" /> Start 7-Day Trial</>
                             ) : (
@@ -261,22 +229,28 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
 
             {safetyModalOpen && (
                 <SafetyGuardModal
-                    risk={aiGuardRisk}
-                    setRisk={setAiGuardRisk}
-                    allocation={allocation}
-                    setAllocation={setAllocation}
+                    initialRisk={aiGuardRisk}
+                    initialAllocation={allocation}
+                    maxAlloc={maxAlloc || 0}
+                    initialAutoRenew={autoRenew}
+                    initialTimeConfig={timeConfig}
+                    initialUseWelcome={useWelcomeTicket}
+                    showWelcomeOption={!hasUsed7DayTrial && selectedSessionType === "DAILY"}
                     onClose={() => setSafetyModalOpen(false)}
-                    onConfirm={() => {
-                        const finalType = (selectedSessionType === "DAILY" && useWelcomeTicket) ? "TRIAL_7DAY" : selectedSessionType;
-                        onStartCopy(master, Number(allocation), aiGuardRisk, finalType);
+                    onConfirm={(data) => {
+                        // Persist preferences locally if needed
+                        setAiGuardRisk(data.risk);
+                        setAllocation(data.allocation);
+                        setAutoRenew(data.autoRenew);
+                        setTimeConfig(data.timeConfig);
+
+                        const finalType = (selectedSessionType === "DAILY" && data.useWelcome) ? "TRIAL_7DAY" : selectedSessionType;
+                        onStartCopy(master, data.allocation, data.risk, finalType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
+
                         setSafetyModalOpen(false);
                         setUseWelcomeTicket(false);
                         onBack();
                     }}
-                    maxAlloc={maxAlloc || 0}
-                    showWelcomeOption={!isVip && !hasUsed7DayTrial && selectedSessionType === "DAILY"}
-                    useWelcome={useWelcomeTicket}
-                    setUseWelcome={setUseWelcomeTicket}
                 />
             )}
 

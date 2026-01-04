@@ -14,8 +14,7 @@ const MASTERS_DATA = [
         drawdown: 5.5,
         riskScore: 2,
         followers: 1250,
-        fee: 0,
-        isVip: true
+        fee: 0
     },
     {
         email: "gold_hunter@hydra.bot",
@@ -29,7 +28,6 @@ const MASTERS_DATA = [
         riskScore: 8,
         followers: 890,
         fee: 50, // $50/mo
-        isVip: true
     },
     {
         email: "master_keng@hydra.com",
@@ -42,8 +40,7 @@ const MASTERS_DATA = [
         drawdown: 18.2,
         riskScore: 6,
         followers: 5420,
-        fee: 100,
-        isVip: true
+        fee: 100
     },
     {
         email: "crypto_whale@hydra.com",
@@ -56,8 +53,7 @@ const MASTERS_DATA = [
         drawdown: 35.0,
         riskScore: 9,
         followers: 3200,
-        fee: 200,
-        isVip: false
+        fee: 200
     }
 ];
 
@@ -82,7 +78,6 @@ async function main() {
                 name: master.name,
                 avatar: master.avatar,
                 role: UserRole.MASTER,
-                isVip: master.isVip,
                 kycStatus: "APPROVED"
             }
         });

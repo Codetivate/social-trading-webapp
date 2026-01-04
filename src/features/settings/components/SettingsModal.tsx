@@ -17,8 +17,6 @@ interface SettingsModalProps {
     setRole: (role: UserRole) => void;
     setViewMode: (mode: UserRole) => void;
     onLogout: () => void;
-    isVip: boolean;
-    setIsVip: (isVip: boolean) => void;
     activeSessions: CopySession[];
     onStopAll: () => void;
     profile: MasterProfile;
@@ -31,7 +29,7 @@ interface SettingsModalProps {
     onConnectionSuccess?: (account: any) => void;
 }
 
-export function SettingsModal({ onClose, status, setStatus, role, setRole, setViewMode, onLogout, isVip, setIsVip, activeSessions, onStopAll, profile, setProfile, onRequestActivation, openConfirm, defaultShowBroker = false, user, brokerAccount, onConnectionSuccess }: SettingsModalProps) {
+export function SettingsModal({ onClose, status, setStatus, role, setRole, setViewMode, onLogout, activeSessions, onStopAll, profile, setProfile, onRequestActivation, openConfirm, defaultShowBroker = false, user, brokerAccount, onConnectionSuccess }: SettingsModalProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"ACCOUNT" | "PROFILE">("ACCOUNT");
 
@@ -164,7 +162,10 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                 body: JSON.stringify({ server: serverToUse, login: loginId, password })
             });
 
-            if (!res.ok) throw new Error("Failed to connect");
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to connect");
+            }
 
             toast.success("Broker Connected", { id: toastId, description: "Your MT5 account has been linked successfully." });
             setStatus("CONNECTED");
@@ -186,7 +187,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
             router.refresh(); // Refresh server data
         } catch (error) {
             toast.dismiss(); // dismiss loading toast if active
-            toast.error("Connection Failed", { description: "Could not connect to broker server." });
+            toast.error("Connection Failed", { description: error instanceof Error ? error.message : "Could not connect to broker server." });
         } finally {
             setIsConnecting(false);
         }
@@ -436,15 +437,8 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                                 )}
                             </div>
 
-                            {/* 🛠️ DEV TOOL: VIP Toggle */}
                             <div className="pt-4 mt-2 border-t border-white/5 flex items-center justify-between">
-                                <span className="text-[10px] text-gray-500 flex items-center gap-2"><Crown size={12} /> [Dev] Simulate VIP</span>
-                                <div
-                                    className={`w-10 h-5 rounded-full relative transition-colors cursor-pointer ${isVip ? "bg-yellow-500" : "bg-gray-700"}`}
-                                    onClick={() => setIsVip(!isVip)}
-                                >
-                                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all shadow-sm ${isVip ? "left-6" : "left-1"}`}></div>
-                                </div>
+                                {/* Dev Tool Removed */}
                             </div>
                         </>
                     ) : (

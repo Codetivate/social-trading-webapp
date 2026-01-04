@@ -7,7 +7,6 @@ export async function GET() {
             include: {
                 user: {
                     select: {
-                        isVip: true,
                         createdAt: true
                     }
                 }
@@ -29,7 +28,7 @@ export async function GET() {
             drawdown: p.drawdown,
             profitFactor: 1.5, // Placeholder
             avatar: p.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${p.name}`,
-            isVip: p.user.isVip,
+            isVip: false, // Removed from DB, defaulting to false or remove prop entirely if Frontend allows
             desc: p.desc || "No description provided.",
             tags: p.tags,
             joined: new Date(p.createdAt).getFullYear().toString(),

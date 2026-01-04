@@ -62,7 +62,6 @@ async function main() {
                 email: m.email,
                 image: m.avatar,
                 role: 'MASTER',
-                isVip: true,
                 masterProfile: {
                     create: {
                         name: m.name,
@@ -92,14 +91,12 @@ async function main() {
             email: 'user@example.com',
             role: 'FOLLOWER',
             image: 'https://api.dicebear.com/9.x/notionists/svg?seed=Felix',
-            goldenTickets: 3,
             walletBalance: 10000,
             // @ts-ignore: Schema update pending
             userPromotion: {
                 create: {
                     welcomeUsed: false,
                     dailyUsed: false,
-                    isVipActive: false
                 }
             }
         }

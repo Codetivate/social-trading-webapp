@@ -13,31 +13,22 @@ interface NavbarProps {
     wallet: number;
     status: AccountStatus;
     isLoggedIn?: boolean; // Optional now
-    isVip: boolean;
-    goldenTickets: number;
-    goldenTicketExpiry: number;
-    goldenTicketStart?: number;
-    onLogin: () => void;
     onOpenSettings: () => void;
-    onOpenVIP: () => void;
+    onLogin: () => void;
     onBecomeMaster?: () => void;
     onOpenWallet?: () => void;
 }
 
-export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIsLoggedIn, isVip, goldenTickets, goldenTicketExpiry, goldenTicketStart, onLogin, onOpenSettings, onOpenVIP, onBecomeMaster, onOpenWallet }: NavbarProps) {
+export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIsLoggedIn, onLogin, onOpenSettings, onBecomeMaster, onOpenWallet }: NavbarProps) {
     const { data: session } = useSession();
     const isAuthenticated = !!session || propsIsLoggedIn;
 
     const [daysLeft, setDaysLeft] = useState(0);
-    const [isGoldenActive, setIsGoldenActive] = useState(false);
+
 
     useEffect(() => {
-        const isActive = goldenTicketExpiry > Date.now();
-        setIsGoldenActive(isActive);
-        if (isActive) {
-            setDaysLeft(Math.ceil((goldenTicketExpiry - Date.now()) / (1000 * 60 * 60 * 24)));
-        }
-    }, [goldenTicketExpiry]);
+        // Logic for daysLeft removed as VIP is gone
+    }, []);
 
     return (
         <nav className="fixed top-0 w-full z-40 glass-panel pt-3 pb-3 px-4">
@@ -70,49 +61,14 @@ export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIs
                         <>
 
 
-                            {goldenTickets > 0 && !isGoldenActive && !isVip && (
-                                <div className="hidden sm:flex items-center gap-1 bg-yellow-500/10 text-yellow-400 px-2 py-1 rounded-full border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-                                    <Ticket size={12} fill="currentColor" />
-                                    <span className="text-[10px] font-bold">{goldenTickets}</span>
-                                </div>
-                            )}
-                            {(isGoldenActive || isVip) && (
-                                <div className="hidden sm:flex items-center gap-2 group relative cursor-help">
-                                    <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 px-2.5 py-1 rounded-full border border-yellow-500/30 glow-purple">
-                                        <Clock size={12} />
-                                        <span className="text-[10px] font-bold">{isVip ? "VIP Active" : `${daysLeft}d left`}</span>
-                                    </div>
-                                    <div className="absolute top-full right-0 mt-2 w-48 glass-panel rounded-xl p-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                        <p className="text-[10px] text-gray-500 uppercase font-bold mb-2 flex items-center gap-1"><Ticket size={10} className="text-yellow-500" /> Golden Ticket Period</p>
-                                        <div className="space-y-1">
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-gray-400">Start:</span>
-                                                <span className="text-white font-mono">{goldenTicketStart ? formatDateTime(goldenTicketStart) : "-"}</span>
-                                            </div>
-                                            <div className="flex justify-between text-xs">
-                                                <span className="text-gray-400">End:</span>
-                                                <span className="text-white font-mono">{goldenTicketExpiry ? formatDateTime(goldenTicketExpiry) : "Unlimited"}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
 
                             <div onClick={onOpenSettings} className="cursor-pointer relative group">
-                                <Avatar className={`h-8 w-8 transition-all duration-300 ${isGoldenActive || isVip
-                                    ? "ring-2 ring-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.6)] scale-105"
-                                    : "ring-2 ring-white/10 hover:ring-neon-cyan shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-                                    }`}>
+                                <Avatar className={`h-8 w-8 transition-all duration-300 ring-2 ring-white/10 hover:ring-neon-cyan shadow-[0_0_15px_rgba(6,182,212,0.3)]`}>
                                     <AvatarImage src={session?.user?.image || ""} />
                                     <AvatarFallback className="bg-space text-white">{session?.user?.name?.[0] || "U"}</AvatarFallback>
                                 </Avatar>
-                                {(isGoldenActive || isVip) && (
-                                    <div className="absolute -top-1.5 -right-1.5 bg-gradient-to-br from-yellow-300 to-yellow-600 rounded-full p-0.5 shadow-lg border border-white/20 animate-in zoom-in spin-in-3">
-                                        <div className="bg-black/20 rounded-full p-[2px]">
-                                            <Crown size={8} className="text-white fill-yellow-200" />
-                                        </div>
-                                    </div>
-                                )}
+
                             </div>
 
                         </>
