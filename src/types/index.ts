@@ -28,6 +28,7 @@ export interface Master {
     minDeposit?: number; // ✅ Added
     isPremium: boolean;
     isPublic?: boolean; // ✅ Added
+    tier?: string; // ✅ Added
 }
 
 export interface Order {
@@ -76,4 +77,7 @@ export interface MasterProfile {
     monthlyFee: number;
     minDeposit?: number; // ✅ Added
     isPublic?: boolean; // ✅ Added
+    winRate?: number; // ✅ User Configurable (or dynamic)
+    roi?: number; // ✅ User Configurable (or dynamic)
+    riskReward?: number; // ✅ User Configurable (or dynamic)
 }

@@ -66,6 +66,9 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
                 avatar: data.avatar,
                 tags: data.tags,
                 monthlyFee: data.monthlyFee,
+                minDeposit: data.minDeposit, // ✅ Added
+                winRate: data.winRate, // ✅ Added
+                roi: data.roi, // ✅ Added
                 isPublic: data.isPublic // ✅ Save Visibility
             },
             create: {
@@ -75,8 +78,9 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
                 avatar: data.avatar || "",
                 tags: data.tags || [],
                 monthlyFee: data.monthlyFee || 0,
-                roi: 0,
-                winRate: 0,
+                minDeposit: data.minDeposit || 10,
+                roi: data.roi || 0,
+                winRate: data.winRate || 0,
                 drawdown: 0,
                 followersCount: 0,
             }
@@ -169,7 +173,7 @@ export async function activateMasterAccount(userId: string, fee: number) {
     }
 }
 
-// --- ⬇️ DOWNGRADE TO FOLLOWER ---
+
 // --- ⬇️ DOWNGRADE TO FOLLOWER ---
 export async function downgradeMaster(userId: string) {
     if (!userId) return { success: false, error: 'User ID required' };

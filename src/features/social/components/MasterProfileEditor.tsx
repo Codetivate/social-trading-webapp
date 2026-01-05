@@ -44,6 +44,11 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
     const [tags, setTags] = useState<string[]>(profile.tags);
     const [tagInput, setTagInput] = useState("");
     const [fee, setFee] = useState<number | string>(profile.monthlyFee);
+    const [minDeposit, setMinDeposit] = useState<number | string>(profile.minDeposit || 10);
+    const [winRate, setWinRate] = useState<number | string>(profile.winRate || 0);
+    const [roi, setRoi] = useState<number | string>(profile.roi || 0);
+    const [riskReward, setRiskReward] = useState<number | string>(profile.riskReward || 0);
+
     const [isPaid, setIsPaid] = useState(profile.monthlyFee > 0);
     const [isPublic, setIsPublic] = useState(profile.isPublic ?? true);
     const [isSaving, setIsSaving] = useState(false); // ✅ Saving State
@@ -90,13 +95,27 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
     const handleSave = async () => {
         setIsSaving(true);
+        if (!profile.userId) {
+            toast.error("Save Failed", { description: "User ID is missing." });
+            setIsSaving(false);
+            return;
+        }
+
+        const safeFee = isNaN(Number(fee)) ? 0 : Number(fee);
+        const safeMinDeposit = isNaN(Number(minDeposit)) ? 10 : Number(minDeposit);
+        const safeWinRate = isNaN(Number(winRate)) ? 0 : Number(winRate);
+        const safeRoi = isNaN(Number(roi)) ? 0 : Number(roi);
+
         const updatedProfile = {
             ...profile,
             name,
             desc,
             tags,
             avatar: avatar,
-            monthlyFee: Number(fee),
+            monthlyFee: safeFee,
+            minDeposit: safeMinDeposit,
+            winRate: safeWinRate,
+            roi: safeRoi,
             isPublic: isPublic
         };
 
@@ -105,11 +124,17 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
         // 2. Server Persistence
         const res = await updateMasterProfile(profile.userId, {
-            name, desc, tags, avatar, monthlyFee: Number(fee), isPublic
+            name, desc, tags, avatar,
+            monthlyFee: safeFee,
+            minDeposit: safeMinDeposit,
+            winRate: safeWinRate,
+            roi: safeRoi,
+            isPublic
         });
 
         if (res.success) {
             toast.success("Profile Updated", { description: "Your changes have been saved." });
+            window.location.reload(); // 🔨 Force full reload to ensure image cleanup & fetch
             onClose();
         } else {
             toast.error("Save Failed", { description: res.error });
@@ -143,30 +168,8 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
             <div className="space-y-2"><label className="text-xs text-gray-400">Display Name</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none" /></div>
 
-            {/* 🔒 PRIVACY SETTING */}
-            <div className="space-y-2">
-                <label className="text-xs text-gray-400 font-bold uppercase">Profile Visibility</label>
-                <div className={`p-4 rounded-xl border flex items-center justify-between transition-colors ${isPublic ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${isPublic ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                            {isPublic ? <Eye size={20} /> : <EyeOff size={20} />}
-                        </div>
-                        <div>
-                            <h4 className={`text-sm font-bold ${isPublic ? 'text-green-400' : 'text-red-400'}`}>{isPublic ? "Public Profile" : "Private Mode"}</h4>
-                            <p className="text-[10px] text-gray-400">{isPublic ? "Visible to everyone. Copiers allowed." : "Hidden from lists. Copying disabled."}</p>
-                        </div>
-                    </div>
-                    <button
-                        onClick={togglePrivacy}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${isPublic ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'}`}
-                    >
-                        {isPublic ? "Set Private" : "Set Public"}
-                    </button>
-                </div>
-            </div>
-
             {/* 💰 Fee Setting (Updated UI) */}
-            <div className="space-y-2">
+            <div className="space-y-4">
                 <label className="text-xs text-gray-400 font-bold uppercase">Subscription Model</label>
                 <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-700">
                     <button onClick={() => togglePaid(false)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${!isPaid ? 'bg-green-600 text-white shadow' : 'text-gray-500 hover:text-white'}`}>Free</button>
@@ -175,7 +178,7 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
                 {isPaid && (
                     <div className="animate-in slide-in-from-top-2 pt-2">
-                        <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Monthly Fee (USD)</label>
+                        <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Fixed Monthly Subscription</label>
                         <div className="relative">
                             <DollarSign size={16} className="absolute left-3 top-3 text-green-500" />
                             <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-green-500 outline-none font-mono" placeholder="10" />
@@ -183,6 +186,22 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
                         <p className="text-[10px] text-blue-400 text-right mt-1">Platform fee 20% will be deducted.</p>
                     </div>
                 )}
+
+                {/* 🏦 Min Invest moved here */}
+                <div>
+                    <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Min Invest</label>
+                    <div className="relative">
+                        <DollarSign size={16} className="absolute left-3 top-3 text-gray-500" />
+                        <input
+                            type="number"
+                            value={minDeposit}
+                            onChange={(e) => setMinDeposit(e.target.value)}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-purple-500 outline-none font-mono"
+                            placeholder="10"
+                        />
+                    </div>
+                    <p className="text-[10px] text-gray-500 text-right mt-1">Minimum amount required to copy you.</p>
+                </div>
             </div>
 
             <div className="space-y-2"><label className="text-xs text-gray-400">Bio / Strategy Description</label><textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white h-24 focus:border-purple-500 outline-none resize-none" placeholder="Describe your strategy..." /></div>

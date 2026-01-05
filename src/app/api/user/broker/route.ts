@@ -86,8 +86,9 @@ export async function POST(req: NextRequest) {
                     login,
                     password,
                     status: "CONNECTED",
-                    balance: 10000.00,
-                    equity: 10000.00,
+                    balance: 0,
+                    equity: 0,
+                    leverage: 0, // ✅ Start N/A
                 }
             });
         }

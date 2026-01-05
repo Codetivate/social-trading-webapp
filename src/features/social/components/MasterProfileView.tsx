@@ -2,13 +2,14 @@
 
 // ... (imports remain)
 import { useState, useEffect } from "react";
-import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp } from "lucide-react";
+import { ChevronLeft, Heart, TrendingUp, DollarSign, Users, Award, Shield, CheckCircle2, History, X, Square, ArrowRight, Wallet, Lock, Share2, Settings, Bot, ShieldCheck, Ticket, Sparkles, Copy, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { Master, SessionType, UserRole, AccountStatus } from "@/types";
 import { SafetyGuardModal } from "@/features/trading/components/SafetyGuardModal";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import TraderAnalysisDashboard from "@/features/social/components/TraderAnalysisDashboard";
 import { getUserIdByName } from "@/app/actions/data";
+import { refreshMasterStats } from "@/app/actions/trade";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -31,9 +32,10 @@ interface MasterProfileViewProps {
     accountStatus?: AccountStatus;
     onOpenSettings?: () => void;
     dailyTicketUsed?: boolean;
+    isOwner?: boolean; // ✅ New Prop
 }
 
-export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, hasUsed7DayTrial, userRole, accountStatus, onOpenSettings, dailyTicketUsed }: MasterProfileViewProps) {
+export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggleFav, onStartCopy, onStopCopy, isCopying, maxAlloc, hasUsed7DayTrial, userRole, accountStatus, onOpenSettings, dailyTicketUsed, isOwner }: MasterProfileViewProps) {
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
     const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
     const [allocation, setAllocation] = useState<number | string>(1000);
@@ -57,6 +59,13 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
         });
         return () => { isMounted = false; };
     }, [master]);
+
+    // 🔄 Self-Healing Stats (Exclude Self-Copy from AUM)
+    useEffect(() => {
+        if (master.id === 0 && userRole === "MASTER" && resolvedUserId) {
+            refreshMasterStats(resolvedUserId);
+        }
+    }, [master.id, userRole, resolvedUserId]);
 
     const isPremium = master.monthlyFee > 0;
     const canUse7DayTrial = isPremium && !hasUsed7DayTrial;
@@ -121,13 +130,17 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
             {/* HEADER */}
             <div className="border-b border-border sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
-                    <Button variant="ghost" size="icon" onClick={onBack}>
-                        <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <div className="font-semibold text-sm uppercase tracking-widest text-muted-foreground">Trader Profile</div>
-                    <Button variant="ghost" size="icon" onClick={onToggleFav} className={isFav ? "text-red-500 hover:text-red-600" : ""}>
-                        <Heart className="h-6 w-6" fill={isFav ? "currentColor" : "none"} />
-                    </Button>
+                    {/* Header: Back & Favorite */}
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
+                            <ChevronLeft size={24} />
+                        </button>
+                        {!isOwner && (
+                            <button onClick={onToggleFav} className={`p-2 rounded-full transition-colors ${isFav ? "text-red-500 bg-red-500/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                                <Heart size={20} fill={isFav ? "currentColor" : "none"} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -150,7 +163,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                             {master.desc}
                         </p>
                         <div className="flex gap-2 mt-3 flex-wrap">
-                            {master.tags?.filter(t => t !== "DRAFT MODE").map(tag => (
+                            {master.tags?.map(tag => (
                                 <Badge key={tag} variant="outline" className="text-xs px-2 py-0.5 border-dashed">
                                     {tag}
                                 </Badge>
@@ -177,7 +190,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                         <Card className="bg-muted/50 border-none shadow-none">
                             <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                                 <TrendingUp className="h-4 w-4 text-muted-foreground mb-1" />
-                                <div className="text-lg font-bold">1:{master.leverage || 500}</div>
+                                <div className="text-lg font-bold">{master.leverage ? `1:${master.leverage}` : "N/A"}</div>
                                 <div className="text-[10px] uppercase text-muted-foreground font-medium">Leverage</div>
                             </CardContent>
                         </Card>
@@ -204,9 +217,18 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
             </div>
 
             {/* 3. STICKY FOOTER (ACTION BAR) - Hide if Own Profile (id === 0) */}
-            {userRole !== "MASTER" && master.id !== 0 && (
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border z-50">
-                    <div className="max-w-xl mx-auto flex items-center justify-center gap-4">
+            {/* Bottom Actions */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border z-50 animate-in slide-in-from-bottom-4">
+                <div className="max-w-xl mx-auto flex items-center justify-center gap-4">
+                    {isOwner ? (
+                        <Button
+                            size="lg"
+                            className="w-full md:w-auto font-bold shadow-lg bg-white text-black hover:bg-gray-200"
+                            onClick={onOpenSettings}
+                        >
+                            <Settings className="mr-2 h-4 w-4" /> Edit Profile
+                        </Button>
+                    ) : (
                         <Button
                             size="lg"
                             className={`w-full md:w-auto font-bold shadow-lg ${isCopying ? "bg-red-600 hover:bg-red-700 text-white" :
@@ -223,9 +245,9 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                                 "Start Copying"
                             )}
                         </Button>
-                    </div>
+                    )}
                 </div>
-            )}
+            </div>
 
             {safetyModalOpen && (
                 <SafetyGuardModal

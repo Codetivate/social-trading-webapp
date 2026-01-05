@@ -179,7 +179,11 @@ export async function startCopySession(
             });
 
             const trueAum = await tx.copySession.aggregate({
-                where: { masterId: masterUserId, isActive: true },
+                where: {
+                    masterId: masterUserId,
+                    isActive: true,
+                    followerId: { not: masterUserId } // 🛡️ Exclude Self-Investment
+                },
                 _sum: { allocation: true }
             });
 
@@ -290,7 +294,11 @@ export async function stopCopySession(sessionId: number) {
 
                 // Sum Active Allocation
                 const trueAum = await tx.copySession.aggregate({
-                    where: { masterId: session.masterId, isActive: true },
+                    where: {
+                        masterId: session.masterId,
+                        isActive: true,
+                        followerId: { not: session.masterId } // 🛡️ Exclude Self-Investment
+                    },
                     _sum: { allocation: true }
                 });
 
@@ -349,7 +357,11 @@ export async function stopAllActiveSessions(followerId: string) {
                 });
 
                 const trueAum = await tx.copySession.aggregate({
-                    where: { masterId: masterId, isActive: true },
+                    where: {
+                        masterId: masterId,
+                        isActive: true,
+                        followerId: { not: masterId } // 🛡️ Exclude Self-Investment
+                    },
                     _sum: { allocation: true }
                 });
 
@@ -448,5 +460,50 @@ export async function getTicketStatuses(userId: string) {
     } catch (e) {
         console.error("Get Ticket Status Error:", e);
         return null;
+    }
+}
+
+// --- 🔄 FORCE REFRESH MASTER STATS ---
+export async function refreshMasterStats(masterId: string) {
+    if (!masterId) return { success: false };
+
+    try {
+        const stats = await prisma.$transaction(async (tx) => {
+            // Count Followers (Exclude Self)
+            const followersCount = await tx.copySession.count({
+                where: {
+                    masterId: masterId,
+                    isActive: true,
+                    followerId: { not: masterId } // 🛡️ Exclude Self
+                }
+            });
+
+            // Sum AUM (Exclude Self)
+            const trueAum = await tx.copySession.aggregate({
+                where: {
+                    masterId: masterId,
+                    isActive: true,
+                    followerId: { not: masterId } // 🛡️ Exclude Self
+                },
+                _sum: { allocation: true }
+            });
+
+            // Update Master Profile
+            await tx.masterProfile.update({
+                where: { userId: masterId },
+                data: {
+                    followersCount: followersCount,
+                    aum: trueAum._sum.allocation || 0
+                }
+            });
+
+            return { aum: trueAum._sum.allocation || 0, followersCount };
+        });
+
+        revalidatePath('/');
+        return { success: true, ...stats };
+    } catch (error) {
+        console.error("Refresh Stats Error:", error);
+        return { success: false, error: "Failed to refresh stats" };
     }
 }

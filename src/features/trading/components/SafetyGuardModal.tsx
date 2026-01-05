@@ -49,7 +49,7 @@ export function SafetyGuardModal({
     // 🔒 Internal State (Buffers touches from parent re-renders)
     const [risk, setRisk] = useState(initialRisk);
     const [allocation, setAllocation] = useState(initialAllocation);
-    const [autoRenew, setAutoRenew] = useState(initialAutoRenew);
+    const [autoRenew, setAutoRenew] = useState(false);
     const [timeConfig, setTimeConfig] = useState(initialTimeConfig);
     const [useWelcome, setUseWelcome] = useState(initialUseWelcome);
 
@@ -187,18 +187,6 @@ export function SafetyGuardModal({
 
                 {/* 4. ADVANCED SETTINGS */}
                 <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="text-gray-400 text-xs font-bold uppercase">Auto-Recopy</span>
-                            <Info size={16} className="text-gray-400 cursor-help" />
-                        </div>
-                        <button
-                            onClick={() => setAutoRenew(!autoRenew)}
-                            className={`w-10 h-5 rounded-full relative transition-colors ${autoRenew ? "bg-green-500" : "bg-gray-600"}`}
-                        >
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoRenew ? "left-6" : "left-1"}`} />
-                        </button>
-                    </div>
 
                     {/* TIME CONFIG */}
                     <div className="space-y-3">
@@ -371,7 +359,7 @@ export function SafetyGuardModal({
                     <CheckCircle2 size={18} className="text-green-600" /> Confirm & Start
                 </button>
             </div>
-        </div >
+        </div>
     )
 }
 

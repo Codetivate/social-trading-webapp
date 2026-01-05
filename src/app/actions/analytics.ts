@@ -14,6 +14,8 @@ export type AnalyticStats = {
     expectancy: number;
     totalProfit: number;
     maxDrawdown: number;
+    longPercent: number;
+    shortPercent: number;
 };
 
 export type MonthlyResult = {
@@ -59,7 +61,9 @@ export async function getAnalytics(masterId: string) {
                     sharpe: 0,
                     expectancy: 0,
                     totalProfit: 0,
-                    maxDrawdown: 0
+                    maxDrawdown: 0,
+                    longPercent: 0,
+                    shortPercent: 0
                 },
                 equityCurve: [],
                 monthlyResults: [],
@@ -82,9 +86,13 @@ export async function getAnalytics(masterId: string) {
         const lossProb = losses.length / trades.length;
         const expectancy = (winProb * avgWin) - (lossProb * avgLoss);
 
+        const longTrades = trades.filter(t => t.type === "BUY" || t.type === "0").length;
+        const shortTrades = trades.filter(t => t.type === "SELL" || t.type === "1").length;
+        const totalCount = trades.length;
+
         const stats: AnalyticStats = {
-            totalTrades: trades.length,
-            winRate: (wins.length / trades.length) * 100,
+            totalTrades: totalCount,
+            winRate: (wins.length / totalCount) * 100,
             avgWin,
             avgLoss: -avgLoss, // Display as negative
             profitFactor: totalLossAmt > 0 ? totalWinAmt / totalLossAmt : totalWinAmt > 0 ? 999 : 0,
@@ -92,7 +100,9 @@ export async function getAnalytics(masterId: string) {
             sharpe: 0, // Placeholder
             expectancy,
             totalProfit: totalWinAmt - totalLossAmt,
-            maxDrawdown: 0 // Need equity curve
+            maxDrawdown: 0, // Need equity curve
+            longPercent: totalCount > 0 ? (longTrades / totalCount) * 100 : 0,
+            shortPercent: totalCount > 0 ? (shortTrades / totalCount) * 100 : 0
         };
 
         // --- 2. EQUITY CURVE & MAX DRAWDOWN ---

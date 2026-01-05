@@ -6,11 +6,26 @@ const prisma = new PrismaClient()
 async function main() {
     console.log('🌱 Starting Seeding...')
 
-    // 1. Clean up
-    await prisma.user.deleteMany()
+    // 1. Clean up (Skipped - DB is fresh)
+    // await prisma.user.deleteMany()
 
     // 2. Create Masters
     const masters = [
+        {
+            name: 'Numsin Ke',
+            email: 'numsin_v2@example.com',
+            avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Numsin',
+            tags: ['DayTrading', 'Scalping'],
+            roi: 120.5,
+            winRate: 68,
+            desc: 'New Master',
+            fee: 0,
+            followers: 0,
+            aum: 0,
+            riskScore: 5,
+            minDeposit: 10,
+            leverage: 1000 // ✅ Test Case
+        },
         {
             name: 'Alex "Sniper" Chen',
             email: 'alex@example.com',
@@ -24,84 +39,88 @@ async function main() {
             aum: 500000,
             riskScore: 8,
             minDeposit: 500
-        },
-        {
-            name: 'Sarah Conservative',
-            email: 'sarah@example.com',
-            avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=Sarah',
-            tags: ['Swing', 'Forex', 'Low Drawdown'],
-            roi: 24.0,
-            winRate: 65,
-            desc: 'Slow and steady wins the race. Strict risk management (1% per trade).',
-            fee: 30,
-            followers: 850,
-            aum: 250000,
-            riskScore: 3,
-            minDeposit: 100
-        },
-        {
-            name: 'Crypto King',
-            email: 'king@example.com',
-            avatar: 'https://api.dicebear.com/9.x/notionists/svg?seed=King',
-            tags: ['Crypto', 'BTC', 'Volatile'],
-            roi: 320.1,
-            winRate: 45,
-            desc: 'High variance crypto trading. Not for the faint of heart.',
-            fee: 100,
-            followers: 3200,
-            aum: 1200000,
-            riskScore: 9,
-            minDeposit: 1000
         }
     ]
 
     for (const m of masters) {
-        const user = await prisma.user.create({
-            data: {
-                name: m.name,
-                email: m.email,
-                image: m.avatar,
-                role: 'MASTER',
-                masterProfile: {
-                    create: {
-                        name: m.name,
-                        desc: m.desc,
-                        avatar: m.avatar,
-                        tags: m.tags,
-                        monthlyFee: m.fee,
-                        roi: m.roi,
-                        winRate: m.winRate,
-                        followersCount: m.followers,
-                        aum: m.aum,
-                        riskScore: m.riskScore,
-                        minDeposit: m.minDeposit,
-                        isPublic: true,
-                        drawdown: Math.floor(Math.random() * 10) + 1
+        // 🗑️ Ensure clean update by deleting first
+        try {
+            await prisma.user.delete({ where: { email: m.email } });
+        } catch (e) { }
+
+        try {
+            const user = await prisma.user.upsert({
+                where: { email: m.email },
+                update: {
+                    // If user exists, try to add the broker account if it's Numsin
+                    brokerAccounts: m.name === 'Numsin Ke' ? {
+                        create: {
+                            server: 'Exness-Real',
+                            login: '123456',
+                            password: 'encrypted',
+                            leverage: 0, // ✅ Test Case: 0 (N/A)
+                            balance: 10000,
+                            equity: 10000,
+                            status: 'CONNECTED'
+                        }
+                    } : undefined
+                },
+                create: {
+                    name: m.name,
+                    email: m.email,
+                    image: m.avatar,
+                    role: 'MASTER',
+                    // ✅ Correctly Link Broker Account to User
+                    brokerAccounts: m.name === 'Numsin Ke' ? {
+                        create: {
+                            server: 'Exness-Real',
+                            login: '123456',
+                            password: 'encrypted',
+                            leverage: 1000,
+                            balance: 10000,
+                            equity: 10000,
+                            status: 'CONNECTED'
+                        }
+                    } : undefined,
+                    masterProfile: {
+                        create: {
+                            name: m.name,
+                            desc: m.desc,
+                            avatar: m.avatar,
+                            tags: m.tags,
+                            monthlyFee: m.fee,
+                            roi: m.roi,
+                            winRate: m.winRate,
+                            followersCount: m.followers,
+                            aum: m.aum,
+                            riskScore: m.riskScore,
+                            minDeposit: m.minDeposit,
+                            isPublic: true
+                        }
                     }
                 }
-            }
-        })
-        console.log(`✅ Created Master: ${user.name}`)
+            })
+            console.log(`✅ Created/Updated Master: ${user.name}`)
+        } catch (err: any) {
+            console.error(`❌ Failed to seed ${m.name}:`, err.code, err.message)
+        }
     }
 
     // 3. Create Follower (User)
-    const me = await prisma.user.create({
-        data: {
-            name: 'Demo User',
-            email: 'user@example.com',
-            role: 'FOLLOWER',
-            image: 'https://api.dicebear.com/9.x/notionists/svg?seed=Felix',
-            walletBalance: 10000,
-            // @ts-ignore: Schema update pending
-            userPromotion: {
-                create: {
-                    welcomeUsed: false,
-                    dailyUsed: false,
-                }
+    try {
+        const me = await prisma.user.create({
+            data: {
+                name: 'Demo User',
+                email: 'user@example.com',
+                role: 'FOLLOWER',
+                image: 'https://api.dicebear.com/9.x/notionists/svg?seed=Felix',
+                walletBalance: 10000
             }
-        }
-    })
-    console.log(`✅ Created Follower: ${me.name} (ID: ${me.id})`)
+        })
+        console.log(`✅ Created Follower: ${me.name} (ID: ${me.id})`)
+    } catch (e) {
+        console.log("⚠️ Follower already exists or creation failed.")
+    }
 
     console.log('🎉 Seeding Complete!')
 }

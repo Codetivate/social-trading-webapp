@@ -61,6 +61,8 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                     maxDrawdown: 0,
                     rrr: 0,
                     totalProfit: 0,
+                    longPercent: 0,
+                    shortPercent: 0,
                 });
                 setLoading(false);
                 return;
@@ -86,6 +88,8 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                     maxDrawdown: 0,
                     rrr: 0,
                     totalProfit: 0,
+                    longPercent: 0,
+                    shortPercent: 0,
                 });
             }
             setLoading(false);
@@ -113,14 +117,53 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
     }, [symbols]);
 
     if (loading) return (
-        <div className="h-[600px] flex flex-col items-center justify-center text-muted-foreground bg-white/5 rounded-xl border border-dashed border-white/10 glass-panel animate-in fade-in duration-500">
-            <div className="animate-spin mb-4 text-neon-purple">
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                </svg>
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Skeleton: Cumulative Profit */}
+            <div className="space-y-4">
+                <Skeleton className="h-4 w-32 bg-white/10" />
+                <Card className="glass-panel border-none p-6">
+                    <Skeleton className="h-[400px] w-full bg-white/5 rounded-xl" />
+                </Card>
             </div>
-            <p className="font-mono text-sm tracking-widest uppercase animate-pulse">Initializing Data Feed...</p>
+
+            {/* Skeleton: Split Stats & Pie */}
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+                <div className="lg:col-span-4 space-y-4">
+                    <Skeleton className="h-4 w-32 bg-white/10" />
+                    <Card className="glass-panel border-none overflow-hidden p-0">
+                        <div className="divide-y divide-white/5">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="flex justify-between items-center px-6 py-3">
+                                    <Skeleton className="h-3 w-24 bg-white/10" />
+                                    <Skeleton className="h-4 w-16 bg-white/10" />
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+                </div>
+                <div className="lg:col-span-6 space-y-4">
+                    <Skeleton className="h-4 w-32 bg-white/10" />
+                    <Card className="glass-panel border-none p-6 flex flex-col items-center justify-center">
+                        <Skeleton className="h-[300px] w-[300px] rounded-full bg-white/5" />
+                    </Card>
+                </div>
+            </div>
+
+            {/* Skeleton: Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <Skeleton className="h-4 w-32 bg-white/10" />
+                    <Card className="glass-panel border-none p-6 h-[300px]">
+                        <Skeleton className="h-full w-full bg-white/5 rounded-xl" />
+                    </Card>
+                </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-4 w-32 bg-white/10" />
+                    <Card className="glass-panel border-none p-6 h-[300px]">
+                        <Skeleton className="h-full w-full bg-white/5 rounded-xl" />
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 
@@ -188,7 +231,7 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                             <StatRow label="Profit Factor" value={stats.profitFactor.toFixed(2)} />
                             <StatRow label="Sharpe Ratio" value={stats.sharpe.toFixed(2)} />
                             <StatRow label="Expectancy" value={`$${stats.expectancy.toFixed(2)}`} valueColor="text-teal-400" />
-                            <StatRow label="Short / Long" value="45% / 55%" /> {/* Mock */}
+                            <StatRow label="Short / Long" value={`${stats.shortPercent.toFixed(0)}% / ${stats.longPercent.toFixed(0)}%`} />
                         </div>
                     </Card>
                 </div>
@@ -259,7 +302,7 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
                     <h3 className="text-sm font-bold text-premium uppercase tracking-wider pl-1">Win Rate by Month</h3>
                     <Card className="glass-panel border-none p-6 h-[300px]">
                         <ChartContainer config={barChartConfig} className="h-full w-full">
-                            <BarChart data={monthly.map(m => ({ ...m, winRate: Math.random() * 40 + 40 }))}>
+                            <BarChart data={monthly}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                 <XAxis dataKey="month" tickLine={false} axisLine={false} tickFormatter={(val) => val.slice(5)} />
                                 <ChartTooltip content={<ChartTooltipContent />} />

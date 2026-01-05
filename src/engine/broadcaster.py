@@ -169,9 +169,12 @@ def follow_signals():
             # Ensure we are logged in as the MASTER, not the Follower
             # We use a "Sandwich" check to detect if Executor switched account MID-READ.
             start_info = mt5.account_info()
+            
+            # Initialize target_login safely
+            target_login = None
             if master_creds:
                  target_login = master_creds[0]
-                 if not start_info or start_info.login != target_login:
+                 if not start_info or str(start_info.login) != str(target_login):
                      print(f"[WARN] Account Drift (Pre-Check)! Active: {start_info.login if start_info else 'None'}, Target: {target_login}. Re-asserting Login...")
                      mt5.login(login=target_login, password=master_creds[1], server=master_creds[2])
                      time.sleep(0.5)
@@ -283,6 +286,7 @@ def follow_signals():
                     "masterId": MASTER_ID,
                     "ticket": str(ticket),
                     "action": "CLOSE",
+                    "type": known_positions[ticket].get("type", "UNKNOWN"), # ✅ Fix: Pass Type
                     "symbol": known_positions[ticket].get("symbol", "Unknown"),
                     "openPrice": known_positions[ticket].get("price", 0.0)
                 }
@@ -418,11 +422,10 @@ def send_signal(payload):
         # 2. 📝 AUDIT LOG: Push to Redis Stream for persistence/replay
         r_client.xadd('stream:signals', { 'payload': json_payload, 'timestamp': str(time.time()) })
         
-        # 3. 🕸️ LEGACY SYNC: DISABLED (Using Redis Event-Driven Only)
-        # requests.post(WEBHOOK_URL, json=payload, headers={"x-bridge-secret": API_SECRET}, timeout=1)
-        pass
+        # 3. 🕸️ SYNC TO DATABASE (Critical for History/UI)
+        requests.post(WEBHOOK_URL, json=payload, headers={"x-bridge-secret": API_SECRET}, timeout=1)
 
-        print(f"   [🚀] Signal Pushed to Redis (Ticket: {payload['ticket']})")
+        print(f"   [🚀] Signal Pushed to System (Ticket: {payload['ticket']})")
 
     except Exception as e:
         print(f"   [ERROR] Redis/Network Error: {e}")

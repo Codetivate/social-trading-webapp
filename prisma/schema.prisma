@@ -185,7 +185,7 @@ model BrokerAccount {
   // State
   balance  Float         @default(0)
   equity   Float         @default(0)
-  leverage Int           @default(500)
+  leverage Int           @default(0) // ✅ Default 0 (N/A)
   currency String        @default("USD")
   status   AccountStatus @default(CONNECTED)
 
@@ -221,13 +221,14 @@ model MasterProfile {
   desc     String?
   avatar   String?
   tags     String[]
-  isPublic Boolean  @default(true) // ✅ Visibility Toggle
+  isPublic Boolean  @default(false) // ✅ Private by default (Followers)
 
   // Metrics
   roi            Float @default(0)
   winRate        Float @default(0)
   drawdown       Float @default(0)
   riskScore      Float @default(0)
+  riskReward     Float @default(0) // ✅ Added Risk Reward
   followersCount Int   @default(0)
   aum            Float @default(0)
 
@@ -286,7 +287,7 @@ model CopySession {
   shardId       Int           @default(0) // For Batch Processing (0-9)
 
   // ⚙️ ADVANCED SETTINGS
-  autoRenew  Boolean @default(true) // ✅ Default Auto-Renew
+  autoRenew  Boolean @default(false) // ✅ Default Auto-Renew
   timeConfig Json? // 🕒 Trading Hours { mode: "24/7" | "LONDON" | "CUSTOM", start: "09:00", end: "17:00" }
 
   isActive  Boolean  @default(true)

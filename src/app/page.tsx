@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { connectBroker, getBrokerAccount } from '@/app/actions/broker';
 import { activateMasterAccount, updateMasterProfile, getUserProfile } from '@/app/actions/user';
 import { fetchMasters, fetchFollower, fetchUserRole } from '@/app/actions/data';
-import { startCopySession, getActiveSessions, stopCopySession, stopAllActiveSessions, getTicketStatuses } from '@/app/actions/trade';
+import { startCopySession, getActiveSessions, stopCopySession, stopAllActiveSessions, getTicketStatuses, refreshMasterStats } from '@/app/actions/trade';
 import { BrokerAccount } from "@prisma/client";
 // import { Session } from '@prisma/client'; // ❌ Removing Prisma Session to avoid conflict. Using custom type.
 
@@ -102,8 +102,21 @@ const MOCK_BROKERS = [
 //     { id: 102, name: "Alice Wonderland", equity: 5000, pnl: "-$12.50", joined: "1d ago", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice" },
 // ];
 
+
 // 🗑️ MOCK DATA REMOVED: Using Real DB Data via /api/social/masters
-// const mockMasters: Master[] = []; // (Removed per request)
+// 🚀 MOCK DATA: High-Performance Masters for Demo
+const mockMasters: Master[] = [
+    { id: 101, name: "Apex Alpha", roi: 450.5, drawdown: 12.5, followers: 5240, monthlyFee: 50, desc: "High-frequency scalping algorithm focusing on major pairs.", tags: ["Scalper", "Forex", "High Risk"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Apex", isPublic: true, riskReward: 2.5, winRate: 78, minDeposit: 100, pnlText: "+450%", balance: 10000, risk: 5, profitFactor: 1.5, joined: "2023-01-01", currentOrders: [], isPremium: true, type: "AI_BOT" },
+    { id: 102, name: "Zenith Capital", roi: 120.2, drawdown: 5.0, followers: 3100, monthlyFee: 0, desc: "Conservative swing trading strategy. Capital preservation first.", tags: ["Swing", "Safe", "Gold"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Zenith", isPublic: true, riskReward: 1.8, winRate: 65, minDeposit: 50, pnlText: "+120%", balance: 5000, risk: 2, profitFactor: 2.1, joined: "2023-01-05", currentOrders: [], isPremium: false, type: "HUMAN" },
+    { id: 103, name: "Quantum Flow", roi: 890.0, drawdown: 25.0, followers: 1200, monthlyFee: 99, desc: "AI-driven crypto volatility trading. Not for the faint hearted.", tags: ["Crypto", "AI", "Aggressive"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Quantum", isPublic: true, riskReward: 3.2, winRate: 55, minDeposit: 500, pnlText: "+890%", balance: 20000, risk: 9, profitFactor: 1.2, joined: "2023-02-10", currentOrders: [], isPremium: true, type: "AI_BOT" },
+    { id: 104, name: "Nordic Shield", roi: 45.0, drawdown: 2.0, followers: 8500, monthlyFee: 20, desc: "Long-term trend following on indices. Steady growth.", tags: ["Indices", "Trend", "Low Drawdown"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nordic", isPublic: true, riskReward: 2.0, winRate: 60, minDeposit: 200, pnlText: "+45%", balance: 15000, risk: 1, profitFactor: 3.0, joined: "2022-11-20", currentOrders: [], isPremium: true, type: "HUMAN" },
+    { id: 105, name: "Tokyo Sniper", roi: 320.8, drawdown: 15.0, followers: 2300, monthlyFee: 0, desc: "Asian session breakout specialist. fast entries.", tags: ["JPY", "Breakout", "Free"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tokyo", isPublic: true, riskReward: 1.5, winRate: 72, minDeposit: 10, pnlText: "+320%", balance: 3000, risk: 6, profitFactor: 1.8, joined: "2023-03-15", currentOrders: [], isPremium: false, type: "HUMAN" },
+    { id: 106, name: "Empire Builder", roi: 150.0, drawdown: 8.0, followers: 4100, monthlyFee: 30, desc: "Building wealth brick by brick. Real estate cycle correlation.", tags: ["Macro", "Steady", "Paid"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Empire", isPublic: true, riskReward: 2.1, winRate: 68, minDeposit: 100, pnlText: "+150%", balance: 8000, risk: 3, profitFactor: 2.5, joined: "2022-08-01", currentOrders: [], isPremium: true, type: "HUMAN" },
+    { id: 107, name: "Velocita", roi: 210.5, drawdown: 18.0, followers: 1500, monthlyFee: 0, desc: "Momentum trading on news events.", tags: ["News", "Speed", "Free"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Velocita", isPublic: true, riskReward: 1.2, winRate: 50, minDeposit: 50, pnlText: "+210%", balance: 2000, risk: 7, profitFactor: 1.5, joined: "2023-04-01", currentOrders: [], isPremium: false, type: "AI_BOT" },
+    { id: 108, name: "Iron Bank", roi: 12.0, drawdown: 0.5, followers: 9500, monthlyFee: 100, desc: "Institutional grade risk management. Large cap forex only.", tags: ["Institutional", "Safe", "Whale"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Iron", isPublic: true, riskReward: 1.1, winRate: 90, minDeposit: 1000, pnlText: "+12%", balance: 1000000, risk: 1, profitFactor: 4.0, joined: "2020-01-01", currentOrders: [], isPremium: true, type: "HUMAN" },
+    { id: 109, name: "Cyber Synth", roi: 560.0, drawdown: 30.0, followers: 800, monthlyFee: 15, desc: "Synthetics and derivative arbritrage.", tags: ["Arb", "Complex", "High Yield"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cyber", isPublic: true, riskReward: 4.0, winRate: 45, minDeposit: 100, pnlText: "+560%", balance: 500, risk: 10, profitFactor: 1.1, joined: "2023-05-20", currentOrders: [], isPremium: true, type: "AI_BOT" },
+    { id: 110, name: "Solar Flare", roi: 275.0, drawdown: 10.0, followers: 3300, monthlyFee: 0, desc: "Solar cycle analysis applied to commodities.", tags: ["Commodities", "Unique", "Free"], avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Solar", isPublic: true, riskReward: 2.2, winRate: 63, minDeposit: 20, pnlText: "+275%", balance: 4000, risk: 4, profitFactor: 2.0, joined: "2023-02-28", currentOrders: [], isPremium: false, type: "HUMAN" },
+];
 
 // ----------------------------------------------------------------------
 // 1. HELPER COMPONENTS (Defined FIRST)
@@ -866,7 +879,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     const availableBalance = mergedBrokerAccount ? Math.max(0, realEquity - totalAllocated) : walletBalance;
 
     const filteredMasters = useMemo(() => {
-        let result = masters.length > 0 ? masters : [];
+        let result = masters.length > 0 ? masters : mockMasters;
 
         if (searchTerm) result = result.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -1024,7 +1037,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                             <div ref={scrollRef} className="flex gap-3 overflow-x-auto py-4 snap-x no-scrollbar scroll-smooth px-1">
                                 {filteredMasters.slice(0, 5).map((master) => (
                                     <div key={master.id} onClick={() => onViewProfile(master)} className="snap-center min-w-[140px] w-[140px] glass-panel rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-neon-purple/50 transition-all cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]">
-                                        <div onClick={(e) => onToggleFav(e, master.id)} className="absolute top-2 right-2 z-10 p-2 -mr-2 -mt-2 hover:scale-110 transition-transform active:scale-90 cursor-pointer">{favorites.includes(master.id) ? <Heart size={14} className="text-neon-pink fill-neon-pink drop-shadow-[0_0_5px_rgba(236,72,153,0.8)]" /> : <Heart size={14} className="text-gray-600 hover:text-neon-pink" />}</div>
+                                        <div onClick={(e) => onToggleFav(e, master.id)} className="absolute top-2 right-2 z-10 p-2 -mr-2 -mt-2 hover:scale-110 transition-transform active:scale-90 cursor-pointer">{favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]" /> : <Heart size={14} className="text-gray-600 hover:text-red-500" />}</div>
                                         <div className="absolute top-2 left-2">{master.monthlyFee > 0 ? <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"><Lock size={8} /> ${master.monthlyFee}</span> : <span className="bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 text-[8px] font-bold px-1.5 py-0.5 rounded shadow-[0_0_5px_rgba(6,182,212,0.3)]">FREE</span>}</div>
                                         <div className="text-center mt-4 mb-3">
                                             <div className="relative inline-block">
@@ -1057,34 +1070,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
             ) : (
                 // 📊 PORTFOLIO VIEW
                 <div className="space-y-6 animate-in slide-in-from-right">
-                    <div
-                        onClick={() => {
-                            if (session?.user) {
-                                onViewProfile({
-                                    id: 0, // Pseudo-ID for self
-                                    name: session.user.name || "My Profile",
-                                    userId: session.user.id, // Crucial
-                                    avatar: session.user.image || "/avatars/default.png",
-                                    desc: "My Trading Analytics",
-                                    riskReward: 0,
-                                    winRate: 0,
-                                    roi: 0,
-                                    followers: 0,
-                                    monthlyFee: 0,
-                                    tags: ["ME"],
-                                    minDeposit: masterProfile.minDeposit || 10,
-                                    leverage: brokerAccount?.leverage || 500
-                                } as any);
-                            }
-                        }}
-                        className="bg-gray-900 rounded-2xl p-5 border border-gray-800 space-y-4 hover:border-gray-700 cursor-pointer transition-colors"
-                    >
-                        <div className="flex justify-between items-end">
-                            <div><p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Total Equity</p><h2 className="text-3xl font-bold font-mono text-white">{currencySymbol}{totalEquity.toLocaleString()}</h2></div>
-                            <div className="text-right"><p className="text-[10px] text-gray-400 uppercase font-bold">Unrealized PnL</p><p className={`text - lg font - bold font - mono ${totalPnL >= 0 ? "text-green-400" : "text-red-400"} `}>{totalPnL >= 0 ? "+" : ""}{totalPnL.toFixed(2)}</p></div>
-                        </div>
-                        <div className="space-y-1"><div className="flex justify-between text-[9px] font-bold"><span className="text-gray-400">Available: <span className="text-white">{currencySymbol}{availableBalance.toLocaleString()}</span></span><span className="text-gray-400">Allocated: <span className="text-blue-400">{currencySymbol}{totalAllocated.toLocaleString()}</span></span></div><div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden flex"><div className="h-full bg-blue-500" style={{ width: `${(totalAllocated / totalEquity) * 100}% ` }}></div><div className="h-full bg-green-500" style={{ width: `${(availableBalance / totalEquity) * 100}% ` }}></div></div></div>
-                    </div>
+
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Active Masters</p><div className="flex items-center gap-2"><Users size={16} className="text-blue-400" /><span className="font-bold text-sm text-white">{activeSessions.length} / 1</span></div></div>
@@ -1174,13 +1160,14 @@ interface MasterFlowProps {
     onOpenWallet?: () => void;
     followers?: Follower[];
     brokerAccount: BrokerAccount | null; // ✅ Added Prop
+    onViewProfile: (master: Master) => void; // ✅ Added Prop for Navigation
 }
 
-function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [], brokerAccount }: MasterFlowProps) {
+function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProfile, onOpenWallet, onBecomeMaster, followers = [], brokerAccount, onViewProfile }: MasterFlowProps) {
     const [showUpgradeMaster, setShowUpgradeMaster] = useState(false);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
-    const [viewMyProfile, setViewMyProfile] = useState(false);
+    // const [viewMyProfile, setViewMyProfile] = useState(false); // 🗑️ Removed Mock Preview
 
     // Calculate Capacity
     const followerPercent = (profile.followersCount / profile.followersLimit) * 100;
@@ -1192,6 +1179,24 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
         setShowUpgradeMaster(false);
         setPaymentModalOpen(true);
     }
+
+    // 🔄 Self-Fix Stats on Load
+    useEffect(() => {
+        if (userRole === "MASTER" && profile.userId) {
+            refreshMasterStats(profile.userId).then((res: any) => {
+                if (res.success && res.aum !== undefined) {
+                    // Update Local State if different
+                    if (res.aum !== profile.aum || res.followersCount !== profile.followersCount) {
+                        setProfile({
+                            ...profile,
+                            aum: res.aum,
+                            followersCount: res.followersCount || 0
+                        });
+                    }
+                }
+            });
+        }
+    }, [userRole, profile.userId]);
 
     const handleUpgradeSuccess = async () => {
         setPaymentModalOpen(false);
@@ -1217,43 +1222,39 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
     }
 
     // Construct a Master object from the profile to preview
-    const myMasterData: Master = {
-        id: 9999,
-        name: profile.name,
-        type: "HUMAN",
-        winRate: 0,
-        roi: 0,
-        pnlText: "$0",
-        followers: profile.followersCount,
-        balance: 0,
-        risk: 0,
-        drawdown: 0,
-        profitFactor: 0,
-        avatar: profile.avatar,
-        desc: profile.desc,
-        tags: profile.tags,
-        joined: "2023",
-        currentOrders: [],
-        monthlyFee: profile.monthlyFee,
-        isPremium: profile.monthlyFee > 0,
-        isPublic: profile.isPublic ?? true,
-        aum: profile.aum, // ✅ Fix TS
-        minDeposit: profile.minDeposit || 10, // ✅ Use Profile Setting (Default 10)
-        leverage: brokerAccount?.leverage || 500, // ✅ Use Real Leverage or Default
-        riskReward: 1.5 // ✅ Fix TS
+    // ✅ Unified "View Me" Logic
+    const handleViewMyProfile = () => {
+        const myProfileAsMaster: Master = {
+            id: 9999, // Placeholder ID for "Me"
+            userId: profile.userId, // ✅ Fix: Pass User ID for Save/Edit actions
+            name: profile.name,
+            type: "HUMAN",
+            winRate: 0,
+            roi: 0,
+            pnlText: "$0",
+            followers: profile.followersCount,
+            balance: 0,
+            risk: 0,
+            drawdown: 0,
+            profitFactor: 0,
+            avatar: profile.avatar,
+            desc: profile.desc,
+            tags: profile.tags,
+            joined: "2023",
+            currentOrders: [],
+            monthlyFee: profile.monthlyFee,
+            isPremium: profile.monthlyFee > 0,
+            isPublic: profile.isPublic ?? true,
+            aum: profile.aum,
+            minDeposit: profile.minDeposit || 10,
+            // ✅ Only show leverage if ACTIVE (Equity > 0)
+            // ✅ Only show leverage if TRULY CONNECTED & ACTIVE
+            leverage: (brokerAccount?.status === "CONNECTED" && brokerAccount?.equity && brokerAccount.equity > 0) ? (brokerAccount.leverage || 0) : 0,
+            riskReward: 1.5,
+            tier: profile.tier
+        };
+        onViewProfile(myProfileAsMaster); // ✅ Use Prop
     };
-
-    if (viewMyProfile) {
-        return (
-            <MasterProfileView
-                master={myMasterData}
-                onBack={() => setViewMyProfile(false)}
-                requireAuth={() => { }} // No auth needed for preview
-                onStartCopy={() => alert("You cannot copy yourself!")}
-                onStopCopy={() => { }}
-            />
-        )
-    }
 
     return (
         <div className="animate-in slide-in-from-right-4 space-y-6 pb-20">
@@ -1298,11 +1299,11 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
 
             {/* Profile Card */}
             <div
-                onClick={() => setViewMyProfile(true)}
+                onClick={handleViewMyProfile}
                 className="bg-gray-900 rounded-2xl p-5 border border-gray-800 relative overflow-hidden cursor-pointer hover:border-gray-600 transition-colors group"
             >
                 <div className={`absolute top - 0 left - 0 w - full h - 1 bg - gradient - to - r ${userRole === "MASTER" ? "from-purple-500 to-indigo-600" : "from-gray-700 to-gray-600"} `}></div>
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={handleViewMyProfile}>
                     <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center font-bold text-xl border-4 border-gray-900 shadow-xl relative z-10">MK</div>
                     <div>
                         <h2 className="text-lg font-bold flex items-center gap-2 group-hover:text-purple-300 transition-colors">
@@ -1594,10 +1595,14 @@ export default function BridgeTradeApp() {
                         setMasterProfile(prev => ({
                             ...prev,
                             ...mp,
+                            userId: session.user?.id || mp.userId, // ✅ FORCE ID from Session
                             desc: mp.desc || prev.desc || "",
                             avatar: mp.avatar || prev.avatar || "",
                             tags: mp.tags || prev.tags || []
                         }));
+                    } else {
+                        // ✅ NEW USER: Ensure ID is set even if no profile exists
+                        setMasterProfile(prev => ({ ...prev, userId: session.user?.id || "" }));
                     }
                     if (user.brokerAccount) {
                         setAccountStatus("CONNECTED");
@@ -1747,7 +1752,23 @@ export default function BridgeTradeApp() {
                 setRealMasters(masters);
                 setViewingProfile(current => {
                     if (current && current.id !== 0) {
-                        return masters.find(m => m.id === current.id) || current;
+                        const fresh = masters.find(m => m.id === current.id);
+                        if (fresh) {
+                            // 🧠 Smart Merge: Preserve rich details if poll returns lean object
+                            return {
+                                ...fresh,
+                                desc: fresh.desc || current.desc,
+                                avatar: fresh.avatar || current.avatar,
+                                minDeposit: fresh.minDeposit || current.minDeposit,
+                                leverage: fresh.leverage || current.leverage,
+                                monthlyFee: fresh.monthlyFee ?? current.monthlyFee,
+                                tags: (fresh.tags && fresh.tags.length > 0) ? fresh.tags : current.tags,
+                                // Preserve Stats if missing in poll
+                                winRate: fresh.winRate || current.winRate,
+                                roi: fresh.roi || current.roi,
+                            };
+                        }
+                        return current;
                     }
                     return current;
                 });
@@ -2122,6 +2143,7 @@ export default function BridgeTradeApp() {
                             accountStatus={accountStatus}
                             onOpenSettings={() => requireAuth(() => { setStartOnBroker(true); setShowSettings(true); })}
                             dailyTicketUsed={dailyTicketUsed} // ✅ Pass Prop
+                            isOwner={viewingProfile.id === 9999 || Boolean(session?.user?.id && viewingProfile.userId === session.user.id)} // ✅ Owner Logic
                         />
                     ) : (
                         <FollowerFlow
@@ -2141,7 +2163,20 @@ export default function BridgeTradeApp() {
                         />
                     )
                 ) : isClient ? (
-                    viewingFollower ?
+                    viewingProfile ? (
+                        <MasterProfileView
+                            master={viewingProfile} onBack={() => setViewingProfile(null)} requireAuth={requireAuth}
+                            isFav={favorites.includes(viewingProfile.id)} onToggleFav={() => handleToggleFavorite(undefined, viewingProfile.id)}
+                            onStartCopy={startCopying} onStopCopy={stopCopying} isCopying={activeSessions.some(s => s.master.id === viewingProfile.id)}
+                            maxAlloc={walletBalance}
+                            userRole={userRole}
+                            hasUsed7DayTrial={hasUsed7DayTrial}
+                            accountStatus={accountStatus}
+                            onOpenSettings={() => requireAuth(() => { setStartOnBroker(true); setShowSettings(true); })}
+                            dailyTicketUsed={dailyTicketUsed}
+                            isOwner={viewingProfile.id === 9999 || Boolean(session?.user?.id && viewingProfile.userId === session.user.id)}
+                        />
+                    ) : viewingFollower ?
                         <FollowerDetailView follower={viewingFollower} onBack={() => setViewingFollower(null)} />
                         :
                         <MasterFlow
@@ -2154,6 +2189,7 @@ export default function BridgeTradeApp() {
                             onBecomeMaster={handleBecomeMasterRequest}
                             followers={[]} // Using real data (empty initially)
                             brokerAccount={brokerAccount} // ✅ Pass Broker Account
+                            onViewProfile={(master) => setViewingProfile(master)} // ✅ Pass Navigation Handler
                         />
                 ) : null}
             </div>

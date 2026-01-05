@@ -3992,3 +3992,258 @@ Argument `masterId`: Invalid value provided. Expected StringFilter or String, pr
 [Webhook] Signal Recv: {"masterId":"0c13bf41-fad5-4884-8be5-c6bb2532cca5","ticket":"3068813275","action":"CLOSE","symbol":"BTCUSDm"}
 [SmartRouter] Dispatching ticket 3068813275 from Master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
 [SmartRouter] Found 0 sessions for master 0c13bf41-fad5-4884-8be5-c6bb2532cca5
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079127704","symbol":"XAUUSDm","type":"BUY","volume":0.99,"price":4437.8189999999995,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079127704 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079127704","action":"CLOSE","symbol":"XAUUSDm","openPrice":4437.8189999999995,"price":4437.313,"profit":-50.09,"swap":0,"commission":0,"volume":0.99,"closeTime":1767632502}
+[SmartRouter] Dispatching ticket 3079127704 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079203692","symbol":"XAUUSDm","type":"BUY","volume":0.29,"price":4436.516,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079203692 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079203692","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4436.516,"price":4437.447,"profit":27,"swap":0,"commission":0,"volume":0.29,"closeTime":1767632919}
+[SmartRouter] Dispatching ticket 3079203692 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079281805","symbol":"XAUUSDm","type":"BUY","volume":0.29,"price":4446.128,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079281805 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079281805","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4446.128,"price":4446.301,"profit":5.02,"swap":0,"commission":0,"volume":0.29,"closeTime":1767633504}
+[SmartRouter] Dispatching ticket 3079281805 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079301684","symbol":"BTCUSDm","type":"BUY","volume":0.02,"price":93620.61,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079301684 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079301684","symbol":"BTCUSDm","type":"BUY","volume":0.02,"price":93620.61,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079301684 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079320955","symbol":"XAUUSDm","type":"BUY","volume":0.29,"price":4447.302,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079320955 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079320955","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4447.302,"price":4445.881,"profit":-41.21,"swap":0,"commission":0,"volume":0.29,"closeTime":1767633851}
+[SmartRouter] Dispatching ticket 3079320955 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079301684","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93620.61,"price":93388.67,"profit":-4.64,"swap":0,"commission":0,"volume":0.02,"closeTime":1767633851}
+[SmartRouter] Dispatching ticket 3079301684 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079364910","symbol":"BTCUSDm","type":"BUY","volume":0.08,"price":93491.07,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079364910 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079364910","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93491.07,"price":93484.83,"profit":-0.5,"swap":0,"commission":0,"volume":0.08,"closeTime":1767634305}
+[SmartRouter] Dispatching ticket 3079364910 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079390767","symbol":"BTCUSDm","type":"BUY","volume":0.08,"price":93569.26,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079390767 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079393173","symbol":"BTCUSDm","type":"BUY","volume":0.25,"price":93557.35,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079393173 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079417326","symbol":"BTCUSDm","type":"BUY","volume":0.15,"price":93608.13,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079417326 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079417326","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93608.13,"price":93692.09,"profit":12.59,"swap":0,"commission":0,"volume":0.15,"closeTime":1767634827}
+[SmartRouter] Dispatching ticket 3079417326 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079393173","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93557.35,"price":93779.81,"profit":55.61,"swap":0,"commission":0,"volume":0.25,"closeTime":1767634857}
+[SmartRouter] Dispatching ticket 3079393173 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079390767","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93569.26,"price":93742.77,"profit":13.88,"swap":0,"commission":0,"volume":0.08,"closeTime":1767634861}
+[SmartRouter] Dispatching ticket 3079390767 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079463724","symbol":"BTCUSDm","type":"BUY","volume":0.15,"price":93859.28,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079463724 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079500091","symbol":"BTCUSDm","type":"BUY","volume":0.32,"price":93944.79000000001,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079500091 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079500091","symbol":"BTCUSDm","action":"MODIFY","sl":90000,"tp":100000}
+[SmartRouter] Dispatching ticket 3079500091 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079500091","action":"CLOSE","type":"BUY","symbol":"BTCUSDm","openPrice":93944.79000000001,"price":93938.29000000001,"profit":-2.08,"swap":0,"commission":0,"volume":0.32,"closeTime":1767635572}
+[SmartRouter] Dispatching ticket 3079500091 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079525033","symbol":"XAUUSDm","type":"BUY","volume":0.49,"price":4445.303,"sl":4000,"tp":4500,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079525033 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079525033","symbol":"XAUUSDm","action":"MODIFY","sl":3000,"tp":4500}
+[SmartRouter] Dispatching ticket 3079525033 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079525033","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4445.303,"price":4445.366,"profit":3.08,"swap":0,"commission":0,"volume":0.49,"closeTime":1767635851}
+[SmartRouter] Dispatching ticket 3079525033 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079725372","symbol":"XAUUSDm","type":"SELL","volume":0.98,"price":4442.167,"sl":5000,"tp":4000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079725372 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079729063","symbol":"XAUUSDm","type":"BUY","volume":0.98,"price":4442.746,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079729063 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079729063","symbol":"XAUUSDm","action":"MODIFY","sl":4000,"tp":6000}
+[SmartRouter] Dispatching ticket 3079729063 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079729063","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4442.746,"price":4444.085,"profit":131.22,"swap":0,"commission":0,"volume":0.98,"closeTime":1767638324}
+[SmartRouter] Dispatching ticket 3079729063 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079725372","action":"CLOSE","type":"SELL","symbol":"XAUUSDm","openPrice":4442.167,"price":4444.721,"profit":-250.29,"swap":0,"commission":0,"volume":0.98,"closeTime":1767638380}
+[SmartRouter] Dispatching ticket 3079725372 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079756331","symbol":"XAUUSDm","type":"BUY","volume":0.91,"price":4444.909,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079756331 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079756331","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4444.909,"price":4445.106,"profit":17.93,"swap":0,"commission":0,"volume":0.91,"closeTime":1767638600}
+[SmartRouter] Dispatching ticket 3079756331 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079760007","symbol":"XAUUSDm","type":"BUY","volume":2,"price":4443.407,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079760007 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079760007","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4443.407,"price":4443.388,"profit":-3.8,"swap":0,"commission":0,"volume":2,"closeTime":1767638659}
+[SmartRouter] Dispatching ticket 3079760007 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079761657","symbol":"XAUUSDm","type":"BUY","volume":3,"price":4443.599,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079761657 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079761657","symbol":"XAUUSDm","action":"MODIFY","sl":4000,"tp":5000}
+[SmartRouter] Dispatching ticket 3079761657 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079798962","symbol":"XAUUSDm","type":"BUY","volume":1.88,"price":4446.597,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079798962 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079801119","symbol":"XAUUSDm","type":"BUY","volume":1.88,"price":4446.593,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079801119 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079798962","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4446.597,"price":4446.737,"profit":26.32,"swap":0,"commission":0,"volume":1.88,"closeTime":1767639498}
+[SmartRouter] Dispatching ticket 3079798962 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079801119","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4446.593,"price":4446.747,"profit":28.96,"swap":0,"commission":0,"volume":1.88,"closeTime":1767639500}
+[SmartRouter] Dispatching ticket 3079801119 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079819816","symbol":"XAUUSDm","type":"BUY","volume":1.75,"price":4448.997,"sl":4000,"tp":4600,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079819816 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079819816","symbol":"XAUUSDm","type":"BUY","volume":1.75,"price":4448.997,"sl":4000,"tp":4600,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079819816 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079857253","symbol":"XAUUSDm","type":"SELL","volume":1.03,"price":4439.777,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079857253 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079819816","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4448.997,"price":4440.06,"profit":-1563.98,"swap":0,"commission":0,"volume":1.75,"closeTime":1767640080}
+[SmartRouter] Dispatching ticket 3079819816 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079857253","action":"CLOSE","type":"SELL","symbol":"XAUUSDm","openPrice":4439.777,"price":4439.931,"profit":-15.86,"swap":0,"commission":0,"volume":1.03,"closeTime":1767640083}
+[SmartRouter] Dispatching ticket 3079857253 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079862412","symbol":"XAUUSDm","type":"BUY","volume":1.03,"price":4439.743,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079862412 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079862412","symbol":"XAUUSDm","action":"MODIFY","sl":0,"tp":5000}
+[SmartRouter] Dispatching ticket 3079862412 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079862412","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4439.743,"price":4435.2,"profit":-467.93,"swap":0,"commission":0,"volume":1.03,"closeTime":1767640209}
+[SmartRouter] Dispatching ticket 3079862412 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079881207","symbol":"XAUUSDm","type":"BUY","volume":1.03,"price":4436.921,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079881207 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079881207","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4436.921,"price":4436.702,"profit":-22.55,"swap":0,"commission":0,"volume":1.03,"closeTime":1767640266}
+[SmartRouter] Dispatching ticket 3079881207 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079883458","symbol":"XAUUSDm","type":"BUY","volume":0.99,"price":4438.626,"sl":0,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079883458 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079886485","symbol":"XAUUSDm","type":"BUY","volume":0.99,"price":4439.809,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079886485 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079883458","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4438.626,"price":4439.686,"profit":104.94,"swap":0,"commission":0,"volume":0.99,"closeTime":1767640310}
+[SmartRouter] Dispatching ticket 3079883458 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079886485","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4439.809,"price":4439.76,"profit":-4.85,"swap":0,"commission":0,"volume":0.99,"closeTime":1767640312}
+[SmartRouter] Dispatching ticket 3079886485 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 0 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079888464","symbol":"XAUUSDm","type":"BUY","volume":0.99,"price":4440.115,"sl":4000,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079888464 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079889641","symbol":"XAUUSDm","type":"BUY","volume":0.99,"price":4440.497,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079889641 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079891732","symbol":"XAUUSDm","type":"SELL","volume":0.99,"price":4439.541,"sl":5000,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079891732 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079891732","symbol":"XAUUSDm","action":"MODIFY","sl":0,"tp":0}
+[SmartRouter] Dispatching ticket 3079891732 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079891732","action":"CLOSE","type":"SELL","symbol":"XAUUSDm","openPrice":4439.541,"price":4440.131,"profit":-58.41,"swap":0,"commission":0,"volume":0.99,"closeTime":1767640398}
+[SmartRouter] Dispatching ticket 3079891732 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079889641","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4440.497,"price":4438.621,"profit":-185.72,"swap":0,"commission":0,"volume":0.99,"closeTime":1767640414}
+[SmartRouter] Dispatching ticket 3079889641 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079888464","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4440.115,"price":4438.529,"profit":-157.02,"swap":0,"commission":0,"volume":0.99,"closeTime":1767640417}
+[SmartRouter] Dispatching ticket 3079888464 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079901625","symbol":"XAUUSDm","type":"BUY","volume":0.49,"price":4440.167,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079901625 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079901625","symbol":"XAUUSDm","type":"BUY","volume":0.49,"price":4440.167,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079901625 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079901625","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4440.167,"price":4440.436,"profit":13.18,"swap":0,"commission":0,"volume":0.49,"closeTime":1767641135}
+[SmartRouter] Dispatching ticket 3079901625 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079947052","symbol":"XAUUSDm","type":"BUY","volume":0.44,"price":4440.746,"sl":4000,"tp":6000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079947052 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079951888","symbol":"XAUUSDm","type":"BUY","volume":0.44,"price":4442.374,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079951888 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079947052","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4440.746,"price":4442.2660000000005,"profit":66.88,"swap":0,"commission":0,"volume":0.44,"closeTime":1767641236}
+[SmartRouter] Dispatching ticket 3079947052 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079951888","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4442.374,"price":4442.098,"profit":-12.15,"swap":0,"commission":0,"volume":0.44,"closeTime":1767641239}
+[SmartRouter] Dispatching ticket 3079951888 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079977563","symbol":"XAUUSDm","type":"BUY","volume":0.33,"price":4444.997,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079977563 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079977563","symbol":"XAUUSDm","type":"BUY","volume":0.33,"price":4444.997,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079977563 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079977563","symbol":"XAUUSDm","action":"MODIFY","sl":0,"tp":5000}
+[SmartRouter] Dispatching ticket 3079977563 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079977563","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4444.997,"price":4445.392,"profit":13.04,"swap":0,"commission":0,"volume":0.33,"closeTime":1767641657}
+[SmartRouter] Dispatching ticket 3079977563 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079984738","symbol":"XAUUSDm","type":"BUY","volume":0.33,"price":4445.246,"sl":0,"tp":0,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3079984738 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079984738","symbol":"XAUUSDm","action":"MODIFY","sl":4000,"tp":5000}
+[SmartRouter] Dispatching ticket 3079984738 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3079984738","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4445.246,"price":4445.247,"profit":0.03,"swap":0,"commission":0,"volume":0.33,"closeTime":1767641721}
+[SmartRouter] Dispatching ticket 3079984738 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080000281","symbol":"XAUUSDm","type":"BUY","volume":0.12,"price":4445.211,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3080000281 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080000281","symbol":"XAUUSDm","action":"MODIFY","sl":0,"tp":0}
+[SmartRouter] Dispatching ticket 3080000281 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080000281","symbol":"XAUUSDm","action":"MODIFY","sl":4,"tp":0}
+[SmartRouter] Dispatching ticket 3080000281 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080000281","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4445.211,"price":4444.457,"profit":-9.05,"swap":0,"commission":0,"volume":0.12,"closeTime":1767642049}
+[SmartRouter] Dispatching ticket 3080000281 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080021601","symbol":"XAUUSDm","type":"BUY","volume":0.13,"price":4444.083,"sl":4000,"tp":5000,"action":"OPEN"}
+[SmartRouter] Dispatching ticket 3080021601 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080021601","symbol":"XAUUSDm","action":"MODIFY","sl":0,"tp":5000}
+[SmartRouter] Dispatching ticket 3080021601 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080021601","symbol":"XAUUSDm","action":"MODIFY","sl":4000,"tp":5000}
+[SmartRouter] Dispatching ticket 3080021601 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080021601","symbol":"XAUUSDm","action":"MODIFY","sl":4000,"tp":5001}
+[SmartRouter] Dispatching ticket 3080021601 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e
+[Webhook] Signal Recv: {"masterId":"e3a37995-7718-4123-a986-8b9f4a07b55e","ticket":"3080021601","action":"CLOSE","type":"BUY","symbol":"XAUUSDm","openPrice":4444.083,"price":4442.384,"profit":-22.09,"swap":0,"commission":0,"volume":0.13,"closeTime":1767642426}
+[SmartRouter] Dispatching ticket 3080021601 from Master e3a37995-7718-4123-a986-8b9f4a07b55e
+[SmartRouter] Found 1 sessions for master e3a37995-7718-4123-a986-8b9f4a07b55e

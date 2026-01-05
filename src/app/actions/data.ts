@@ -3,9 +3,11 @@
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { Master } from "@/types";
+import { unstable_noStore as noStore } from 'next/cache';
 
 // 📥 FETCH MASTERS (Public)
 export async function fetchMasters(): Promise<Master[]> {
+    noStore(); // ⚡ Force Dynamic Fetch (No Cache)
     try {
         const masters = await prisma.masterProfile.findMany({
             where: {
@@ -85,7 +87,7 @@ export async function fetchMasters(): Promise<Master[]> {
                 minDeposit: m.minDeposit,
                 isPremium: m.monthlyFee > 0,
                 isPublic: m.isPublic,
-                leverage: m.brokerAccount?.leverage || 0, // ✅ Real Leverage (0 = N/A)
+                leverage: (m.brokerAccount?.equity && m.brokerAccount.equity > 0) ? (m.brokerAccount.leverage || 0) : 0, // ✅ Show N/A if no equity synced
                 riskReward: rr // ✅ Real DB RR
             };
         }));

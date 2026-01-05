@@ -28,11 +28,14 @@ def fetch_active_accounts():
         conn = get_db_connection()
         cur = conn.cursor()
         # Fetch users with active broker accounts + Role
+        # 🚀 ONLY SPAWN BROADCASTERS (Masters)
+        # Followers are handled by the HFT Swarm (executor.py --mode TURBO)
         query = """
             SELECT b."userId", b."login", b."mt5Path", u."role"
             FROM "BrokerAccount" b
             JOIN "User" u ON b."userId" = u."id"
             WHERE b."status" = 'CONNECTED'
+              AND u."role" = 'MASTER' 
         """ 
         cur.execute(query)
         accounts = cur.fetchall()
@@ -45,10 +48,14 @@ def fetch_active_accounts():
 
 def spawn_worker(user_id, login, mt5_path, role):
     """
-    Spawns a new Worker (Broadcaster or Executor) based on User Role.
+    Spawns a new Worker (Broadcaster) based on User Role.
     """
-    script_type = "BROADCASTER" if role == "MASTER" else "EXECUTOR"
-    script_file = "src/engine/broadcaster.py" if role == "MASTER" else "src/engine/executor.py"
+    if role != 'MASTER':
+        print(f"[SKIP] Ignoring Non-Master Role: {role} (Handled by HFT Swarm)")
+        return
+
+    script_type = "BROADCASTER"
+    script_file = "src/engine/broadcaster.py"
     
     print(f"[Spawn] Starting {script_type} for User {user_id} (Login: {login})...")
     

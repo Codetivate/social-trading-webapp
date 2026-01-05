@@ -176,9 +176,9 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                     server: serverToUse,
                     login: loginId,
                     status: "CONNECTED",
-                    balance: 10000.00, // Mock initial
-                    equity: 10000.00,
-                    userId: "123456" // Mock ID so it doesn't crash on undefined
+                    balance: 0,
+                    equity: 0,
+                    userId: user?.id // ✅ Real ID
                 });
             }
 
