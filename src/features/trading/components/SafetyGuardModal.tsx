@@ -156,7 +156,7 @@ export function SafetyGuardModal({
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs text-gray-400 font-bold uppercase">1. Investment Amount (USD)</label>
+                    <label className="text-xs text-gray-400 font-bold uppercase">Investment Amount (USD)</label>
                     <div className="bg-gray-800 p-3 rounded-xl border border-gray-700 flex items-center gap-3 focus-within:border-neon-purple transition-colors">
                         <span className="text-gray-400 font-bold">$</span>
                         <input
@@ -169,20 +169,7 @@ export function SafetyGuardModal({
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-xs text-gray-400 font-bold uppercase">3. AI Hard Cut (%)</label>
-                    <div className="grid grid-cols-5 gap-2">
-                        {[10, 20, 30, 50, 95].map((val) => (
-                            <button
-                                key={val}
-                                onClick={() => setRisk(val)}
-                                className={`py-2 rounded-lg border text-xs font-bold font-mono transition-all ${Number(risk) === val ? "bg-green-600 text-white border-green-500 shadow-lg shadow-green-900/20" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600"}`}
-                            >
-                                {val}%
-                            </button>
-                        ))}
-                    </div>
-                </div>
+
 
 
                 {/* 4. ADVANCED SETTINGS */}
@@ -322,15 +309,7 @@ export function SafetyGuardModal({
                     </div>
                 </div>
 
-                {/* SUMMARY */}
-                <div className="bg-gray-900 p-3 rounded-xl border border-gray-800 flex gap-3 items-start">
-                    <ShieldCheck className="text-green-500 shrink-0 mt-0.5" size={16} />
-                    <div className="space-y-1">
-                        <p className="text-xs text-gray-300">
-                            Auto-Stop if loss: <span className="text-red-400 font-bold font-mono">-${riskAmount}</span>
-                        </p>
-                    </div>
-                </div>
+
 
                 {/* ACTION BUTTON */}
                 <button

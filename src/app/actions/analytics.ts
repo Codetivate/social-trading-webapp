@@ -36,15 +36,21 @@ export type SymbolDistribution = {
     percentage: number;
 };
 
-export async function getAnalytics(masterId: string) {
+export async function getAnalytics(masterId: string, startDate?: Date, endDate?: Date) {
     if (!masterId) return null;
 
     try {
+        // Build Date Filter
+        const dateFilter: any = {};
+        if (startDate) dateFilter.gte = startDate;
+        if (endDate) dateFilter.lte = endDate;
+
         // Fetch all trade history for this master (Self-Traded)
         const trades = await prisma.tradeHistory.findMany({
             where: {
                 followerId: masterId, // Master's own record
-                profit: { not: 0 } // Exclude zero/cancel trades? optional
+                profit: { not: 0 }, // Exclude zero/cancel trades? optional
+                closeTime: Object.keys(dateFilter).length > 0 ? dateFilter : undefined
             },
             orderBy: { closeTime: 'asc' }
         });
@@ -90,6 +96,43 @@ export async function getAnalytics(masterId: string) {
         const shortTrades = trades.filter(t => t.type === "SELL" || t.type === "1").length;
         const totalCount = trades.length;
 
+        // --- SHARPE RATIO CALCULATION (Annualized) ---
+        // 1. Group by Day
+        const dailyReturns: number[] = [];
+        const dailyPnL = new Map<string, number>();
+
+        trades.forEach(t => {
+            const day = t.closeTime.toISOString().split('T')[0];
+            dailyPnL.set(day, (dailyPnL.get(day) || 0) + t.netProfit);
+        });
+
+        // 2. Calculate Daily Returns (%)
+        // Simplified: Assuming a fix base equity (e.g. $1000) or cumulative. 
+        // For Sharpe, we need percentage returns. 
+        // Let's approximate using a base of $1000 + cumulative profit.
+        let runningEquity = 1000;
+
+        Array.from(dailyPnL.entries()).sort().forEach(([_, pnl]) => {
+            const prevEquity = runningEquity;
+            runningEquity += pnl;
+            if (prevEquity > 0) {
+                const ret = (pnl / prevEquity); // Simple return
+                dailyReturns.push(ret);
+            }
+        });
+
+        let sharpe = 0;
+        if (dailyReturns.length > 1) {
+            const meanReturn = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
+            const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - meanReturn, 2), 0) / (dailyReturns.length - 1);
+            const stdDev = Math.sqrt(variance);
+
+            // Annualize ( Crypto 365 or Forex 252? Let's use 252 for standard trading days)
+            if (stdDev > 0) {
+                sharpe = (meanReturn / stdDev) * Math.sqrt(252);
+            }
+        }
+
         const stats: AnalyticStats = {
             totalTrades: totalCount,
             winRate: (wins.length / totalCount) * 100,
@@ -97,7 +140,7 @@ export async function getAnalytics(masterId: string) {
             avgLoss: -avgLoss, // Display as negative
             profitFactor: totalLossAmt > 0 ? totalWinAmt / totalLossAmt : totalWinAmt > 0 ? 999 : 0,
             rrr: avgLoss > 0 ? avgWin / avgLoss : 0,
-            sharpe: 0, // Placeholder
+            sharpe: sharpe,
             expectancy,
             totalProfit: totalWinAmt - totalLossAmt,
             maxDrawdown: 0, // Need equity curve
@@ -186,5 +229,29 @@ export async function getTradeHistory(masterId: string, limit = 50) {
     } catch (error) {
         console.error("History Error:", error);
         return [];
+    }
+}
+
+// 👁️ TRACK SEARCH TERM
+export async function trackSearch(term: string) {
+    if (!term || term.length < 2) return;
+
+    try {
+        const sanitizedTerm = term.trim().toLowerCase();
+
+        await prisma.searchQuery.upsert({
+            where: { term: sanitizedTerm },
+            update: {
+                count: { increment: 1 },
+                updatedAt: new Date()
+            },
+            create: {
+                term: sanitizedTerm,
+                count: 1
+            }
+        });
+    } catch (error) {
+        console.error("Search Tracking Error:", error);
+        // Fail silently - analytics should not break the app
     }
 }

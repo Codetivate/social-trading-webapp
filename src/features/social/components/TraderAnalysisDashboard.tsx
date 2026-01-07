@@ -12,8 +12,13 @@ import {
     ChartConfig, ChartContainer, ChartLegend, ChartLegendContent,
     ChartTooltip, ChartTooltipContent,
 } from "@/components/ui/chart";
-import { Activity, Info } from "lucide-react";
+import { Activity, Info, Calendar as CalendarIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { format, subMonths } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface TraderAnalysisDashboardProps {
     masterId: string;
@@ -46,56 +51,74 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
     const [symbols, setSymbols] = useState<SymbolDistribution[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // 🗓️ DATE FILTER STATE (Default: Last 3 Months)
+    const [dateRange, setDateRange] = useState<{ from: Date | undefined, to: Date | undefined }>({
+        from: subMonths(new Date(), 3),
+        to: new Date()
+    });
+    // Temporary state for the popover (before applying)
+    const [tempDateRange, setTempDateRange] = useState<{ from: Date | undefined, to: Date | undefined }>(dateRange);
+    const [activeFilter, setActiveFilter] = useState<"3M" | "ALL" | "CUSTOM">("3M");
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
     useEffect(() => {
-        const fetchStats = async () => {
+        let isMounted = true;
+
+        const fetchStats = async (isSilent = false) => {
             if (!masterId) {
-                // If no ID (not connected), show defaults immediately
-                setStats({
-                    totalTrades: 0,
-                    winRate: 0,
-                    profitFactor: 0,
-                    sharpe: 0,
-                    expectancy: 0,
-                    avgWin: 0,
-                    avgLoss: 0,
-                    maxDrawdown: 0,
-                    rrr: 0,
-                    totalProfit: 0,
-                    longPercent: 0,
-                    shortPercent: 0,
-                });
-                setLoading(false);
+                if (isMounted) {
+                    setStats(getEmptyStats());
+                    setLoading(false);
+                }
                 return;
             }
 
-            setLoading(true);
-            const data = await getAnalytics(masterId);
-            if (data) {
-                setStats(data.stats);
-                setEquityCurve(data.equityCurve);
-                setMonthly(data.monthlyResults);
-                setSymbols(data.symbolDist);
-            } else {
-                // Fallback to zeros if fetch fails or returns null
-                setStats({
-                    totalTrades: 0,
-                    winRate: 0,
-                    profitFactor: 0,
-                    sharpe: 0,
-                    expectancy: 0,
-                    avgWin: 0,
-                    avgLoss: 0,
-                    maxDrawdown: 0,
-                    rrr: 0,
-                    totalProfit: 0,
-                    longPercent: 0,
-                    shortPercent: 0,
-                });
+            // Only show Loading Skeleton if we have NO data yet
+            if (!isSilent && !stats) setLoading(true);
+
+            try {
+                // Pass date range to backend
+                const data = await getAnalytics(masterId, dateRange.from, dateRange.to);
+
+                if (isMounted) {
+                    if (data) {
+                        setStats(data.stats);
+                        setEquityCurve(data.equityCurve);
+                        setMonthly(data.monthlyResults);
+                        setSymbols(data.symbolDist);
+                    } else {
+                        setStats(getEmptyStats());
+                    }
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error("Analytics Poll Error", error);
+                if (isMounted) setLoading(false);
             }
-            setLoading(false);
         };
-        fetchStats();
-    }, [masterId]);
+
+        // 1. Initial Fetch
+        fetchStats(false);
+
+        // 2. Real-Time Polling (Every 5s)
+        const poller = setInterval(() => {
+            fetchStats(true); // Silent update
+        }, 5000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(poller);
+        };
+    }, [masterId, dateRange]); // Re-fetch (and reset poller) on date range change
+
+    // Helper for default/empty stats
+    const getEmptyStats = (): AnalyticStats => ({
+        totalTrades: 0, winRate: 0, profitFactor: 0, sharpe: 0, expectancy: 0,
+        avgWin: 0, avgLoss: 0, maxDrawdown: 0, rrr: 0, totalProfit: 0,
+        longPercent: 0, shortPercent: 0,
+    });
+
+
 
     // Dynamic Pie Config
     const { pieData, pieConfig } = useMemo(() => {
@@ -175,7 +198,116 @@ export default function TraderAnalysisDashboard({ masterId }: TraderAnalysisDash
 
             {/* 1. HERO: CUMULATIVE PROFIT */}
             <div className="space-y-4">
-                <h3 className="text-sm font-bold text-premium uppercase tracking-wider pl-1">Cumulative Profit</h3>
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-premium uppercase tracking-wider pl-1">Cumulative Profit</h3>
+
+                    {/* 📅 DATE FILTER CONTROLS */}
+                    {/* 📅 DATE FILTER CONTROLS */}
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                                "h-7 text-[10px] font-bold border-white/10 hover:bg-white/5 transition-all",
+                                activeFilter === "3M" && "bg-[#2dd4bf]/10 text-[#2dd4bf] border-[#2dd4bf]/50 hover:bg-[#2dd4bf]/20 shadow-[0_0_10px_-5px_#2dd4bf]"
+                            )}
+                            onClick={() => {
+                                setDateRange({ from: subMonths(new Date(), 3), to: new Date() });
+                                setActiveFilter("3M");
+                            }}
+                        >
+                            3M
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                                "h-7 text-[10px] font-bold border-white/10 hover:bg-white/5 transition-all",
+                                activeFilter === "ALL" && "bg-[#2dd4bf]/10 text-[#2dd4bf] border-[#2dd4bf]/50 hover:bg-[#2dd4bf]/20 shadow-[0_0_10px_-5px_#2dd4bf]"
+                            )}
+                            onClick={() => {
+                                setDateRange({ from: undefined, to: undefined });
+                                setActiveFilter("ALL");
+                            }}
+                        >
+                            ALL
+                        </Button>
+
+                        <Popover open={isPopoverOpen} onOpenChange={(open) => {
+                            setIsPopoverOpen(open);
+                            if (open) {
+                                // Reset temp state to current actual state when opening
+                                setTempDateRange(dateRange);
+                            }
+                        }}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "h-7 text-[10px] font-bold justify-start text-left font-normal border-white/10 hover:bg-white/5 transition-all min-w-[140px]",
+                                        !dateRange && "text-muted-foreground",
+                                        activeFilter === "CUSTOM" && "bg-[#2dd4bf]/10 text-[#2dd4bf] border-[#2dd4bf]/50 hover:bg-[#2dd4bf]/20 shadow-[0_0_10px_-5px_#2dd4bf]"
+                                    )}
+                                >
+                                    <CalendarIcon className="mr-2 h-3 w-3" />
+                                    {dateRange?.from ? (
+                                        dateRange.to ? (
+                                            <>
+                                                {format(dateRange.from, "MMM d, yyyy")} - {format(dateRange.to, "MMM d, yyyy")}
+                                            </>
+                                        ) : (
+                                            format(dateRange.from, "MMM d, yyyy")
+                                        )
+                                    ) : (
+                                        <span>Pick a date</span>
+                                    )}
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 z-50 bg-gray-950 border-gray-800" align="end">
+                                <div className="p-3">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={tempDateRange?.from}
+                                        selected={tempDateRange as any}
+                                        onSelect={(range: any) => setTempDateRange(range)}
+                                        numberOfMonths={2}
+                                        className="bg-gray-950 text-white rounded-md border border-gray-800"
+                                        classNames={{
+                                            selected: "!bg-[#2dd4bf] !text-black hover:!bg-[#2dd4bf] hover:!text-black focus:!bg-[#2dd4bf] focus:!text-black",
+                                            day_today: "bg-white/10 text-white",
+                                            range_middle: "aria-selected:!bg-[#2dd4bf]/20 aria-selected:!text-white",
+                                            range_start: "!bg-[#2dd4bf] !text-black hover:!bg-[#2dd4bf] hover:!text-black rounded-l-md",
+                                            range_end: "!bg-[#2dd4bf] !text-black hover:!bg-[#2dd4bf] hover:!text-black rounded-r-md"
+                                        }}
+                                    />
+                                    <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-800">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                                            onClick={() => setIsPopoverOpen(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            className="h-8 text-xs bg-[#2dd4bf] text-black hover:bg-[#2dd4bf]/90 font-bold"
+                                            onClick={() => {
+                                                setDateRange(tempDateRange);
+                                                setActiveFilter("CUSTOM");
+                                                setIsPopoverOpen(false);
+                                            }}
+                                        >
+                                            Apply Range
+                                        </Button>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
                 <Card className="glass-panel border-none p-6">
                     <div className="h-[400px] w-full">
                         <ChartContainer config={equityConfig} className="h-full w-full">

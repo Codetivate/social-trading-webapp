@@ -70,15 +70,15 @@ export async function fetchMasters(): Promise<Master[]> {
                 type: "HUMAN",
                 winRate: m.winRate,
                 roi: roi, // ✅ Real ROI
-                pnlText: "0%",
+                pnlText: `${Math.round(m.netProfit)}`, // ✅ Real Net Profit (as string for formatting if needed, or update type)
                 followers: m.followersCount,
                 aum: m.aum, // ✅ Mapped from DB
                 balance: 0,
                 risk: m.riskScore,
                 drawdown: m.drawdown,
-                profitFactor: 0,
+                profitFactor: m.profitFactor, // ✅ Use DB Value
+                netProfit: m.netProfit, // ✅ Added Field
                 avatar: m.avatar || "/avatars/default.png",
-                isVip: false,
                 desc: m.desc || "",
                 tags: m.tags,
                 joined: new Date(m.createdAt).getFullYear().toString(),
@@ -88,7 +88,8 @@ export async function fetchMasters(): Promise<Master[]> {
                 isPremium: m.monthlyFee > 0,
                 isPublic: m.isPublic,
                 leverage: (m.brokerAccount?.equity && m.brokerAccount.equity > 0) ? (m.brokerAccount.leverage || 0) : 0, // ✅ Show N/A if no equity synced
-                riskReward: rr // ✅ Real DB RR
+                riskReward: rr, // ✅ Real DB RR
+                username: m.username || undefined // ✅ Support for Slug Routing
             };
         }));
     } catch (error) {
@@ -97,7 +98,61 @@ export async function fetchMasters(): Promise<Master[]> {
     }
 }
 
-// 📥 FETCH FOLLOWER (Private)
+// � FETCH SINGLE MASTER BY USERNAME (For Direct Link / Private Access)
+export async function fetchMasterByUsername(username: string): Promise<Master | null> {
+    try {
+        const m = await prisma.masterProfile.findUnique({
+            where: { username },
+            include: {
+                user: true,
+                brokerAccount: true
+            }
+        });
+
+        if (!m) return null;
+
+        // Reuse hydration logic (simplified or shared)
+        // For distinctness, let's replicate the structure but we can skip complex chart stats if private?
+        // Actually, we need the structure to match Master type.
+        // If private, we can return zeroes for stats to be safe?
+        // UI hides them anyway, but safe to return generic.
+
+        return {
+            id: m.id,
+            userId: m.userId,
+            masterUserId: m.userId,
+            name: m.name,
+            type: "HUMAN",
+            winRate: m.winRate, // Safe to return? UI hides it.
+            roi: m.roi,
+            pnlText: `${Math.round(m.netProfit)}`,
+            followers: m.followersCount,
+            aum: m.aum,
+            balance: 0,
+            risk: m.riskScore,
+            drawdown: m.drawdown,
+            profitFactor: m.profitFactor,
+            netProfit: m.netProfit,
+            avatar: m.avatar || "/avatars/default.png",
+            desc: m.desc || "",
+            tags: m.tags,
+            joined: new Date(m.createdAt).getFullYear().toString(),
+            currentOrders: [],
+            monthlyFee: m.monthlyFee,
+            minDeposit: m.minDeposit,
+            isPremium: m.monthlyFee > 0,
+            isPublic: m.isPublic, // Important
+            leverage: (m.brokerAccount?.equity && m.brokerAccount.equity > 0) ? (m.brokerAccount.leverage || 0) : 0,
+            riskReward: m.riskReward,
+            username: m.username || undefined
+        };
+    } catch (error) {
+        console.error("Fetch Master error", error);
+        return null;
+    }
+}
+
+// �📥 FETCH FOLLOWER (Private)
 export async function fetchFollower(userId: string) {
     if (!userId) return null;
     try {

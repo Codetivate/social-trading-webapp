@@ -58,11 +58,25 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
     if (!userId) return { success: false, error: "User ID required" };
 
     try {
+        // 🛡️ UNIQ CHECK: Check if username is taken by another user
+        if (data.username) {
+            const existing = await prisma.masterProfile.findFirst({
+                where: {
+                    username: { equals: data.username, mode: "insensitive" },
+                    userId: { not: userId } // Exclude self
+                }
+            });
+            if (existing) {
+                return { success: false, error: `Username "${data.username}" is already taken.` };
+            }
+        }
+
         await prisma.masterProfile.upsert({
             where: { userId: userId },
             update: {
                 desc: data.desc,
                 name: data.name,
+                username: data.username, // ✅ Save Username
                 avatar: data.avatar,
                 tags: data.tags,
                 monthlyFee: data.monthlyFee,
@@ -74,6 +88,7 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
             create: {
                 userId: userId,
                 name: data.name || "New Master",
+                username: data.username, // ✅ Save Username
                 desc: data.desc || "",
                 avatar: data.avatar || "",
                 tags: data.tags || [],
@@ -141,7 +156,8 @@ export async function activateMasterAccount(userId: string, fee: number) {
                         // Only overwrite if currently empty/invalid
                         avatar: (existingProfile.avatar && existingProfile.avatar.length > 10) ? undefined : randomAvatar,
                         name: (existingProfile.name && existingProfile.name !== "New Master") ? undefined : displayName,
-                        tags: (existingProfile.tags && existingProfile.tags.length > 0) ? undefined : ["DayTrading"]
+                        tags: (existingProfile.tags && existingProfile.tags.length > 0) ? undefined : ["DayTrading"],
+                        isPublic: true // ✅ Force Public
                     }
                 });
             } else {
@@ -159,7 +175,8 @@ export async function activateMasterAccount(userId: string, fee: number) {
                         drawdown: 0,
                         followersCount: 0,
                         minDeposit: 10, // ✅ Default Min Deposit
-                        brokerAccountId: brokerAccount.id // 🔗 Link Broker
+                        brokerAccountId: brokerAccount.id, // 🔗 Link Broker
+                        isPublic: true // ✅ Public by default
                     }
                 });
             }
@@ -189,7 +206,11 @@ export async function downgradeMaster(userId: string) {
             // 2. Reset Master Stats (Optional, but cleaner)
             await tx.masterProfile.update({
                 where: { userId },
-                data: { followersCount: 0, aum: 0 }
+                data: {
+                    followersCount: 0,
+                    aum: 0,
+                    isPublic: false // ✅ Force Private
+                }
             });
 
             // 3. Downgrade Role

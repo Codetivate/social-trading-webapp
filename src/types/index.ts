@@ -6,6 +6,7 @@ export interface Master {
     id: number;
     userId?: string;
     masterUserId?: string; // ✅ Diagnostics Mapping
+    username?: string; // 🔗 Handle
     name: string;
     type: "AI_BOT" | "HUMAN";
     winRate: number;
@@ -19,6 +20,7 @@ export interface Master {
     risk: number;
     drawdown: number;
     profitFactor: number;
+    netProfit?: number; // ✅ Added
     avatar: string;
     desc: string;
     tags: string[];
@@ -65,6 +67,7 @@ export interface Follower {
 
 export interface MasterProfile {
     userId: string; // ✅ Added
+    username?: string; // 🔗 Handle
     name: string;
     desc: string;
     tags: string[];

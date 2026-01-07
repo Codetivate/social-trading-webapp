@@ -6,6 +6,7 @@ import threading
 import os
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import json
 
 
 # Global Pool Singleton
@@ -16,14 +17,22 @@ _HFT_POOL = None
 MT5_GLOBAL_LOCK = threading.RLock()
 
 # 🚀 HFT CONFIGURATION
-# Auto-Switch: Use Grid (20 Instances) if available, else Fallback to Single Terminal (Multi-Threaded)
+# Auto-Switch: Use Grid (Instances 05-20) for Followers. 01-04 Reserved for Masters.
 MAX_TERMINALS = 20  
 GRID_PATH_TEMPLATE = "C:/MT5_Instance_{i:02d}/terminal64.exe"
 
-# Detect if Grid Exists
-if os.path.exists(GRID_PATH_TEMPLATE.format(i=1)):
-    TERMINAL_PATHS = [GRID_PATH_TEMPLATE.format(i=i) for i in range(1, MAX_TERMINALS + 1)]
-    print(f"[HFT] 🏎️ Grid Mode Detected: {len(TERMINAL_PATHS)} Isolated Terminals.")
+# Detect if Grid Exists (Partitioning Strategy)
+# Check specifically for the Follower Partition (05+)
+follower_paths = []
+for i in range(5, MAX_TERMINALS + 1):
+    path = GRID_PATH_TEMPLATE.format(i=i)
+    if os.path.exists(path):
+        follower_paths.append(path)
+
+if follower_paths:
+    TERMINAL_PATHS = follower_paths
+    print(f"[HFT] 🏎️ Grid Mode Detected: {len(TERMINAL_PATHS)} Isolated Terminals (Partition 5-20).")
+    print(f"[HFT]    - Reserved for Followers (Isolation Active)")
 else:
     # Fallback -> VIRTUAL MODE (To avoid conflict with Master Terminal on Single Machine)
     # We cannot execute Follower Trades on the SAME terminal as the Master Broadcaster simultaneously.
@@ -49,8 +58,6 @@ class TradeJob:
         self.priority = priority # 0 = High (Paid), 1 = Low (Free)
         self.slave_config = slave_config
         self.signal = signal
-        # For sorting in PriorityQueue (lower number = higher priority)
-        # We handle collisions by standard comparison, but dicts aren't comparable, so we'll implement __lt__
         
     def __lt__(self, other):
         return self.priority < other.priority
@@ -92,330 +99,261 @@ class WorkerPool:
         self.active_workers = []
         self.shutdown_event = threading.Event()
         self.lock = threading.Lock()
-
+        
     def worker_loop(self, terminal_path: str, worker_id: int):
         """
         Continuous loop for a single Thread/Terminal.
-        It waits for jobs from the Queue and processes them.
+        Waits for jobs from the Queue.
         """
-        # 1. 🏗️ WARM-UP / INITIALIZE
-        # In a real persistent scenario, we initialize ONCE here.
-        # But for 'executor.py' which might be restarted, we do it safely.
-        # Note: mt5.initialize is global. We must use a Process-based approach for true parallel isolation 
-        # OR assume the user accepts the 'Lock' behavior of the python lib but relies on the rapid switching.
-        # Given the constraint: "Asynchronous Round-Robin", we will implementing the logic,
-        # but technically without Multiprocessing, 'mt5.initialize' changes the global context.
-        # For this specific architecture request, we assume the python script is orchestration 
-        # and the 'terminal_path' is strictly respected during the 'critical section'.
-        
         while not self.shutdown_event.is_set():
             try:
-                # 2. 📥 GET JOB (Blocking with timeout to check shutdown)
+                # 2. 📥 GET JOB
                 job: TradeJob = self.queue.get(timeout=1.0) 
             except queue.Empty:
-                continue
+                continue 
 
             # 3. ⚙️ PROCESS JOB
             start_time = time.time()
-            login_id = int(job.slave_config['login'])
+            login_id = 0
             
-            # 3. ⚙️ PROCESS JOB
-            start_time = time.time()
-            login_id = int(job.slave_config['login'])
-            
-            # 🔒 ACQUIRE TERMINAL CONTEXT
-            # If all threads utilize the SAME path (Single Machine), we must Lock.
-            # If using Grid (Unique Paths), this Lock is theoretical bottleneck but safe.
-            with MT5_GLOBAL_LOCK:
-                try:
+            try:
+                login_id = int(job.slave_config.get('login', 0))
+
+                with MT5_GLOBAL_LOCK:
                     # CRITICAL SECTION: SWITCH CONTEXT
-                    # Since mt5 lib is singleton, we must 'Switch' the focus to this terminal path.
-                    # In a purely Threaded model, this is the bottleneck. The *ideal* is Multiprocessing.
-                    # But we follow the 'Path' affinity logic requested.
                     
-                    # A. Initialize Wrapper (Fast if already running)
                     if terminal_path == "MOCK":
                         # 🟢 VIRTUAL EXECUTION PATH
-                        time.sleep(0.005 + (0.01 * (worker_id % 5))) # Simulate 5-15ms Latency
-                        
-                        # Simulate Success
-                        duration = time.time() - start_time
+                        time.sleep(0.005 + (0.01 * (worker_id % 5))) 
                         import random
                         fake_deal = random.randint(5000000, 9000000)
                         action = job.signal.get('action', 'OPEN')
-                        
-                        self._add_result(TradeResult(login_id, True, duration, fake_deal, f"Virtual {action}", price=999.99, volume=0.01, type=action))
-                        # task_done handled by finally
-                        continue
+                        self._add_result(TradeResult(login_id, True, time.time()-start_time, fake_deal, f"Virtual {action}", 999.99, 0.01, 0.0, action))
+                        continue # FINALLY block will call task_done()
 
                     if not mt5.initialize(path=terminal_path):
-                         self._add_result(TradeResult(login_id, False, 0, message=f"Init Failed: {mt5.last_error()}"))
-                         # task_done handled by finally
-                         continue
-
-                    # B. Auth
-                    current = mt5.account_info()
-                    if not current or current.login != login_id:
-                         if not mt5.login(login=login_id, password=job.slave_config['password'], server=job.slave_config['server']):
-                             self._add_result(TradeResult(login_id, False, time.time()-start_time, message="Auth Failed"))
-                             # task_done handled by finally
+                        self._add_result(TradeResult(0, False, 0, message=f"Init Failed: {terminal_path}"))
+                        continue
+                        
+                    # AUTHENTICATION
+                    creds = job.slave_config
+                    login_id = int(creds.get('login', 0))
+                    
+                    # Login Check (Optimization: Don't re-login if same)
+                    current_info = mt5.account_info()
+                    if not current_info or current_info.login != login_id:
+                        if not mt5.login(login=login_id, password=creds.get('password'), server=creds.get('server')):
+                             self._add_result(TradeResult(login_id, False, 0, message=f"Login Failed: {mt5.last_error()}"))
                              continue
                     
-                    # C. Execute
-                    # 🛡️ SAFETY CHECK: Final Verification before Trigger Pull
-                    # Ensure we are absolutely logged into the correct account.
-                    final_check = mt5.account_info()
-                    if final_check.login != login_id:
-                         self._add_result(TradeResult(login_id, False, 0, message=f"CRITICAL: Login Mismatch! Expected {login_id}, Got {final_check.login}"))
-                         # task_done handled by finally
-                         continue
-
-                    # 🛡️ RISK GUARD CHECK
-                    if not self.check_worker_risk(job.slave_config):
-                         self._add_result(TradeResult(login_id, False, 0, message="RISK_LIMIT"))
-                         continue
-
-                    # C. Execution Logic (Router)
-                    # ---------------------------------------------------------
+                    # EXECUTION ROUTER (Pure Logic)
                     action = job.signal.get('action', 'OPEN')
                     symbol = job.signal.get('symbol')
+                    master_ticket = job.signal.get('ticket') # This is MASTER ticket
+                    session_id = job.slave_config.get('session_id', 0)
+                    
+                    comment_tag = f"CPY:S{session_id}:{master_ticket}" if session_id > 0 else f"CPY:{master_ticket}"
                     
                     request = {
                         "action": mt5.TRADE_ACTION_DEAL,
                         "symbol": symbol,
                         "volume": float(job.signal.get('volume', 0.01)),
                         "magic": 234000,
-                        "comment": f"CPY:{job.signal.get('ticket')}", 
+                        "comment": comment_tag, 
                         "type_time": mt5.ORDER_TIME_GTC,
                         "type_filling": mt5.ORDER_FILLING_IOC,
                     }
                     
                     # --- CASE 1: OPEN TRADE ---
                     if action == 'OPEN':
+                        tick = mt5.symbol_info_tick(symbol)
+                        if not tick:
+                             self._add_result(TradeResult(login_id, False, 0, message=f"Symbol Error: {symbol}"))
+                             continue
+                             
                         trade_type = mt5.ORDER_TYPE_BUY if job.signal.get('type') == 'BUY' else mt5.ORDER_TYPE_SELL
-                        price = mt5.symbol_info_tick(symbol).ask if trade_type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(symbol).bid
+                        price = tick.ask if trade_type == mt5.ORDER_TYPE_BUY else tick.bid
                         
                         request.update({
                             "type": trade_type,
                             "price": price,
-                            "sl": float(job.signal.get('sl', 0.0)),
-                            "tp": float(job.signal.get('tp', 0.0))
+                            "sl": float(job.signal.get('sl', 0.0) or 0.0),
+                            "tp": float(job.signal.get('tp', 0.0) or 0.0)
                         })
 
                     # --- CASE 2: MODIFY TRADE (SL/TP) ---
                     elif action == 'MODIFY':
-                        # FOR HFT: Use injected 'target_ticket' if available, else signal's ticket
+                        # Must find LOCAL ticket. job.signal['ticket'] is MASTER ticket.
                         injected_ticket = job.slave_config.get('target_ticket', 0)
-                        local_ticket = injected_ticket if injected_ticket > 0 else int(job.signal.get('ticket', 0))
+                        local_ticket = injected_ticket
                         
                         if local_ticket == 0:
-                            # 🩹 WORKER FALLBACK SCAN
-                            # Last ditch effort: Scan positions for "CPY:{master_ticket}"
-                            # This works because we are ATTACHED to the terminal right now.
-                            master_ticket_str = str(job.signal.get('ticket', 0))
-                            stub = f"CPY:{master_ticket_str}"
-                            all_pos = mt5.positions_get()
+                            # 🩹 FALLBACK SCAN: Look for CPY:{master}
+                            # Stub logic depends on comment tag used in OPEN
+                            # Default Tag: CPY:{master_ticket} OR CPY:S{session}:{master_ticket}
+                            # We search for SUBSTRING match of the Master Ticket.
+                            search_term = f":{master_ticket}" 
+                            
+                            all_pos = mt5.positions_get(symbol=symbol) # Optimize: Filter by symbol
                             found = False
                             if all_pos:
                                 for p in all_pos:
-                                    if p.magic == 234000 and stub in p.comment:
+                                    if p.magic == 234000 and search_term in p.comment:
                                         local_ticket = p.ticket
                                         found = True
-                                        # print(f"[HFT-WORKER] Self-Healed Ticket for {master_ticket_str} -> {local_ticket}")
                                         break
                             
                             if not found:
-                                self._add_result(TradeResult(login_id, False, 0, message="Modify Failed: No Ticket Map & Scan Failed"))
+                                self._add_result(TradeResult(login_id, False, 0, message=f"Modify Fail: Map Missing & Scan Failed for {master_ticket}"))
                                 continue
-
+                        
+                        sl_val = float(job.signal.get('sl', 0.0) or 0.0)
+                        tp_val = float(job.signal.get('tp', 0.0) or 0.0)
+                        
                         request = {
                             "action": mt5.TRADE_ACTION_SLTP,
                             "position": local_ticket,
-                            "sl": float(job.signal.get('sl', 0.0)),
-                            "tp": float(job.signal.get('tp', 0.0))
+                            "sl": sl_val,
+                            "tp": tp_val
                         }
-
+                        
                     # --- CASE 3: CLOSE TRADE ---
                     elif action == 'CLOSE':
-                        # To close, we open an OPPOSITE trade on the same position
                         injected_ticket = job.slave_config.get('target_ticket', 0)
-                        local_ticket = injected_ticket if injected_ticket > 0 else int(job.signal.get('ticket', 0))
+                        local_ticket = injected_ticket 
                         
                         if local_ticket == 0:
-                            # 🩹 WORKER FALLBACK SCAN (CLOSE)
-                            master_ticket_str = str(job.signal.get('ticket', 0))
-                            stub = f"CPY:{master_ticket_str}"
-                            all_pos = mt5.positions_get()
+                            # 🩹 FALLBACK SCAN
+                            search_term = f":{master_ticket}"
+                            all_pos = mt5.positions_get(symbol=symbol)
                             found = False
                             if all_pos:
                                 for p in all_pos:
-                                    if p.magic == 234000 and stub in p.comment:
+                                    if p.magic == 234000 and search_term in p.comment:
                                         local_ticket = p.ticket
                                         found = True
-                                        # print(f"[HFT-WORKER] Self-Healed Ticket for {master_ticket_str} -> {local_ticket}")
                                         break
                             
                             if not found:
-                                self._add_result(TradeResult(login_id, False, 0, message="Close Failed: No Ticket Map & Scan Failed"))
+                                # Position already closed?
+                                self._add_result(TradeResult(login_id, True, 0, message="Close: Already Closed / Not Found"))
                                 continue
                         
-                        # Check current position type to decide Close Type
-                        # Fast lookup or assume signal['type'] (which is Master's type) -> We need Opposite
-                        # Better: Read the position to be safe? No, too slow.
-                        # Trust the signal type from Master. If Master was BUY, we needed to SELL to close.
-                        master_type = job.signal.get('type', 'BUY') # The type of the position being closed
-                        close_type = mt5.ORDER_TYPE_SELL if master_type == 'BUY' else mt5.ORDER_TYPE_BUY
-                        price = mt5.symbol_info_tick(symbol).bid if close_type == mt5.ORDER_TYPE_SELL else mt5.symbol_info_tick(symbol).ask
+                        pos_info = mt5.positions_get(ticket=local_ticket)
+                        if not pos_info:
+                             self._add_result(TradeResult(login_id, True, 0, message="Close: Already Closed"))
+                             continue
+                        
+                        p_obj = pos_info[0]
+                        close_type = mt5.ORDER_TYPE_SELL if p_obj.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+                        
+                        tick = mt5.symbol_info_tick(symbol)
+                        if not tick:
+                             self._add_result(TradeResult(login_id, False, 0, message=f"Close Fail: Symbol {symbol}"))
+                             continue
+                        
+                        price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
                         
                         request.update({
                             "action": mt5.TRADE_ACTION_DEAL,
                             "type": close_type,
                             "position": local_ticket,
-                            "price": price
+                            "price": price, 
+                            "volume": p_obj.volume, # ✅ Use ACTUAL volume
+                            "comment": "CPY_CLOSE"
                         })
 
                     # FIRE 🔥
                     res = mt5.order_send(request)
+                    end_time = time.time()
+                    duration = end_time - start_time
                     
-                    duration = time.time() - start_time
-                    success = (res.retcode == mt5.TRADE_RETCODE_DONE)
-                    msg = f"{action} Done" if success else f"Err: {res.retcode} {res.comment}"
-                    
-                    # Result Parsing
-                    ret_price = res.price
-                    ret_vol = res.volume
-                    deal_id = res.order # Default to order for OPEN/MODIFY
-                    if success and action == 'OPEN':
-                         deal_id = res.order # The new ticket
-                    elif success and action == 'CLOSE':
-                         deal_id = res.deal 
-                         
-                    self._add_result(TradeResult(login_id, success, duration, deal_id, msg, price=ret_price, volume=ret_vol, type=action))
-
-                except Exception as e:
-                    self._add_result(TradeResult(login_id, False, 0, message=f"Exception: {str(e)}"))
-                finally:
-                    # CRITICAL: Release MT5 context for this thread/path?
-                    pass
-            
-            # Signal Task Done (Outside Lock)
-            self.queue.task_done()
+                    if res.retcode == mt5.TRADE_RETCODE_DONE:
+                        # SUCCESS
+                        # Use ORDER ticket as it becomes the POSITION ticket
+                        deal_id = res.order 
+                        res_obj = TradeResult(login_id, True, duration, deal_id=deal_id, profit=0.0)
+                        self._add_result(res_obj)
+                        print(f"       -> Slave {login_id}: ✅ {action} Done (Ticket: {deal_id})")
+                    else:
+                        # FAIL
+                        msg = f"MT5 Error: {res.comment} ({res.retcode})"
+                        # DEBUG
+                        print(f"[DEBUG] Failed Req: {request}")
+                        self._add_result(TradeResult(login_id, False, duration, message=msg))
+                        print(f"       -> Slave {login_id}: ❌ {msg}")
+                        
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._add_result(TradeResult(login_id, False, 0, message=str(e)))
+            finally:
+                # 🛑 CRITICAL: Ensure task_done is called ONCE per job
+                self.queue.task_done()
 
     def _add_result(self, res: TradeResult):
         with self.lock:
             self.results.append(res.to_dict())
 
     def start_pool(self):
-        """Spawns 20 Threads"""
+        """Spawns the workers"""
         print(f"🔥 Starting Worker Pool with {len(self.paths)} Terminals...")
         for i, path in enumerate(self.paths):
-            t = threading.Thread(target=self.worker_loop, args=(path, i), daemon=True)
-            t.start()
+            t = threading.Thread(target=self.worker_loop, args=(path, i+1), daemon=True)
             self.active_workers.append(t)
-            time.sleep(0.05) # Stagger start to avoid mass-init race conditions
+            t.start()
+            time.sleep(0.05) 
 
     def submit_jobs(self, slaves: List[Dict], signal: Dict):
-        """Validates and pushes jobs to priority queue"""
-        for slave in slaves:
-            # DETERMINE PRIORITY
-            # Example: slave['is_paid'] or priority field. Default 1 (Low)
-            prio = 0 if slave.get('is_premium', False) else 1
-            
-            job = TradeJob(prio, slave, signal)
+        """
+        Takes a list of slave configs and a signal.
+        Distributes them to the Queue.
+        """
+        for s in slaves:
+            prio = 0 if s.get('is_premium') else 1
+            job = TradeJob(prio, s, signal)
             self.queue.put(job)
             
     def wait_completion(self):
-        """Blocks until Queue is empty"""
+        """Blocking wait until queue empty"""
         self.queue.join()
         
     def get_results(self):
         return self.results
 
-    def check_worker_risk(self, config):
-        """Standardized Risk Check for Worker Thread"""
-        min_equity = float(config.get('min_equity', 0) or 0)
-        max_daily_loss = float(config.get('max_daily_loss', 0) or 0)
-        
-        # If no rules, pass
-        if min_equity <= 0 and max_daily_loss <= 0: return True
-        
-        # Check Account
-        acc = mt5.account_info()
-        if not acc: return False # Fail closed if no info
-        
-        # 1. Equity Hard Stop
-        if min_equity > 0 and acc.equity < min_equity:
-             return False
-             
-        # 2. Daily Loss
-        if max_daily_loss > 0:
-             now = datetime.now()
-             midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-             deals = mt5.history_deals_get(midnight, now)
-             daily_pnl = 0.0
-             if deals:
-                 for d in deals:
-                     daily_pnl += d.profit + d.swap + d.commission
-             
-             if daily_pnl < (-1 * max_daily_loss):
-                 return False
-                 
-        return True
 
-def process_batch(slaves: List[Dict], signal: Dict) -> List[Dict]:
+def init_persistent_engine():
+    """Starts the HFT Pool and keeps it alive"""
+    global _HFT_POOL
+    if not _HFT_POOL:
+        _HFT_POOL = WorkerPool(TERMINAL_PATHS)
+        _HFT_POOL.start_pool()
+        print(f"[HFT] 🔥 Persistent High-Speed Pool Started ({len(TERMINAL_PATHS)} Threads)")
+
+def dispatch_jobs(slaves: List[Dict], signal: Dict) -> List[Dict]:
     """
-    Entry Point for Executor.
-    Creates a Pool, Submits Jobs, Waits, Returns.
-    For production, the Pool should ideally be 'Global' and persisted, 
-    but for this script we spawn typical lifecycle.
+    Dispatches jobs to the LIVE pool.
     """
+    global _HFT_POOL
+    if not _HFT_POOL: init_persistent_engine()
     
-    # 1. Config paths (Auto-discover or use config)
-    # Using the hardcoded list for 4GB RAM Optimization
-    pool = WorkerPool(TERMINAL_PATHS)
+    # Reset Results for this batch 
+    _HFT_POOL.results = [] 
     
-    # 2. Start
-    pool.start_pool()
-    
-    # 3. Submit
     print(f"🚀 Dispatching {len(slaves)} Jobs to Swarm...")
-    pool.submit_jobs(slaves, signal)
+    _HFT_POOL.submit_jobs(slaves, signal)
     
-    # 4. Wait
-    pool.wait_completion()
+    # Wait for completion (Blocking)
+    _HFT_POOL.wait_completion()
     
-    # 5. Stop (Daemon threads die automatically when main exits, but we can signal)
-    pool.shutdown_event.set()
-    
-    return pool.get_results()
-    
+    return _HFT_POOL.get_results()
+
+# Alias for compatibility with executor.py
+def process_batch(slaves: List[Dict], signal: Dict) -> List[Dict]:
+    return dispatch_jobs(slaves, signal)
+
 # ==========================================
 # 🧪 TEST HARNESS
 # ==========================================
 if __name__ == "__main__":
-    test_slaves = []
-    # Create 100 Dummy Users
-    for i in range(100):
-        test_slaves.append({
-            "login": 1000 + i, 
-            "password": "pwd", 
-            "server": "Demo", 
-            "is_premium": (i < 20) # First 20 are PAID (Fast Lane)
-        })
-        
-    sig = {"symbol": "EURUSD", "volume": 0.01, "type": "BUY"}
-    
-    start = time.time()
-    res = process_batch(test_slaves, sig)
-    end = time.time()
-    
-    print(f"✅ Completed 100 Jobs in {end-start:.4f}s")
-    
-    # CLEANUP FOR TEST HARNESS ONLY
-    if _HFT_POOL:
-        _HFT_POOL.shutdown_event.set()
-        # _HFT_POOL.wait_completion() # Already done
-        # Allow threads to exit
-        time.sleep(1)
-        # Force shutdown MT5 in main if needed, but workers handle their own context.
-        mt5.shutdown()
+    pass

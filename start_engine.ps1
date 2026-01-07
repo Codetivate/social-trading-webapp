@@ -1,22 +1,39 @@
+$ErrorActionPreference = "Stop"
+Write-Host "Hydra Launcher Starting..." -ForegroundColor Cyan
 
-# 🚀 Social Trading Engine Launcher
-# Starts the COMPLETE ecosystem (Masters + Followers).
+# 1. Activate Venv
+if (Test-Path .\.venv\Scripts\Activate.ps1) {
+    . .\.venv\Scripts\Activate.ps1
+    Write-Host "Venv Active." -ForegroundColor Green
+}
 
-Write-Host "🚀 Starting Hydra Social Trading Ecosystem..." -ForegroundColor Cyan
+# 2. Parse .env (Safe Pipeline + Quote Stripping)
+if (Test-Path .env) {
+    Get-Content .env | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } | ForEach-Object {
+        $parts = $_.Split('=', 2)
+        $key = $parts[0].Trim()
+        $val = $parts[1].Trim()
+        # Remove surrounding quotes if present
+        if (($val.StartsWith('"') -and $val.EndsWith('"')) -or ($val.StartsWith("'") -and $val.EndsWith("'"))) {
+            $val = $val.Substring(1, $val.Length - 2)
+        }
+        [Environment]::SetEnvironmentVariable($key, $val, "Process")
+    }
+    Write-Host "Env Loaded." -ForegroundColor Green
+}
 
-# 1. Start Master Manager (Orchestrator) 📡
-# This manages the Broadcasters that LISTEN to Master Terminals.
-Write-Host "   - Launching Master Signal Manager..." -ForegroundColor Green
-# We launch a new PowerShell instance with -NoExit so the window stays open if it crashes
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "& .\.venv\Scripts\python.exe src/engine/orchestrator.py"
+# 3. Config
+$MT5 = $env:MT5_PATH_ARG
+if (-not $MT5) {
+    # USER REQUEST: Use specific terminal for HFT Swarm (Follower)
+    # Leaving "EXNESS" and "EXNESS 002" for Masters.
+    $MT5 = "C:\Program Files\MetaTrader 5 EXNESS 003\terminal64.exe"
+}
+Write-Host "Using MT5: $MT5" -ForegroundColor Gray
 
-# 2. Start HFT Follower Swarm (Executor) ⚡
-# This manages the 20-Terminal Swarm that EXECUTES trades for 100+ Followers.
-# We explicitly point it to terminal 002
-Write-Host "   - Launching HFT Follower Swarm (Terminal 002)..." -ForegroundColor Magenta
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "& .\.venv\Scripts\python.exe src/engine/executor.py --mode TURBO --mt5-path 'C:\Program Files\MetaTrader 5 EXNESS 002\terminal64.exe'"
+# 4. Launch
+Write-Host "Launching Processes..." -ForegroundColor Magenta
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/orchestrator.py"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/executor.py --mode TURBO --mt5-path '$MT5'"
 
-Write-Host "✅ Ecosystem Live!" -ForegroundColor Yellow
-Write-Host "   [Window 1] Master Manager (Broadcasters)"
-Write-Host "   [Window 2] HFT Swarm (Followers)"
-Write-Host "   (Windows will now stay open for debugging)"
+Write-Host "Done! Check new windows." -ForegroundColor Green

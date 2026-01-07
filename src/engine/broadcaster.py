@@ -67,12 +67,48 @@ def initialize_mt5():
     if mt5_path and os.path.exists(mt5_path):
         init_args["path"] = mt5_path
         print(f"[INFO] Target Terminal: {mt5_path}")
+    
+    # 2b. 🔒 CHECK FOR HFT LOCK (Prevent Startup Conflict)
+    if r_client:
+        lock_seed = mt5_path if mt5_path else "default"
+        # NORMALIZE (Critical)
+        lock_seed = os.path.normpath(str(lock_seed)).lower().strip()
+        import hashlib
+        path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
+        lock_key = f"lock:terminal:{path_hash}"
+        
+        # print(f"[DEBUG] Broadcaster Init Key: {lock_key}")
+        
+        # Wait if locked
+        for _ in range(5): # Wait up to 5s at startup
+            owner = r_client.get(lock_key)
+            if owner and owner.decode() != USER_ID:
+                print(f"[WAIT] Terminal in use by {owner.decode()}. Pausing Init...")
+                time.sleep(1.0)
+            else:
+                break
 
     # 3. ATTACH MODE: Try to initialize WITHOUT credentials first
     # This allows connecting to an already open terminal (Manual Login / OTP)
     if not mt5.initialize(**init_args):
         print("[ERROR] initialize() failed, error code =", mt5.last_error())
         quit()
+
+    # 3b. STRICT PATH VERIFICATION
+    # Ensure we actually connected to the requested terminal (Anti-Hijack)
+    if mt5_path:
+        connected_path = mt5.terminal_info().path
+        # Normalize both for comparison
+        req_norm = os.path.normpath(mt5_path).lower()
+        got_norm = os.path.normpath(connected_path).lower()
+        
+        # Check if Got is "inside" Req or match (handle exe vs folder)
+        if req_norm not in got_norm and got_norm not in req_norm:
+             print(f"[CRITICAL] Terminal Hijack Detected! Requested: {mt5_path}, Connected: {connected_path}")
+             print(f"[STOP] Aborting to prevent cross-talk.")
+             mt5.shutdown()
+             quit()
+
 
     # 4. Check Current Login
     current_account = mt5.account_info()
@@ -131,28 +167,23 @@ def follow_signals():
             # 🔒 ROBUST LOCKING: Even if path is invalid/empty, we share the "default" terminal.
             # We must sync on a common key.
             lock_seed = mt5_path if mt5_path else "default"
+            # NORMALIZE PATH (Must match Executor logic!)
+            lock_seed = os.path.normpath(str(lock_seed)).lower().strip()
             
             if r_client:
+                # import hashlib # Ensuring import for safety (top level preferred)
                 import hashlib
                 path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
                 lock_key = f"lock:terminal:{path_hash}"
+                # print(f"[DEBUG] Broadcaster Lock Key: {lock_key}")
                 lock_owner = r_client.get(lock_key)
                 
                 # If Locked by SOMEONE ELSE (e.g., Executor), we MUST PAUSE.
-                # We identify ourselves by USER_ID (Broadcaster ID) vs Executor ID.
-                # Actually, Executor uses ITS UserID as the lock value.
                 if lock_owner and lock_owner != USER_ID:
-                    # Allow a grace period of "read-only" checks if we are on the right account?
-                    # NO. If Executor is active, it might be switching accounts. We must NOT touch ANY MT5 function that might interfere.
-                    # Or at least, definitely DO NOT LOGIN.
-                    
-                    # But we simply want to check if we are connected.
-                    # If we are strictly passive, maybe we can read? 
-                    # Use caution. Most MT5 commands are thread-unsafe if account is switching.
-                    # Safest is to spin-wait.
                     # print(f"[WAIT] Terminal locked by Executor {lock_owner}. Pausing Broadcaster...") # Verbose
                     time.sleep(0.5)
                     continue
+
 
             # 🛡️ CONNECTION GUARD: Prevent "False Closes" if terminal disconnects
             # If terminal is disconnected, positions_get() might return empty or stale data.
@@ -175,6 +206,18 @@ def follow_signals():
             if master_creds:
                  target_login = master_creds[0]
                  if not start_info or str(start_info.login) != str(target_login):
+                     # 🛑 STOP! Check if Executor is active before fighting it.
+                     # Re-Check Lock (Race Condition prevention)
+                     if r_client:
+                         import hashlib # Moved here or ensure top level
+                         path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
+                         lock_key = f"lock:terminal:{path_hash}"
+                         current_lock = r_client.get(lock_key)
+                         if current_lock and current_lock != USER_ID:
+                              # print(f"[INFO] Account switched by HFT ({current_lock}). Yielding...")
+                              time.sleep(1) # Increased HFT timeout
+                              continue # Yield to HFT
+                     
                      print(f"[WARN] Account Drift (Pre-Check)! Active: {start_info.login if start_info else 'None'}, Target: {target_login}. Re-asserting Login...")
                      mt5.login(login=target_login, password=master_creds[1], server=master_creds[2])
                      time.sleep(0.5)

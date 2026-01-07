@@ -11,11 +11,13 @@ from datetime import datetime, timedelta, time as d_time
 import argparse
 import psycopg2
 import hashlib
+import threading
 
 # ⚙️ CONFIGURATION 
 
 PORT = "3000"
-HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1"] 
+# HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1"] 
+HOSTS = ["192.168.252.237.nip.io", "localhost", "127.0.0.1"] 
 # HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1", "172.20.10.3.nip.io"] 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -49,11 +51,24 @@ TARGET_LOGIN_ID = None # Stores the numeric Login ID (int) for verification
 POLL_INTERVAL = 1.0 
 DRY_RUN = args.dry_run
 
+# 🚀 HFT SWARM CONFIGURATION (Critical for Turbo Mode)
+# Must be configured BEFORE any pool logic is triggered.
+if EXECUTION_MODE in ['BATCH', 'TURBO']:
+    try:
+        import hft_executor
+        if MT5_PATH_ARG:
+            hft_executor.configure_swarm(MT5_PATH_ARG)
+        print(f"[INIT] HFT Swarm Configured. Terminal: {MT5_PATH_ARG or 'Auto'}")
+    except ImportError:
+        print("[WARN] hft_executor module not found. HFT features disabled.")
+
 print(f"🚀 Hydra Engine Starting in {EXECUTION_MODE} Mode...")
 if EXECUTION_MODE == 'BATCH':
     print(f"   🚌 Standard Cloud: Processing High-Density Batch #{args.batch_id}")
 elif EXECUTION_MODE == 'TURBO':
     print(f"   🏎️ Turbo Cloud: Low-Latency Worker Swarm Active")
+    if EXECUTION_MODE == 'TURBO':
+         hft_executor.init_persistent_engine()
 
 
 def get_api_url(host):
@@ -78,7 +93,12 @@ def fetch_subscriptions(follower_id=None):
     conn = get_db_connection()
     # 🛡️ Guard: If no DB, return empty. But wait, if follower_id is None, we return empty dict/list default?
     # If explicit none passed, we might be fetching ALL (Batch/Turbo).
-    if not conn: return {} if follower_id else []
+    conn = get_db_connection()
+    # 🛡️ Guard: If no DB, return empty.
+    # CRITICAL FIX: If EXECUTION_MODE is BATCH or TURBO, we MUST return a dict {}, not a list [].
+    # Otherwise logic downstream (active_subscriptions.keys()) will crash.
+    if not conn:
+        return {} if EXECUTION_MODE in ['BATCH', 'TURBO'] or follower_id else []
     
     # 🛡️ Guard: Prevent fetching for invalid follower_id
     if EXECUTION_MODE == 'SINGLE' and not follower_id:
@@ -88,23 +108,23 @@ def fetch_subscriptions(follower_id=None):
         cur = conn.cursor()
         
         if EXECUTION_MODE == 'BATCH':
-            # Fetch ALL active sessions for users assigned to this Batch (Modulo Logic)
-            # EXCLUDE PAID USERS (They go to Turbo Lane)
+            # 🚌 BATCH MODE (Standard Lane)
             print(f"[DEBUG] Fetching BATCH subscriptions (Shard {args.batch_id})...")
             
             query = """
-                SELECT "followerId", "masterId", "timeConfig", "expiry" 
-                FROM "CopySession"
-                WHERE "isActive" = true
-                  AND "type" != 'PAID' -- ⚡ Standard Lane Only (Free/Trial)
+                SELECT "followerId", "masterId", "timeConfig", "expiry", "executionLane", "allocation", cs."id"
+                FROM "CopySession" cs
+                JOIN "User" u ON cs."followerId" = u."id"
+                WHERE cs."isActive" = true 
+                  AND cs."executionLane" = 'STANDARD'
+                  AND u."role" != 'MASTER'
             """
             cur.execute(query)
             rows = cur.fetchall()
             
-            # Organize { master_id: [ { followerId: ..., config: ... } ] }
             batch_subs = {} 
             for row in rows:
-                fid, mid, cfg, exp = row
+                fid, mid, cfg, exp, lane, alloc, session_id = row
                 
                 # SHARDING FILTER
                 try:
@@ -122,7 +142,10 @@ def fetch_subscriptions(follower_id=None):
                 batch_subs[mid_str].append({
                     'follower_id': fid,
                     'config': cfg,
-                    'expiry': exp
+                    'expiry': exp,
+                    'lane': lane,
+                    'allocation': float(alloc or 0),
+                    'session_id': session_id
                 })
             
             print(f"[DEBUG] Batch Standard Loaded: {len(batch_subs)} Masters monitored.")
@@ -134,16 +157,18 @@ def fetch_subscriptions(follower_id=None):
             print(f"[DEBUG] Fetching ALL subscriptions for Dynamic HFT Swarm...")
             
             query = """
-                SELECT "followerId", "masterId", "timeConfig", "expiry", "executionLane"
-                FROM "CopySession"
-                WHERE "isActive" = true
+                SELECT "followerId", "masterId", "timeConfig", "expiry", "executionLane", "allocation", cs."id"
+                FROM "CopySession" cs
+                JOIN "User" u ON cs."followerId" = u."id"
+                WHERE cs."isActive" = true
+                  AND u."role" != 'MASTER' -- 🛑 RULE: Master cannot follow
             """
             cur.execute(query)
             rows = cur.fetchall()
             
             batch_subs = {} 
             for row in rows:
-                fid, mid, cfg, exp, lane = row
+                fid, mid, cfg, exp, lane, alloc, session_id = row
                 mid_str = str(mid)
                 if mid_str not in batch_subs:
                     batch_subs[mid_str] = []
@@ -152,7 +177,9 @@ def fetch_subscriptions(follower_id=None):
                     'follower_id': fid,
                     'config': cfg,
                     'expiry': exp,
-                    'lane': lane 
+                    'lane': lane,
+                    'allocation': float(alloc or 0),
+                    'session_id': session_id
                 })
                 
             print(f"[DEBUG] TURBO Swarm Loaded: {len(batch_subs)} Masters monitored.")
@@ -174,6 +201,10 @@ def fetch_subscriptions(follower_id=None):
     except Exception as e:
         print(f"[ERROR] Fetch Subscriptions Failed: {e}")
         return {} if EXECUTION_MODE == 'BATCH' else {}
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
 
 def fetch_credentials(target_user_id=None):
     use_id = target_user_id if target_user_id else MY_FOLLOWER_ID
@@ -192,6 +223,17 @@ def fetch_credentials(target_user_id=None):
             pass
     print("[ERROR] Failed to fetch credentials from any host.")
     return None
+
+import redis
+import json
+
+# Redis for Sentinel Sync
+redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+class SentinelManager:
+    def sync_sentinel(self, subs):
+        """Sentinel Logic Disabled by User Request"""
+        pass
 
 def login_mt5(creds):
     if not creds: return False
@@ -1381,16 +1423,21 @@ def acquire_terminal_lock():
     
     # Fast Spinlock (Wait up to 10s)
     # We want to be FAST. If someone is using it, wait briefly then grab.
+    lock_owner = MY_FOLLOWER_ID if MY_FOLLOWER_ID else "HFT_SWARM_MANAGER"
+    
     for attempt in range(100): # 100 * 0.1s = 10s timeout
         # Set Lock with 30s TTL (in case of crash, auto-release)
-        is_locked = r_client.set(key, MY_FOLLOWER_ID, ex=30, nx=True)
+        is_locked = r_client.set(key, lock_owner, ex=30, nx=True)
         if is_locked:
             # print(f"[MUTEX] 🟢 Acquired Terminal Lock") 
             return True
         
         # Check who has it?
-        # current_owner = r_client.get(key)
-        # if current_owner == MY_FOLLOWER_ID: return True # Re-entrancy
+        current_owner = r_client.get(key)
+        if current_owner:
+            if isinstance(current_owner, bytes):
+                current_owner = current_owner.decode()
+            if current_owner == lock_owner: return True # Re-entrancy
         
         time.sleep(0.1)
         
@@ -1401,16 +1448,25 @@ def release_terminal_lock():
     if not r_client: return
     
     lock_seed = MT5_PATH_ARG if MT5_PATH_ARG else "default"
+    # NORMALIZE PATH to ensure matching hash with Broadcaster
+    lock_seed = os.path.normpath(str(lock_seed)).lower().strip()
+    
     path_hash = hashlib.md5(lock_seed.encode()).hexdigest()
-    key = f"lock:terminal:{path_hash}"
+    lock_key = f"lock:terminal:{path_hash}"
+    print(f"[DEBUG] Terminal Lock Key: {lock_key}")
     
     # Only release if WE own it
-    # Lua script for atomic check-and-delete is best, but simple get/del is okay for now.
-    current_owner = r_client.get(key)
-    if current_owner == MY_FOLLOWER_ID:
-        r_client.delete(key)
-        # print(f"[MUTEX] ⚪ Released Terminal Lock")
-        return # <--- EXIT ON SUCCESS
+    lock_owner = MY_FOLLOWER_ID if MY_FOLLOWER_ID else "HFT_SWARM_MANAGER"
+    
+    current_owner = r_client.get(lock_key)
+    if current_owner:
+        if isinstance(current_owner, bytes):
+            current_owner = current_owner.decode()
+            
+        if current_owner == lock_owner:
+            r_client.delete(key)
+            # print(f"[MUTEX] ⚪ Released Terminal Lock")
+            return # <--- EXIT ON SUCCESS
 
     # If we get here, we didn't own the lock but tried to release it.
     # This might happen if lock expired or was taken by someone else.
@@ -1454,8 +1510,15 @@ def reconcile_initial_state(api_url, cached_subs=None):
 
             # Get Local Positions
             local_positions = mt5.positions_get()
+            
+            # 🛡️ SAFETY: If MT5 returns None (Error), abort Recon to prevent False Catch-up
+            if local_positions is None:
+                # print(f"   [WARN] Could not read local positions (MT5 Error). Skipping Recon.")
+                continue
+
             copied_tickets = set()
             if local_positions:
+
                 for p in local_positions:
                     if p.magic == 234000 and "CPY:" in p.comment:
                         try:
@@ -1467,7 +1530,20 @@ def reconcile_initial_state(api_url, cached_subs=None):
             
             # Check for Missing
             for m_ticket, m_info in master_positions.items():
-                if str(m_ticket) not in copied_tickets:
+                is_missing = str(m_ticket) not in copied_tickets
+                
+                # 🚀 TURBO OPTIMIZATION: Check Redis Map if Local Scan failed (Shared Terminal Issue)
+                if is_missing and (EXECUTION_MODE == 'BATCH' or EXECUTION_MODE == 'TURBO'):
+                     # We can't easily switch accounts here to verify.
+                     # But we can check if we HAVE a mapping in Redis.
+                     # Just check for the first available follower context.
+                     ctx_list = subs.get(sub_master_id)
+                     if ctx_list and isinstance(ctx_list, list) and len(ctx_list) > 0:
+                          first_follower = ctx_list[0].get('follower_id')
+                          if get_follower_ticket(m_ticket, first_follower):
+                               is_missing = False # We have a map, assume copied.
+                
+                if is_missing:
                     print(f"   [CATCH-UP] Found missed trade {m_ticket} ({m_info['symbol']})")
                     
                     # Construct Signal
@@ -1514,38 +1590,138 @@ def reconcile_initial_state(api_url, cached_subs=None):
                         print(f"   [SKIP] Catch-up ignored for {m_ticket}. Not subscribed to Master {sub_master_id}.")
                         continue
 
-                    # Execute (execute_trade handles slippage check)
-                    execute_trade(catchup_signal, api_url)
+                    # Execute
+                    if EXECUTION_MODE in ['BATCH', 'TURBO']:
+                        # 🚀 DISPATCH CATCH-UP TO HFT SWARM
+                        from hft_executor import process_batch
+                        
+                        targets = []
+                        if isinstance(session_ctx, list): targets = session_ctx
+                        else: targets = [session_ctx]
+
+                        slave_list = []
+                        for t in targets:
+                            # Pass ID to fetch_credentials.
+                            # NOTE: We can't easily modify 'target_ticket' here without mapping, but for 'OPEN', ticket is 0.
+                            c = fetch_credentials(t.get('follower_id'))
+                            if c:
+                                slave_list.append({
+                                     "login": c['login'],
+                                     "password": c['password'],
+                                     "server": c['server'],
+                                     "terminal_path": MT5_PATH_ARG, 
+                                     "is_premium": t.get('lane') == 'TURBO',
+                                     "target_ticket": 0
+                                 })
+                        
+                        if slave_list:
+                            print(f"   [CATCH-UP] Dispatching {len(slave_list)} jobs to HFT Swarm...")
+                            
+                            # 🔒 SINGLE MACHINE SAFEY: Acquire Redis Lock if sharing terminal
+                            locked = False
+                            if MT5_PATH_ARG: # Only if local path defined
+                                 locked = acquire_terminal_lock()
+                                 if not locked:
+                                     print(f"   [WARN] Could not acquire lock for Catch-up. Trying anyway (Risk of collision)...")
+                            
+                            try:
+                                c_results = process_batch(slave_list, catchup_signal)
+                                if c_results:
+                                    print(f"   [CATCH-UP] Report:")
+                                    for r in c_results:
+                                        icon = "✅" if r.get('status') == 'success' else "❌"
+                                        print(f"       -> Slave {r.get('accountId')}: {icon} {r.get('message')} (Deal: {r.get('dealId')})")
+                            finally:
+                                if locked:
+                                    release_terminal_lock()
+
+
+                    else:
+                        # Single Mode (Legacy)
+                        # We must pass follower_id if known!
+                        # But session_ctx is dict in Single.
+                        f_id = session_ctx.get('follower_id') if session_ctx else None
+                        execute_trade(catchup_signal, api_url, follower_id=f_id)
+
                     time.sleep(0.5) # Pace execution
+
 
             # 4. GHOST CHECK (Missed Closes) 👻
             # If we have it (CPY:Ticket) but Master DOESN'T, it means Master closed it while we were away.
-            for p in local_positions:
-                if p.magic == 234000 and "CPY:" in p.comment:
-                    try:
-                        my_master_ticket = p.comment.split(':')[1]
-                        # If Master's active list excludes this ticket..
-                        if my_master_ticket not in master_positions:
-                             # DOUBLE CHECK HISTORY (Safety)
-                             # Only close if we can verify it was CLOSED in history (to avoid race conditions)
-                             is_verified_closed = r_client.sismember(f"history:master:{sub_master_id}:closed", my_master_ticket)
-                             
-                             if is_verified_closed:
-                                 print(f"   [CATCH-UP] Found MISSED CLOSE for {my_master_ticket}. Closing now...")
-                                 close_signal = {
-                                     "action": "CLOSE",
-                                     "symbol": p.symbol,
-                                     "ticket": my_master_ticket,
-                                     "id": f"CATCHUP-CLOSE-{my_master_ticket}-{int(time.time())}"
-                                 }
-                                 execute_trade(close_signal, api_url)
-                                 time.sleep(0.5)
-                             else:
-                                 # Optional: If not in active and not in history, assume closed? 
-                                 # Safer to wait for history sync or explicit close.
-                                 print(f"   [WARN] Ticket {my_master_ticket} missing from active but not verified closed. Holding.")
-                    except:
-                        pass
+            if local_positions:
+                for p in local_positions:
+                    if p.magic == 234000 and "CPY:" in p.comment:
+                        try:
+                            my_master_ticket = p.comment.split(':')[1]
+                            # If Master's active list excludes this ticket..
+                            if my_master_ticket not in master_positions:
+                                 # DOUBLE CHECK HISTORY (Safety)
+                                 # Only close if we can verify it was CLOSED in history (to avoid race conditions)
+                                 is_verified_closed = r_client.sismember(f"history:master:{sub_master_id}:closed", my_master_ticket)
+                                 
+                                 if is_verified_closed:
+                                     print(f"   [CATCH-UP] Found MISSED CLOSE for {my_master_ticket}. Closing now...")
+                                     close_signal = {
+                                         "action": "CLOSE",
+                                         "symbol": p.symbol,
+                                         "ticket": my_master_ticket,
+                                         "id": f"CATCHUP-CLOSE-{my_master_ticket}-{int(time.time())}"
+                                     }
+                                     
+                                     if EXECUTION_MODE in ['BATCH', 'TURBO']:
+                                          # GHOST CLOSE VIA HFT
+                                          from hft_executor import process_batch
+                                          targets = []
+                                          if isinstance(session_ctx, list): targets = session_ctx
+                                          else: targets = [session_ctx]
+                                          
+                                          slave_list = []
+                                          for t in targets:
+                                              c = fetch_credentials(t.get('follower_id'))
+                                              if c:
+                                                  # Resolve local ticket? HFT worker scans/maps. 
+                                                  # We provide 'target_ticket' if known. but here 'p.ticket' is local ticket!
+                                                  # If we are iterating specific followers, we need THEIR local ticket.
+                                                  # Wait, 'local_positions' loop (line 1529) iterates 'mt5.positions_get()' of the MANAGER terminal.
+                                                  # In Hybrid/Swarm mode, Manager terminal != Follower terminal.
+                                                  # Manager terminal (Orchestrator?) shouldn't have positions if logic is correct?
+                                                  # Or Manager is just observing?
+                                                  # IF Manager has positions, it means specific account.
+                                                  # This block (GHOST CHECK) only works if Manager is connected to Follower account?
+                                                  # In Swarm mode, Manager is NOT connected to Follower. 
+                                                  # So this loop (lines 1529+) is likely identifying "Zombie" trades on the Manager's terminal (or Single mode terminal).
+                                                  # If we are in Swarm mode, we shouldn't be managing positions here?
+                                                  # Correct. This block is Legacy/Single-Mode specific mostly.
+                                                  # BUT if we are here, we might as well dispatch.
+                                                  slave_list.append({
+                                                      "login": c['login'],
+                                                      "password": c['password'],
+                                                      "server": c['server'],
+                                                      "target_ticket": p.ticket, # We found it locally
+                                                      "is_premium": t.get('lane') == 'TURBO'
+                                                  })
+                                          if slave_list:
+                                              # 🔒 LOCK for Close too
+                                              locked = False
+                                              if MT5_PATH_ARG:
+                                                   locked = acquire_terminal_lock()
+                                              
+                                              try:
+                                                  process_batch(slave_list, close_signal)
+                                              finally:
+                                                  if locked: release_terminal_lock()
+
+                                     else:
+                                          execute_trade(close_signal, api_url, follower_id=session_ctx.get('follower_id'))
+                                     
+                                     time.sleep(0.5)
+
+                                 else:
+                                     # Optional: If not in active and not in history, assume closed? 
+                                     # Safer to wait for history sync or explicit close.
+                                     print(f"   [WARN] Ticket {my_master_ticket} missing from active but not verified closed. Holding.")
+                        except:
+                            pass
 
         except Exception as e:
             print(f"   [WARN] Catch-up failed: {e}")
@@ -1567,6 +1743,104 @@ def get_follower_ticket(master_ticket, follower_id):
     if r_client:
         return r_client.get(key)
     return None
+
+# -------------------------------------------------------------------------
+# 🔄 SUBSCRIPTION MANAGER (Background Thread)
+# -------------------------------------------------------------------------
+class SubscriptionManager:
+    """
+    Offloads valid subscription fetching + credential resolution to a background thread.
+    Unblocks the Main Loop for Redis Signals (Realtime).
+    """
+    def __init__(self, interval=3.0, follower_id=None):
+        self.interval = interval
+        self.follower_id = follower_id
+        self.running = False
+        self.active_subscriptions = {} # Shared State {mid: [followers]}
+        self.lock = threading.Lock()
+        self.thread = None
+        self.first_load = threading.Event() # Wait for first load
+
+    def start(self):
+        if self.running: return
+        self.running = True
+        self.thread = threading.Thread(target=self.loop, daemon=True)
+        self.thread.start()
+        
+    def get_subs(self):
+        """Thread-safe getter"""
+        with self.lock:
+            return self.active_subscriptions
+
+    def loop(self):
+        print(f"[BG] Subscription Manager Started (Poll: {self.interval}s)")
+        while self.running:
+            try:
+                # 1. Fetch from DB
+                new_subs = fetch_subscriptions(self.follower_id)
+                
+                if new_subs is not None:
+                     # 2. Check for Changes (Optimization)
+                     # Simple key check is fast
+                     # But sentinel syncing needs logic.
+                     
+                     # 3. Sentinel Sync (Deep Resolution)
+                     # This process is slow (Fetch Creds -> Decrypt)
+                     # We do it HERE in background so Main Loop stays fast ⚡
+                     if EXECUTION_MODE in ['BATCH', 'TURBO']:
+                         self.sync_sentinel(new_subs)
+
+                     # 4. Update Shared State
+                     with self.lock:
+                         # Log diff?
+                         old_keys = set(self.active_subscriptions.keys())
+                         self.active_subscriptions = new_subs
+                         new_keys = set(self.active_subscriptions.keys())
+                         
+                         added = new_keys - old_keys
+                         removed = old_keys - new_keys
+                         if added or removed:
+                             print(f"[BG] 🔄 Active Subs Updated. +{len(added)} / -{len(removed)}")
+
+                self.first_load.set() # Unblock startup
+                time.sleep(self.interval)
+                
+            except Exception as e:
+                print(f"[WARN] Subscription Manager Error: {e}")
+                time.sleep(5.0) # Backoff
+
+    def sync_sentinel(self, subs):
+        """Resolves config and pushes to HFT Engine"""
+        try:
+             # Only relevant for HFT modes
+             from hft_executor import update_sentinel_list
+             sentinel_targets = []
+             
+             # Flatten
+             for m_id, followers in subs.items():
+                 for f in followers:
+                     # SLOW OPS: RESOLVE CREDS
+                     creds = fetch_credentials(f['follower_id'])
+                     if creds:
+                         cfg = {
+                             "login": creds['login'],
+                             "password": creds['password'],
+                             "server": creds['server'],
+                             "is_premium": (f.get('lane') == 'TURBO'),
+                             # Safety Params (Critical)
+                             "allocation": f.get('allocation', 0),
+                             "config": f.get('config'), 
+                             "min_equity": float(creds.get('minEquity', 0) or 0),
+                             "max_daily_loss": float(creds.get('maxDailyLoss', 0) or 0)
+                         }
+                         sentinel_targets.append(cfg)
+             
+             if sentinel_targets:
+                 update_sentinel_list(sentinel_targets)
+                 
+        except Exception as e:
+             # Don't crash background thread
+             print(f"[BG] Sentinel Sync Failed: {e}")
 
 # -------------------------------------------------------------------------
 # 🚀 EXECUTION & REPORTING
@@ -1690,18 +1964,25 @@ def run_executor():
     if EXECUTION_MODE == 'SINGLE':
         check_daily_resets(MY_FOLLOWER_ID)
     
-    active_subscriptions = {} # Dict: { masterId: timeConfig }
-    initial_subs = fetch_subscriptions(MY_FOLLOWER_ID)
-    if initial_subs:
-        active_subscriptions = initial_subs 
+    # 🔄 START BACKGROUND MANAGER ⚡
+    active_subscriptions = {} 
+    subs_mgr = SubscriptionManager(interval=3.0, follower_id=MY_FOLLOWER_ID)
+    subs_mgr.start()
+    
+    # Wait for first load (up to 5s)
+    print("[INIT] Waiting for Subscriptions...")
+    subs_mgr.first_load.wait(timeout=5.0)
+    active_subscriptions = subs_mgr.get_subs() # Initial Get
+    
+    if active_subscriptions:
         for mid in active_subscriptions.keys():
             channel = f"signals:master:{mid}"
             pubsub.subscribe(channel)
             print(f"   -> Subscribed to {channel}")
     else:
-        print("[ℹ️] No active subscriptions found. Waiting for updates...")
+        print("[ℹ️] No active subscriptions found (yet).")
     
-    print(f"[OK] Subscribed to Channels: follower:{MY_FOLLOWER_ID}") # Removed 'all_followers'
+    print(f"[OK] Subscribed to Channels: follower:{MY_FOLLOWER_ID}")
 
     # ⚡ CATCH-UP PHASE
     # Now that we are online and subscribed, check what we missed.
@@ -1718,8 +1999,24 @@ def run_executor():
             # ❤️ HEARTBEAT: Refresh Lock
             refresh_lock(MY_FOLLOWER_ID)
             
-            # 1. BATCH LOOP: If Batch Mode, we don't listen to 1 channel. We listen to ALL Masters.
-            # actually, we subscribe to Masters in `fetch_subscriptions` logic above.
+            # 🔄 FAST READ (Thread Safe)
+            current_active_subs = subs_mgr.get_subs()
+            # If structure changed (keys), update PubSub?
+            # The Manager handles Sentinel Sync, but WE handle PubSub.
+            # Compare Keys Only (Fast)
+            if set(current_active_subs.keys()) != set(active_subscriptions.keys()):
+                old_keys = set(active_subscriptions.keys())
+                new_keys = set(current_active_subs.keys())
+                active_subscriptions = current_active_subs # Update Local Ptr
+                
+                # Update Redis Channels
+                added = new_keys - old_keys
+                removed = old_keys - new_keys
+                for m in added: pubsub.subscribe(f"signals:master:{m}")
+                for m in removed: pubsub.unsubscribe(f"signals:master:{m}")
+                if added or removed: print(f"[LOOP] ⚡ Channels Updated: +{len(added)} / -{len(removed)}")
+            else:
+                 active_subscriptions = current_active_subs # Just refresh content ptr
             
             if pubsub:
                 message = pubsub.get_message(ignore_subscribe_messages=True)
@@ -1762,22 +2059,12 @@ def run_executor():
                                 from hft_executor import process_batch
                                 # Prepare Slave List for HFT Engine
                                 slave_list = []
+                                # We need a fast credential lookup.
+                                login_map = {} # Store Login -> FollowerID mapping for reporting
+                                
                                 for target in targets:
-                                    # We need to resolve credentials here or pass ID to worker to resolve?
-                                    # Worker resolves. We pass config.
-                                    # Actually worker expects 'login', 'password', 'server'.
-                                    # We must fetch them here or inside worker.
-                                    # Optimization: Fetch here once if possible, but parallelism implies fetching inside worker might be slower if single net bottleneck?
-                                    # Let's quick-fetch creds here (sequential fetch, parallel execute)?
-                                    # Or parallel fetch? hft_executor worker does not fetch creds from API, it expects them in 'slave_config'.
-                                    
-                                    # Solution: We need a fast credential lookup. 
-                                    # For MVP integration: We fetch here.
-                                    login_map = {} # Store Login -> FollowerID mapping for reporting
-                                    
-                                    for target in targets:
-                                        creds = fetch_credentials(target['follower_id'])
-                                        if creds:
+                                    creds = fetch_credentials(target['follower_id'])
+                                    if creds:
                                             # DYNAMIC PRIORITY LOGIC
                                             # Check lane from subscription data
                                             is_turbo = target.get('lane') == 'TURBO'
@@ -1801,12 +2088,11 @@ def run_executor():
                                                     found_pos = None
                                                     
                                                     # 🔐 LOCK & SCAN
-                                                    lock_ctx = None
                                                     try: 
                                                         from hft_executor import MT5_GLOBAL_LOCK
                                                         lock_ctx = MT5_GLOBAL_LOCK
                                                     except: pass
-                                                    
+
                                                     if lock_ctx and lock_ctx.acquire(blocking=False):
                                                         try:
                                                             found_pos = find_trade_by_ticket(master_ticket)
@@ -1839,10 +2125,46 @@ def run_executor():
                                             # ✅ Ensure Key is INT for robust matching
                                             login_map[int(creds['login'])] = target['follower_id']
                                 
+                                # 4. Execute Batch & Report
                                 if slave_list:
-                                    print(f"   [HFT] Offloading {len(slave_list)} trades to Parallel Engine...")
-                                    report = process_batch(slave_list, signal)
-                                    process_execution_report(report, signal, login_map)
+                                    # 🔒 LOCK HFT BATCH
+                                    # Prevents Broadcaster from stealing focus during high-speed ops
+                                    locked = False
+                                    if MT5_PATH_ARG:
+                                         locked = acquire_terminal_lock()
+                                    
+                                    try:
+                                        # process_batch returns List[TradeResult]
+                                        results = process_batch(slave_list, signal)
+                                    finally:
+                                        if locked: release_terminal_lock()
+                                    
+                                    # REPORT RESULTS (Console + DB feedback?)
+
+                                    # For now, print to console so we can see what happened
+                                    if results:
+                                        print(f"   [HFT] Execution Report:")
+                                        for res in results:
+                                            # Handle Dict Result from HFT
+                                            is_success = (res.get('status') == 'success')
+                                            status_icon = "✅" if is_success else "❌"
+                                            login_id = res.get('accountId')
+                                            msg = res.get('message')
+                                            deal = res.get('dealId')
+                                            
+                                            print(f"       -> Slave {login_id}: {status_icon} {msg} (Deal: {deal})")
+                                            
+                                            # ✅ PERSIST TICKET MAP (Critical for Modify/Close)
+                                            if is_success and signal.get('action') == 'OPEN':
+                                                 # We need FollowerID. Map accountId -> followerId
+                                                 # We built login_map earlier: login_map[login] = follower_id
+                                                 f_uuid = login_map.get(login_id)
+                                                 if f_uuid and deal:
+                                                     save_ticket_map(signal.get('ticket'), deal, f_uuid)
+                                                     # print(f"       [💾] Mapped Master {signal.get('ticket')} -> Follower {deal}")
+
+                                else:
+                                    print("   [HFT] No valid targets found (Credentials missing?)")
                                 
                                 continue # Skip legacy loop below
             
@@ -1912,43 +2234,12 @@ def run_executor():
                      
                      last_sync_time = current_time
                      
-            # 4. Refresh Subscriptions (Dynamic Unsubscribe) 🔄
-            if current_time - last_subs_refresh_time > SUBS_REFRESH_INTERVAL:
-                 new_subs = fetch_subscriptions(MY_FOLLOWER_ID)
-                 
-                 # If None, DB might be down. Don't clear cache aggressively?
-                 # If empty list [], means we follow NO ONE.
-                 if new_subs is not None:
-                     # Update the active set so filtering works in the Main Loop
-                     old_masters = set(active_subscriptions.keys())
-                     active_subscriptions = new_subs # Replace Dict
-                     new_masters = set(active_subscriptions.keys())
-                     
-                     # Log changes
-                     added = new_masters - old_masters
-                     removed = old_masters - new_masters
-                     
-                     if added or removed:
-                         print(f"[REFRESH] 🔄 Subs Updated. Added: {added}, Removed: {removed}")
-                         
-                         # Optimized: Subscribe to new channels immediately
-                         # (We don't strictly need to unsubscribe from Redis, as we filter messages anyway,
-                         # but keeping subscriptions clean reduces network traffic)
-                         for m_id in added:
-                             pubsub.subscribe(f"signals:master:{m_id}")
-                             print(f"   -> Subscribed to signals:master:{m_id}")
-                         
-                         for m_id in removed:
-                             pubsub.unsubscribe(f"signals:master:{m_id}")
-                             print(f"   -> Unsubscribed from signals:master:{m_id}")
-                 last_subs_refresh_time = current_time
-
             # 5. Check Daily Resets 🔄
             if current_time - last_reset_check_time > RESET_CHECK_INTERVAL:
                  check_daily_resets(MY_FOLLOWER_ID)
                  last_reset_check_time = current_time
 
-            time.sleep(0.01) # Ultra Low Latency Loop
+            time.sleep(0.001) # Ultra Low Latency Loop (1ms)
 
     except KeyboardInterrupt:
         print("[STOP] Stopping Executor...")

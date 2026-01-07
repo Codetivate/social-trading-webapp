@@ -131,8 +131,8 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
             <div className="border-b border-border sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center justify-between p-4 max-w-7xl mx-auto">
                     {/* Header: Back & Favorite */}
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
+                    <div className="flex justify-between items-center w-full">
+                        <button onClick={onBack} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/5 bg-black/20 backdrop-blur-md">
                             <ChevronLeft size={24} />
                         </button>
                         {!isOwner && (
@@ -171,49 +171,52 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                         </div>
                     </div>
 
-                    {/* Quick Stats Grid (Top Right) */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-auto">
-                        <Card className="bg-muted/50 border-none shadow-none">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                <Users className="h-4 w-4 text-muted-foreground mb-1" />
-                                <div className="text-lg font-bold">{master.followers.toLocaleString()}</div>
-                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Copiers</div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-muted/50 border-none shadow-none">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                <Wallet className="h-4 w-4 text-muted-foreground mb-1" />
-                                <div className="text-lg font-bold">${master.minDeposit}</div>
-                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Min Deposit</div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-muted/50 border-none shadow-none">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                <TrendingUp className="h-4 w-4 text-muted-foreground mb-1" />
-                                <div className="text-lg font-bold">{master.leverage ? `1:${master.leverage}` : "N/A"}</div>
-                                <div className="text-[10px] uppercase text-muted-foreground font-medium">Leverage</div>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-muted/50 border-none shadow-none">
-                            <CardContent className="p-4 flex flex-col items-center justify-center text-center">
-                                <Copy className="h-4 w-4 text-muted-foreground mb-1" />
-                                <div className="text-lg font-bold">{isPremium ? `$${master.monthlyFee}` : "Free"}</div>
-                                <div className="text-[10px] uppercase text-muted-foreground font-medium">{isPremium ? "Monthly" : "Access"}</div>
-                            </CardContent>
-                        </Card>
-                    </div>
                 </div>
 
+                {/* SHOW STATS ALWAYS (Private means Unlisted, not Hidden) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-auto">
+                    <Card className="bg-muted/50 border-none shadow-none">
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                            <Users className="h-4 w-4 text-muted-foreground mb-1" />
+                            <div className="text-lg font-bold">{master.followers.toLocaleString()}</div>
+                            <div className="text-[10px] uppercase text-muted-foreground font-medium">Copiers</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-muted/50 border-none shadow-none">
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                            <Wallet className="h-4 w-4 text-muted-foreground mb-1" />
+                            <div className="text-lg font-bold">${master.minDeposit}</div>
+
+                            <div className="text-[10px] uppercase text-muted-foreground font-medium">Min Deposit</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-muted/50 border-none shadow-none">
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                            <TrendingUp className="h-4 w-4 text-muted-foreground mb-1" />
+                            <div className="text-lg font-bold">{master.leverage ? `1:${master.leverage}` : "N/A"}</div>
+                            <div className="text-[10px] uppercase text-muted-foreground font-medium">Leverage</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-muted/50 border-none shadow-none">
+                        <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+                            <Copy className="h-4 w-4 text-muted-foreground mb-1" />
+                            <div className="text-lg font-bold">{isPremium ? `$${master.monthlyFee}` : "Free"}</div>
+                            <div className="text-[10px] uppercase text-muted-foreground font-medium">{isPremium ? "Monthly" : "Access"}</div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+
+                {/* 2. TRADER ANALYSIS DASHBOARD (Analysis Always Visible) */}
                 <Separator className="bg-white/10" />
 
-                {/* 2. TRADER ANALYSIS DASHBOARD (FTMO Style) */}
                 <div className="min-h-[500px]">
                     <TraderAnalysisDashboard
                         masterId={resolvedUserId || ""}
                         isOwnProfile={master.id === 0}
                     />
-                </div>
 
+                </div>
             </div>
 
             {/* 3. STICKY FOOTER (ACTION BAR) - Hide if Own Profile (id === 0) */}
@@ -249,32 +252,34 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                 </div>
             </div>
 
-            {safetyModalOpen && (
-                <SafetyGuardModal
-                    initialRisk={aiGuardRisk}
-                    initialAllocation={allocation}
-                    maxAlloc={maxAlloc || 0}
-                    initialAutoRenew={autoRenew}
-                    initialTimeConfig={timeConfig}
-                    initialUseWelcome={useWelcomeTicket}
-                    showWelcomeOption={!hasUsed7DayTrial && selectedSessionType === "DAILY"}
-                    onClose={() => setSafetyModalOpen(false)}
-                    onConfirm={(data) => {
-                        // Persist preferences locally if needed
-                        setAiGuardRisk(data.risk);
-                        setAllocation(data.allocation);
-                        setAutoRenew(data.autoRenew);
-                        setTimeConfig(data.timeConfig);
+            {
+                safetyModalOpen && (
+                    <SafetyGuardModal
+                        initialRisk={aiGuardRisk}
+                        initialAllocation={allocation}
+                        maxAlloc={maxAlloc || 0}
+                        initialAutoRenew={autoRenew}
+                        initialTimeConfig={timeConfig}
+                        initialUseWelcome={useWelcomeTicket}
+                        showWelcomeOption={!hasUsed7DayTrial && selectedSessionType === "DAILY"}
+                        onClose={() => setSafetyModalOpen(false)}
+                        onConfirm={(data) => {
+                            // Persist preferences locally if needed
+                            setAiGuardRisk(data.risk);
+                            setAllocation(data.allocation);
+                            setAutoRenew(data.autoRenew);
+                            setTimeConfig(data.timeConfig);
 
-                        const finalType = (selectedSessionType === "DAILY" && data.useWelcome) ? "TRIAL_7DAY" : selectedSessionType;
-                        onStartCopy(master, data.allocation, data.risk, finalType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
+                            const finalType = (selectedSessionType === "DAILY" && data.useWelcome) ? "TRIAL_7DAY" : selectedSessionType;
+                            onStartCopy(master, data.allocation, data.risk, finalType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
 
-                        setSafetyModalOpen(false);
-                        setUseWelcomeTicket(false);
-                        onBack();
-                    }}
-                />
-            )}
+                            setSafetyModalOpen(false);
+                            setUseWelcomeTicket(false);
+                            onBack();
+                        }}
+                    />
+                )
+            }
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
@@ -284,6 +289,6 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                 message={confirmModal.message}
                 type={confirmModal.type}
             />
-        </div>
+        </div >
     )
 }

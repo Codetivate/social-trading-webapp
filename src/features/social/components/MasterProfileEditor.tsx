@@ -40,6 +40,7 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
     };
 
     const [name, setName] = useState(profile.name);
+    const [username, setUsername] = useState(profile.username || ""); // ✅ Username State
     const [desc, setDesc] = useState(profile.desc);
     const [tags, setTags] = useState<string[]>(profile.tags);
     const [tagInput, setTagInput] = useState("");
@@ -109,6 +110,7 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
         const updatedProfile = {
             ...profile,
             name,
+            username, // ✅ Save Local
             desc,
             tags,
             avatar: avatar,
@@ -124,7 +126,7 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
         // 2. Server Persistence
         const res = await updateMasterProfile(profile.userId, {
-            name, desc, tags, avatar,
+            name, username, desc, tags, avatar, // ✅ Save Server
             monthlyFee: safeFee,
             minDeposit: safeMinDeposit,
             winRate: safeWinRate,
@@ -167,6 +169,16 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
             </div>
 
             <div className="space-y-2"><label className="text-xs text-gray-400">Display Name</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none" /></div>
+
+            <div className="space-y-2">
+                <label className="text-xs text-gray-400">Username (Handle)</label>
+                <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none placeholder:text-gray-700"
+                    placeholder="e.g. masternes"
+                />
+            </div>
 
             {/* 💰 Fee Setting (Updated UI) */}
             <div className="space-y-4">

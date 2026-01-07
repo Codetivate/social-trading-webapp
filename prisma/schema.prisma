@@ -217,6 +217,7 @@ model MasterProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  username String?  @unique // 🔗 URL Handle (e.g. signaltrade.app/masternes)
   name     String
   desc     String?
   avatar   String?
@@ -229,6 +230,8 @@ model MasterProfile {
   drawdown       Float @default(0)
   riskScore      Float @default(0)
   riskReward     Float @default(0) // ✅ Added Risk Reward
+  profitFactor   Float @default(0) // ✅ Added Profit Factor
+  netProfit      Float @default(0) // ✅ Added Net Profit (for filtering)
   followersCount Int   @default(0)
   aum            Float @default(0)
 
@@ -496,4 +499,15 @@ model UserPromotion {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// 🧠 SEARCH ANALYTICS (AI & Marketing)
+model SearchQuery {
+  id        String   @id @default(cuid())
+  term      String   @unique
+  count     Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@index([count(sort: Desc)]) // Fast lookup for trending (Most Searched)
+  @@index([updatedAt(sort: Desc)]) // Fast lookup for Recency
 }
