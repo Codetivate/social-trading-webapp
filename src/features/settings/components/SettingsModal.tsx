@@ -66,6 +66,14 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
         }
     }, [showBrokerForm]);
 
+    // 🟢 Auto-Save Credentials for persistence (Fix for Refresh/Flicker)
+    React.useEffect(() => {
+        if (brokerAccount) {
+            if (brokerAccount.login) sessionStorage.setItem("lastBrokerLogin", brokerAccount.login.toString());
+            if (brokerAccount.server) sessionStorage.setItem("lastBrokerServer", brokerAccount.server);
+        }
+    }, [brokerAccount]);
+
     const MOCK_BROKERS = [
         "Exness-MT5Real", "Exness-MT5Trial",
         "XMGlobal-MT5-Real", "XMGlobal-MT5-Demo",
@@ -310,6 +318,17 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                                                         if (res.success) {
                                                             toast.success("Broker Disconnected", { id: confirmId });
                                                             setStatus("DISCONNECTED");
+
+                                                            // 🔄 UI Update: Notify Parent immediately (No Refresh Needed)
+                                                            if (onConnectionSuccess && brokerAccount) {
+                                                                onConnectionSuccess({
+                                                                    ...brokerAccount,
+                                                                    status: "DISCONNECTED",
+                                                                    balance: 0,
+                                                                    equity: 0
+                                                                });
+                                                            }
+
                                                             // Prepare for Reconnect
                                                             if (brokerAccount) {
                                                                 setLoginId(brokerAccount.login);

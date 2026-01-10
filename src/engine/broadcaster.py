@@ -18,6 +18,25 @@ parser.add_argument('--secret', type=str, default=os.getenv("API_SECRET"), help=
 
 args = parser.parse_args()
 
+# 🛡️ ZOMBIE PROTECTION: Singleton Logic
+def acquire_broadcast_lock(user_id):
+    # Reuse valid Redis connection if possible, or new one
+    try:
+        r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
+        key = f"lock:broadcaster:{user_id}"
+        # Set lock with 10s expiry (Heartbeat needed)
+        # But for simplicity, we just check existence and set long expiry, assuming process death clears it?
+        # No, process death doesn't clear Redis. We need a heartbeat or short TTL.
+        # Let's use a 5s TTL and refresh it in the loop.
+        if r.set(key, os.getpid(), nx=True, ex=5):
+            return True, r
+        else:
+            # Check if alive (optional)
+            return False, r
+    except:
+        return True, None # Fail open if Redis dead? No, we need Redis.
+
+
 # ⚙️ CONFIGURATION
 BASE_URL = os.getenv("AUTH_URL", "http://localhost:3000") # Default to localhost if not set
 WEBHOOK_URL = f"{BASE_URL}/api/webhook/signal" 
@@ -55,10 +74,10 @@ def initialize_mt5():
     if creds:
         target_login, password, server = creds
     else:
-        print("[WARN] Using fallback/local credentials...")
-        target_login = 206872145
-        password = "Nes#633689"
-        server = "Exness-MT5Trial7"
+        print("[STOP] No CONNECTED Broker Account found via API. Exiting Broadcaster.")
+        # We exit here because the user has explicitly disconnected (or never connected).
+        # Should not retry indefinitely or use random fallbacks.
+        quit()
 
     # 2. Path Configuration
     # PRIORITY: CLI Arg > Env Var > Default
@@ -130,17 +149,21 @@ def initialize_mt5():
     
     if authorized:
         print(f"[OK] Login Successful: {target_login}")
+        return True
     else:
-        print(f"[ERROR] Auto-Login Failed: {mt5.last_error()}")
-        print(f"👉 TIP: If your broker requires OTP, please Login MANUALLY in the MT5 Terminal and check 'Save Password'.")
-        # specific for OTP/2FA
-        print(f"   The script will then attach to your manual session on next run.")
-        quit()
+        print(f"[WARN] Auto-Login Failed: {mt5.last_error()} - Will retry...")
+        return False
 
 
 def follow_signals():
     print(f"[START] Broadcaster Started. Watching Trades for Master {MASTER_ID}...")
     
+    # 🧹 ZOMBIE CLEANUP: Clear any stale state from previous (crashed) sessions
+    # This prevents Followers from seeing "Ghost" trades if we restart with 0 positions.
+    if r_client:
+        r_client.delete(f"state:master:{MASTER_ID}:tickets")
+        print(f"   [CLEANUP] Flushed Redis State for {MASTER_ID}")
+
     # 🔑 AUTHENTICATION: Fetch Master Credentials Once
     master_creds = fetch_credentials() # Returns (login, password, server)
     if not master_creds:
@@ -235,7 +258,9 @@ def follow_signals():
             
             if current_positions_tuple is None:
                 if mt5.last_error()[0] != 1: # 1 = Success
-                     print("[WARN] MT5 Error:", mt5.last_error())
+                     print(f"[WARN] MT5 Position Scan Failed (Error: {mt5.last_error()}). Retrying...")
+                     time.sleep(0.5)
+                     continue # 🛡️ SAFETY: Do not assume empty list. Abort iteration.
                 current_positions_tuple = []
 
             # Convert struct tuple to list for easier handling
@@ -269,6 +294,30 @@ def follow_signals():
 
                 if pos.ticket not in known_positions:
                     print(f"[SIGNAL] OPEN: {pos.symbol} {pos.ticket} (Magic: {pos.magic})")
+                    
+                    # 1. ⚡ STATE FIRST: Persist to Memory Immediately
+                    # This ensures that even if 'send_signal' blocks/fails, the State Sync (at end of loop)
+                    # will include this trade, allowing Executor to Catch-Up.
+                    known_positions[pos.ticket] = {
+                        "sl": pos.sl, 
+                        "tp": pos.tp, 
+                        "price": pos.price_open, 
+                        "volume": pos.volume,
+                        "symbol": pos.symbol,
+                        "type": "BUY" if pos.type == 0 else "SELL",
+                        "open_time": pos.time
+                    }
+
+                    # 🕒 CALCULATE TRADE AGE (Timezone Neutral)
+                    # We use the Broker's Current Time for this symbol to avoid local clock skew.
+                    tick = mt5.symbol_info_tick(pos.symbol)
+                    if tick:
+                        server_time = tick.time 
+                        age_seconds = server_time - pos.time
+                        known_positions[pos.ticket]["age_seconds"] = age_seconds
+                    else:
+                        known_positions[pos.ticket]["age_seconds"] = 0 # Fallback
+
                     payload = {
                         "masterId": MASTER_ID,
                         "ticket": str(pos.ticket), # ✅ String Ticket
@@ -281,19 +330,17 @@ def follow_signals():
                         "action": "OPEN"
                     }
                     send_signal(payload)
-                    known_positions[pos.ticket] = {
-                        "sl": pos.sl, 
-                        "tp": pos.tp, 
-                        "price": pos.price_open, 
-                        "volume": pos.volume,
-                        "symbol": pos.symbol,
-                        "type": "BUY" if pos.type == 0 else "SELL" # Store Type for Catch-Up
-                    }
+                    
                 else:
                     # --- B. CHECK FOR MODIFICATIONS (SL/TP) ---
                     prev_data = known_positions[pos.ticket]
                     if prev_data["sl"] != pos.sl or prev_data["tp"] != pos.tp:
                         print(f"[SIGNAL] MODIFY: {pos.ticket} SL: {pos.sl} TP: {pos.tp}")
+                        
+                        # ⚡ STATE FIRST
+                        known_positions[pos.ticket]["sl"] = pos.sl
+                        known_positions[pos.ticket]["tp"] = pos.tp
+                        
                         payload = {
                             "masterId": MASTER_ID,
                             "ticket": str(pos.ticket), # ✅ String Ticket
@@ -303,8 +350,6 @@ def follow_signals():
                             "tp": pos.tp
                         }
                         send_signal(payload)
-                        known_positions[pos.ticket]["sl"] = pos.sl
-                        known_positions[pos.ticket]["tp"] = pos.tp
 
             # --- C. CHECK FOR CLOSED POSITIONS ---
             # Any ticket in known_positions that is NOT in current_tickets is considered closed
@@ -313,6 +358,23 @@ def follow_signals():
             for ticket in closed_tickets:
                 print(f"[SIGNAL] CLOSE DETECTED: {ticket}. Fetching PnL...")
                 
+                # ⚡ STATE FIRST: Remove immediately so Ghost Buster knows it's gone
+                # Capture data for payload before deleting
+                c_type = known_positions[ticket].get("type", "UNKNOWN")
+                c_symbol = known_positions[ticket].get("symbol", "Unknown")
+                c_price = known_positions[ticket].get("price", 0.0)
+                c_open_time = known_positions[ticket].get("open_time", int(time.time())) # ✅ Capture Open Time
+                del known_positions[ticket]
+
+                # ⚡ FAST SYNC: Immediately log closure to Redis History
+                # This enables the "Ghost Buster" to verify the close effortlessly (Fast Path).
+                if r_client:
+                    try:
+                        r_client.sadd(f"history:master:{MASTER_ID}:closed", str(ticket))
+                        r_client.expire(f"history:master:{MASTER_ID}:closed", 172800) # 48h Rolling Window
+                    except Exception as e:
+                        print(f"   [WARN] Failed to write Redis History: {e}")
+
                 # 🔍 FETCH DEAL INFO (PnL, Price, Swap)
                 # Look back 5 minutes to find the closing deal
                 history = mt5.history_deals_get(datetime.now() - timedelta(minutes=5), datetime.now())
@@ -329,9 +391,10 @@ def follow_signals():
                     "masterId": MASTER_ID,
                     "ticket": str(ticket),
                     "action": "CLOSE",
-                    "type": known_positions[ticket].get("type", "UNKNOWN"), # ✅ Fix: Pass Type
-                    "symbol": known_positions[ticket].get("symbol", "Unknown"),
-                    "openPrice": known_positions[ticket].get("price", 0.0)
+                    "type": c_type,
+                    "symbol": c_symbol,
+                    "openPrice": c_price,
+                    "openTime": c_open_time # ✅ Send Open Time to Backend
                 }
 
                 if deal_info:
@@ -346,10 +409,16 @@ def follow_signals():
                     })
                 else:
                     print(f"   ⚠️ Deal History not found for {ticket}. Sending CLOSE without PnL.")
+                    # If deal not found, use current time as close time fallback
+                    payload["closeTime"] = int(time.time())
+
+                # ⚡ FAST SYNC: Immediately log closure to Redis History
+                # This enables the "Ghost Buster" to verify the close effortlessly (Fast Path).
+                # MOVED TO TOP OF BLOCK to prevent race conditions during PnL fetch.
+
 
                 send_signal(payload)
-                del known_positions[ticket]
-
+                
             # --- D. PERIODIC BALANCE SYNC (Every 1s) ---
             if int(time.time() * 10) % 10 == 0: # Every ~1 second
                 account_info = mt5.account_info()
@@ -359,6 +428,15 @@ def follow_signals():
             # 4. 🧠 STATE SYNC (Anti-Ghosting) & HISTORY VERIFICATION
             try:
                 # A. Active Snapshot
+                # 🔄 UPDATE AGES: Recalculate 'age_seconds' for all positions before snapshot
+                # This ensures the Executor sees the current age, not just the age at 'open'.
+                for t_id, t_data in known_positions.items():
+                    try:
+                        tick = mt5.symbol_info_tick(t_data['symbol'])
+                        if tick:
+                            t_data['age_seconds'] = tick.time - t_data['open_time']
+                    except: pass
+
                 active_tickets = list(known_positions.keys())
                 state_payload = json.dumps({
                     "tickets": list(known_positions.keys()), # Legacy support
@@ -366,7 +444,7 @@ def follow_signals():
                     "timestamp": time.time(),
                     "count": len(known_positions)
                 }, default=str) # Handle BigInts
-                r_client.set(f"state:master:{MASTER_ID}:tickets", state_payload, ex=10)
+                r_client.set(f"state:master:{MASTER_ID}:tickets", state_payload, ex=60)
 
                 # B. History Sync (Confirm Closes)
                 # Sync last 24h of history to allow followers to verify "Did Master actually close this?"
@@ -408,6 +486,10 @@ def follow_signals():
                         print(f"   [WARN] Failed to report snapshot: {e}")
 
             # 5. Sleep
+            # 5. Sleep & HEARTBEAT
+            if r_client:
+                 r_client.expire(f"lock:broadcaster:{USER_ID}", 5)
+            
             time.sleep(poll_interval)
             
         except KeyboardInterrupt:
@@ -480,8 +562,19 @@ def send_signal(payload):
              pass
 
 if __name__ == "__main__":
-    print("Hydra Master Bridge v2.1 (OTP Support)")
+    print("Hydra Master Bridge v1.2 (OTP Support)")
     # Passive attach only to load DLL. Login is handled in main loop (guarded).
+    mt5.initialize() 
+    # 🛡️ ZOMBIE CHECK
+    is_master, r_conn = acquire_broadcast_lock(USER_ID)
+    if not is_master:
+        print(f"[STOP] Another Broadcaster is already active for {USER_ID}. Exiting.")
+        quit()
+        
+    # Share the redis connection if created
+    if r_conn and not r_client:
+        r_client = r_conn
+        
     mt5.initialize() 
     follow_signals()
 

@@ -48,6 +48,11 @@ async function startServer() {
         if (err) console.error("Redis Subscribe Exec Error:", err);
     });
 
+    // 🆕 Profile Updates
+    redisSubscriber.subscribe("channel:master_updates", (err: any) => {
+        if (err) console.error("Redis Subscribe Master Update Error:", err);
+    });
+
     redisSubscriber.on("message", (channel: string, message: string) => {
         try {
             const payload = JSON.parse(message);
@@ -58,6 +63,9 @@ async function startServer() {
             } else if (channel === "channel:executions") {
                 io.emit("execution", payload);
                 console.log(`[Socket] ✅ Execution: ${payload.masterTicket} -> ${payload.followerTicket}`);
+            } else if (channel === "channel:master_updates") {
+                io.emit("master_updated", payload);
+                console.log(`[Socket] 🔄 Master Update: ${payload.username}`);
             }
 
         } catch (e) {

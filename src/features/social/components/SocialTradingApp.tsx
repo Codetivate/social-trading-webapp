@@ -18,6 +18,7 @@ import { BrokerAccount } from "@prisma/client";
 import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp, Radio, AlertTriangle, ArrowUpRight, BadgeCheck, Edit3, Briefcase, SlidersHorizontal, Lock, CheckCircle2, ChevronRight, Search, X, CalendarDays, Crown, Zap, PieChart, Sprout, ArrowUpDown, CreditCard, AlertOctagon, DollarSign, CheckCircle, Layers, Clock, Eye, Server, Activity } from "lucide-react";
 import { MasterWalletModal } from "@/features/wallet/components/MasterWalletModal";
 import { MasterProfileView } from "@/features/social/components/MasterProfileView";
+import { MasterEquityChart } from "@/features/social/components/MasterEquityChart"; // ✅ New Chart
 import { ActiveSessionWidget } from "@/features/trading/components/ActiveSessionWidget";
 import { SafetyGuardModal } from "@/features/trading/components/SafetyGuardModal";
 import { LoginModal } from "@/features/auth/components/LoginModal";
@@ -295,7 +296,7 @@ function UniversalPaymentModal({ onClose, onSuccess, planDetails }: PaymentModal
     };
 
     return (
-        <div className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
+        <div className="fixed inset-0 z-70 bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
             <div className="bg-space w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-neon-cyan/50 blur-lg"></div>
                 <div className="p-4 flex items-center justify-between border-b border-white/5 bg-space/50 backdrop-blur z-20">
@@ -323,7 +324,7 @@ function UniversalPaymentModal({ onClose, onSuccess, planDetails }: PaymentModal
 
 function StopAllModal({ onClose, onConfirm, count }: StopAllModalProps) {
     return (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-6 animate-in zoom-in-95"><div className="bg-gray-900 w-full max-w-sm rounded-3xl border border-red-500/50 shadow-2xl relative overflow-hidden"><div className="p-8 text-center space-y-6"><div className="w-20 h-20 bg-red-900/30 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-red-900/20 animate-bounce"><AlertOctagon size={40} className="text-red-500" /></div><div><h2 className="text-2xl font-bold text-white mb-2">Emergency Stop?</h2><p className="text-gray-400 text-sm px-2">You are about to close <span className="text-white font-bold">{count} active portfolios</span>. All open positions will be closed at market price.</p></div><div className="space-y-3"><button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-3">YES, CLOSE EVERYTHING</button><button onClick={onClose} className="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl">Cancel</button></div></div></div></div>
+        <div className="fixed inset-0 z-100 bg-black/95 backdrop-blur-md flex items-center justify-center p-6 animate-in zoom-in-95"><div className="bg-gray-900 w-full max-w-sm rounded-3xl border border-red-500/50 shadow-2xl relative overflow-hidden"><div className="p-8 text-center space-y-6"><div className="w-20 h-20 bg-red-900/30 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-red-900/20 animate-bounce"><AlertOctagon size={40} className="text-red-500" /></div><div><h2 className="text-2xl font-bold text-white mb-2">Emergency Stop?</h2><p className="text-gray-400 text-sm px-2">You are about to close <span className="text-white font-bold">{count} active portfolios</span>. All open positions will be closed at market price.</p></div><div className="space-y-3"><button onClick={onConfirm} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-3">YES, CLOSE EVERYTHING</button><button onClick={onClose} className="w-full bg-gray-800 hover:bg-gray-700 text-white font-bold py-3.5 rounded-xl">Cancel</button></div></div></div></div>
     )
 }
 
@@ -341,7 +342,7 @@ function MasterActivationModal({ onClose, onConfirm }: MasterActivationModalProp
     };
 
     return (
-        <div className="fixed inset-0 z-[70] bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
+        <div className="fixed inset-0 z-70 bg-black/95 backdrop-blur-md flex items-end sm:items-center justify-center p-4 animate-in slide-in-from-bottom-10">
             <div className="bg-space w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-neon-purple/50 blur-lg"></div>
                 <div className="p-5 border-b border-white/5 flex justify-between items-center bg-space/50">
@@ -413,7 +414,7 @@ function MasterPlanModal({ onClose, currentTier, onSelectPlan }: MasterPlanModal
     ];
 
     return (
-        <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-80 bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="w-full max-w-5xl bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden font-sans">
 
                 {/* Header - Soft & Clean */}
@@ -570,9 +571,11 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     const [activeTab, setActiveTab] = useState<"DISCOVER" | "PORTFOLIO">(defaultTab);
 
     // Sync internal state if prop changes (URL nav)
+    // Sync internal state if prop changes (URL nav)
     useEffect(() => {
         if (defaultTab) setActiveTab(defaultTab);
     }, [defaultTab]);
+    const [visibleMasterCount, setVisibleMasterCount] = useState(12); // ✅ Pagination State
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false); // ✅ New State
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -600,6 +603,11 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         if (!selectedMasterId) return null;
         return masters.find(m => m.id === selectedMasterId) || null;
     }, [masters, selectedMasterId]);
+
+    // ✅ Reset Pagination on Filter/Search Change
+    useEffect(() => {
+        setVisibleMasterCount(12);
+    }, [searchTerm, filterConfig]);
 
     // 🔍 ANALYTICS: Track Search Terms (Debounced)
 
@@ -675,7 +683,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 if (selectedTicket.action) selectedTicket.action();
                                 setSelectedTicket(null);
                             }}
-                            className={`w-full py-3 rounded-xl font-bold text-sm transition-all transform active:scale-95 ${selectedTicket.type === 'VIP' ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/30' :
+                            className={`w-full py-3 rounded-xl font-bold text-sm transition-all transform active:scale-95 ${selectedTicket.type === 'VIP' ? 'bg-linear-to-r from-yellow-600 to-yellow-500 text-black shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/30' :
                                 selectedTicket.type === 'GOLDEN' ? 'bg-yellow-400 hover:bg-yellow-300 text-black shadow-lg shadow-yellow-400/20' :
                                     selectedTicket.type === 'WELCOME' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-500/20' :
                                         'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20'
@@ -757,8 +765,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     const [dailyLoss, setDailyLoss] = useState("");
     const [minEquity, setMinEquity] = useState("");
 
-    // ⚡ Real-Time Data Hook
-    const { stats: realTimeStats, isConnected: isSyncing } = useRealTimeData();
+
 
     // Merge Real-Time Stats into Broker Account (Priotizing Live Data)
     // We update the 'brokerAccount' state whenever 'realTimeStats' changes.
@@ -771,34 +778,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     }, [brokerAccount]);
 
     // ⚡ SYNC REAL-TIME DATA TO LOCAL STATE
-    useEffect(() => {
-        if (realTimeStats && mergedBrokerAccount) {
-            // Avoid infinite loop: Only update if strictly different
-            // 🛡️ DATA SAFETY: Don't overwrite valid data with Zeros (unless account is empty)
-            // If we have existing data ($4000) and incoming is $0, it's likely a glitch/loading state.
-            const incomingEquity = realTimeStats.equity || 0;
-            const currentEquity = mergedBrokerAccount.equity || 0;
 
-            if (incomingEquity === 0 && currentEquity > 0) {
-                // Ignore "Zero Flash"
-                return;
-            }
-
-            const newVal = {
-                ...mergedBrokerAccount,
-                balance: realTimeStats.balance,
-                equity: realTimeStats.equity,
-                leverage: realTimeStats.leverage,
-                // Also ensure activeSessions are synced if present in RealTimeStats
-                activeSessions: realTimeStats.activeSessions || mergedBrokerAccount.activeSessions
-            };
-
-            // Simple JSON comparison to prevent "Maximum update depth"
-            if (JSON.stringify(newVal) !== JSON.stringify(mergedBrokerAccount)) {
-                setMergedBrokerAccount(newVal);
-            }
-        }
-    }, [realTimeStats, mergedBrokerAccount]);
 
     useEffect(() => {
         if (session?.user?.id) {
@@ -807,6 +787,9 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                 if (data) {
                     // Handle any profile-specific updates if needed
                     // console.log("Profile Loaded for:", data.name);
+                    // Handle any profile-specific updates if needed
+                    // console.log("Profile Loaded for:", data.name);
+
                 }
             });
 
@@ -941,6 +924,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         if (filterConfig.sortBy === "PROFIT") result = [...result].sort((a, b) => b.roi - a.roi);
         else if (filterConfig.sortBy === "LOW_PROFIT") result = [...result].sort((a, b) => a.roi - b.roi); // Ascending
         else if (filterConfig.sortBy === "POPULAR") result = [...result].sort((a, b) => b.followers - a.followers);
+        else if (filterConfig.sortBy === "NEW") result = [...result].sort((a, b) => new Date(b.joined || 0).getTime() - new Date(a.joined || 0).getTime());
 
         return result;
     }, [searchTerm, filterConfig, favorites, masters]); /* Added realMasters dependency */
@@ -966,81 +950,107 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     {/* 🎫 Ticket Cards (Dynamic Grid) */}
                     <div className={`grid ${gridColsClass} gap-2 sm:gap-4 py-2 transition-all duration-300 ease-in-out`}>
 
-                        {/* 1. Standard (renamed) */}
-                        <Card
-                            onClick={() => setSelectedTicket({
-                                type: 'STANDARD',
-                                title: "Standard Ticket",
-                                subtitle: "Free Follow Master 4hrs",
-                                description: "Perfect for testing the waters. Get 4 hours of unrestricted copying access to any master trader.",
-                                benefits: ["4 Hours Access", "Real Account Compatible", "Copy Free Master"],
-                                buttonText: dailyTicketUsed ? "QUOTA USED" : "UNLOCK 4 HOURS",
-                                action: dailyTicketUsed ? undefined : undefined
-                            })}
-                            className={`glass-panel overflow-hidden transition-all duration-300 group ${dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:border-neon-cyan/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:-translate-y-1"} `}
-                        >
-                            <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                    <Zap className="w-24 h-24 text-neon-cyan" />
-                                </div>
-                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
-                                    <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                        <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full text-white`}>Standard</h4>
-                                        <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Free Follow Master 4hrs</p>
-                                    </div>
-                                    <div className="p-2 rounded-full bg-neon-cyan/20 text-neon-cyan">
-                                        <Zap className={`w-3 h-3 sm:w-4 sm:h-4`} />
-                                    </div>
-                                </div>
-                                {dailyTicketUsed || ticketStatus.dailyUsed ? (
-                                    <button className="w-full py-2 rounded-lg bg-gray-800 text-gray-500 text-[10px] font-bold cursor-not-allowed border border-gray-700 whitespace-nowrap flex items-center justify-center gap-1">
-                                        <Clock size={10} /> Reset in {formatTime(timeUntilReset)}
-                                    </button>
-                                ) : (
-                                    <button className="w-full py-2 rounded-lg bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 text-xs font-bold group-hover:bg-neon-cyan group-hover:text-black transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] whitespace-nowrap">UNLOCK</button>
-                                )}
-                            </CardContent>
-                        </Card>
+                        {/* 1. Standard (renamed) - NEON MAGIC THEME */}
+                        <div className="relative group rounded-xl">
+                            {/* 🪄 Magic Neon Edge Animation */}
+                            <div className="absolute -inset-[1.5px] bg-linear-to-r from-cyan-400 via-purple-500 to-emerald-400 rounded-xl opacity-75 blur-sm group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
 
-
-
-
-                        {/* 2. Welcome (renamed from 7-Day Trial) */}
-                        {showWelcome && (
                             <Card
                                 onClick={() => setSelectedTicket({
-                                    type: 'WELCOME',
-                                    title: "Welcome Ticket",
-                                    subtitle: "Free Access All Master 7 Days",
-                                    description: "A special one-time welcome gift. Get unlimited copy trading access for a full week.",
-                                    benefits: ["7 Days Unlimited Access", "One-Time Use", "All Masters Included"],
-                                    buttonText: "CLAIM FREE 7 DAYS",
-                                    action: () => requireAuth(() => {
-                                        toast.info("Select a Master to Claim", { description: "Choose a master and click Copy to use your free trial." });
-                                    })
+                                    type: 'STANDARD',
+                                    title: "Standard Access",
+                                    subtitle: "Unlimited Copy Free Master",
+                                    description: "Copy any Free Master for unlimited time. We provide the 24/7 cloud infrastructure—no VPS required.",
+                                    benefits: ["Unlimited Duration", "Access All Free Masters", "No VPS / Cloud Needed"],
+                                    buttonText: dailyTicketUsed ? "ACTIVE SESSION" : "FREE ACCESS",
+                                    action: dailyTicketUsed ? undefined : undefined
                                 })}
-                                className={`glass-panel overflow-hidden transition-all duration-300 group ${ticketStatus.welcomeUsed ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:border-neon-pink/50 hover:shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:-translate-y-1"} `}
+                                className={`relative h-full bg-black/90 backdrop-blur-xl border border-white/10 overflow-hidden transition-all duration-300 ${dailyTicketUsed ? "opacity-60 cursor-default grayscale" : "cursor-pointer hover:-translate-y-1"} `}
                             >
                                 <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
-                                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                        <CalendarDays className="w-24 h-24 text-neon-pink" />
+                                    {/* Background Glow */}
+                                    <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-cyan-500 blur-2xl opacity-50 animate-pulse"></div>
+                                            <Zap className="w-20 h-20 text-cyan-400 relative z-10" />
+                                        </div>
                                     </div>
+
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
                                         <div className="space-y-0.5 sm:space-y-1 min-w-0">
-                                            <h4 className="text-[10px] sm:text-xs font-bold truncate w-full text-white">Welcome</h4>
-                                            <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Free Access 7 Days</p>
+                                            <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-emerald-400`}>Standard Access</h4>
+                                            <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">Auto-Applied</p>
                                         </div>
-                                        <div className="p-2 rounded-full bg-neon-pink/20 text-neon-pink">
-                                            <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4" />
+                                        <div className="p-2 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                                            <Zap className={`w-3 h-3 sm:w-4 sm:h-4`} />
                                         </div>
                                     </div>
-                                    {ticketStatus.welcomeUsed ? (
-                                        <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-gray-800 text-gray-500 text-xs font-bold cursor-not-allowed whitespace-nowrap">USED</button>
+
+                                    {dailyTicketUsed || ticketStatus.dailyUsed ? (
+                                        <button className="w-full py-2 rounded-lg bg-gray-800 text-gray-400 text-[10px] font-bold cursor-not-allowed border border-gray-700 whitespace-nowrap flex items-center justify-center gap-1">
+                                            <CheckCircle2 size={12} className="text-emerald-500" /> Active
+                                        </button>
                                     ) : (
-                                        <button className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-neon-pink/10 text-neon-pink border border-neon-pink/20 text-xs font-bold group-hover:bg-neon-pink group-hover:text-white transition-all shadow-[0_0_15px_rgba(236,72,153,0.15)] whitespace-nowrap">CLAIM</button>
+                                        <button className="w-full py-2 rounded-lg bg-linear-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold group-hover:bg-linear-to-r group-hover:from-cyan-500 group-hover:to-purple-600 group-hover:text-white transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] whitespace-nowrap relative overflow-hidden">
+                                            <span className="relative z-10">FREE ACCESS</span>
+                                        </button>
                                     )}
                                 </CardContent>
                             </Card>
+                        </div>
+
+
+
+
+                        {/* 2. Welcome (renamed from 7-Day Trial) - NEON MAGIC THEME (MATCHING STANDARD) */}
+                        {showWelcome && (
+                            <div className="relative group rounded-xl">
+                                {/* 🪄 Magic Neon Edge Animation (Matching Standard) */}
+                                <div className="absolute -inset-[1.5px] bg-linear-to-r from-cyan-400 via-purple-500 to-emerald-400 rounded-xl opacity-75 blur-sm group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+
+                                <Card
+                                    onClick={() => setSelectedTicket({
+                                        type: 'WELCOME',
+                                        title: "Welcome Gift",
+                                        subtitle: "7-Day VIP Experience",
+                                        description: "Experience full VIP access for 7 days. Copy Premium Masters utilizing our high-speed cloud infrastructure.",
+                                        benefits: ["Access All Masters (VIP)", "No VPS / Cloud Needed", "Low Latency Execution"],
+                                        buttonText: "CLAIM FREE 7 DAYS",
+                                        action: undefined
+                                    })}
+                                    className={`relative h-full bg-black/90 backdrop-blur-xl border border-white/10 overflow-hidden transition-all duration-300 ${hasUsed7DayTrial || ticketStatus.welcomeUsed ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:-translate-y-1"} `}
+                                >
+                                    <CardContent className="p-2 sm:p-3 flex flex-col justify-between h-full gap-2 relative z-10">
+                                        {/* Background Glow */}
+                                        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
+                                            <div className="relative">
+                                                <div className="absolute inset-0 bg-cyan-500 blur-2xl opacity-50 animate-pulse"></div>
+                                                <CalendarDays className="w-20 h-20 text-cyan-400 relative z-10" />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-1 sm:gap-0 relative z-10">
+                                            <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                                                <h4 className={`text-[10px] sm:text-xs font-bold truncate w-full text-transparent bg-clip-text bg-linear-to-r from-cyan-400 to-emerald-400`}>Welcome Gift</h4>
+                                                <p className="text-[9px] text-gray-400 font-medium truncate w-full line-clamp-1 sm:line-clamp-none">7-Day VIP Experience</p>
+                                            </div>
+                                            <div className="p-2 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                                                <CalendarDays className={`w-3 h-3 sm:w-4 sm:h-4`} />
+                                            </div>
+                                        </div>
+
+                                        {hasUsed7DayTrial || ticketStatus.welcomeUsed ? (
+                                            <button className="w-full py-2 rounded-lg bg-gray-800 text-gray-400 text-[10px] font-bold cursor-not-allowed border border-gray-700 whitespace-nowrap flex items-center justify-center gap-1">
+                                                <CheckCircle2 size={12} className="text-emerald-500" /> Used
+                                            </button>
+                                        ) : (
+                                            <button className="w-full py-2 rounded-lg bg-linear-to-r from-cyan-500/20 to-purple-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold group-hover:bg-linear-to-r group-hover:from-cyan-500 group-hover:to-purple-600 group-hover:text-white transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] whitespace-nowrap relative overflow-hidden">
+                                                <span className="relative z-10">CLAIM FREE 7 DAYS</span>
+                                            </button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
                         )}
 
                         {/* 3. VIP (Renamed Subtitle) */}
@@ -1048,7 +1058,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
                     </div>
 
-                    <div className="sticky top-20 bg-void/80 backdrop-blur-xl py-4 z-20 space-y-3 -mx-4 px-4 border-b border-white/5 shadow-md">
+                    <div className="sticky top-20 bg-void/80 backdrop-blur-xl py-4 z-50 space-y-3 -mx-4 px-4 border-b border-white/5 shadow-md">
                         <div className="relative group/search">
                             <Search className="absolute left-3 top-2.5 text-gray-500 group-focus-within/search:text-neon-cyan transition-colors" size={16} />
                             <input type="text" placeholder="Search Masters..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-space border border-white/10 rounded-xl py-2.5 pl-10 pr-4 text-xs focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/50 text-white transition-all placeholder:text-gray-600" />
@@ -1056,6 +1066,14 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                         <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                             <button onClick={() => setShowFilterModal(true)} className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${showFilterModal || filterConfig.sortBy !== "RECOMMENDED" ? "bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.2)]" : "bg-space text-gray-400 border-white/10 hover:border-white/30"} `}>
                                 <SlidersHorizontal size={12} /> {filterConfig.sortBy === "RECOMMENDED" ? "Filters" : filterConfig.sortBy}
+                            </button>
+
+                            {/* Quick Filter: New */}
+                            <button
+                                onClick={() => setFilterConfig(prev => ({ ...prev, sortBy: prev.sortBy === "NEW" ? "RECOMMENDED" : "NEW" }))}
+                                className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.sortBy === "NEW" ? "bg-purple-500/20 text-purple-400 border-purple-500/50" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}
+                            >
+                                {filterConfig.sortBy === "NEW" ? "Newest First" : "New"}
                             </button>
 
                             {/* Quick Filter: Free */}
@@ -1088,41 +1106,158 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     {!searchTerm && filterConfig.sortBy === "RECOMMENDED" && !filterConfig.freeOnly && (
                         <div className="space-y-2 relative group/scroll">
                             <div className="flex justify-between items-center px-1"><h3 className="font-bold text-sm text-gray-200">Recommended</h3><div className="flex gap-2"><button onClick={() => scroll('left')} className="hidden md:flex w-6 h-6 bg-gray-800 rounded-full items-center justify-center hover:bg-white hover:text-black transition-colors"><ChevronLeft size={14} /></button><button onClick={() => scroll('right')} className="hidden md:flex w-6 h-6 bg-gray-800 rounded-full items-center justify-center hover:bg-white hover:text-black transition-colors"><ChevronRight size={14} /></button></div></div>
-                            <div ref={scrollRef} className="flex gap-3 overflow-x-auto py-4 snap-x no-scrollbar scroll-smooth px-1">
-                                {filteredMasters.slice(0, 5).map((master) => (
-                                    <div key={master.id} onClick={() => onViewProfile(master)} className="snap-center min-w-[140px] w-[140px] glass-panel rounded-xl p-3 flex flex-col justify-between relative overflow-hidden group hover:border-neon-purple/50 transition-all cursor-pointer hover:-translate-y-1 hover:shadow-[0_0_15px_rgba(139,92,246,0.2)]">
-                                        <div onClick={(e) => onToggleFav(e, master.id)} className="absolute top-2 right-2 z-10 p-2 -mr-2 -mt-2 hover:scale-110 transition-transform active:scale-90 cursor-pointer">{favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]" /> : <Heart size={14} className="text-gray-600 hover:text-red-500" />}</div>
-                                        <div className="absolute top-2 left-2">{master.monthlyFee > 0 ? <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 text-[8px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"><Lock size={8} /> ${master.monthlyFee}</span> : <span className="bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 text-[8px] font-bold px-1.5 py-0.5 rounded shadow-[0_0_5px_rgba(6,182,212,0.3)]">FREE</span>}</div>
-                                        <div className="text-center mt-4 mb-3">
-                                            <div className="relative inline-block">
-                                                <img src={master.avatar} alt={master.name} className="w-12 h-12 rounded-full border-2 border-white/10 group-hover:border-neon-purple transition-colors mx-auto mb-2" />
+                            <div ref={scrollRef} className="flex gap-4 overflow-x-auto py-6 snap-x no-scrollbar scroll-smooth px-2">
+                                {filteredMasters.slice(0, 5).map((master) => {
+                                    const isProfit = master.roi >= 0;
+                                    const startYear = master.joined ? new Date(master.joined).getFullYear() : 2024;
+                                    const joinedDate = master.joined ? new Date(master.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "2024";
+
+                                    return (
+                                        <div key={master.id} onClick={() => onViewProfile(master)} className="snap-center min-w-[240px] w-[240px] h-[360px] bg-[#0F1115] rounded-2xl flex flex-col justify-between relative overflow-hidden group border border-white/5 hover:border-gray-600 transition-all cursor-pointer hover:-translate-y-1 shadow-lg hover:shadow-2xl ">
+
+                                            {/* ROW 1: PROFILE & TAGS (Top) */}
+                                            <div className="z-20 relative flex flex-col items-center text-center p-1">
+                                                <div className="w-full flex justify-between items-start absolute top-4 px-4">
+                                                    <Badge variant="outline" className={`text-[10px] px-2 py-0.5 border-0 font-bold ${(master.risk || 1) <= 1 ? "bg-green-500/10 text-green-500" :
+                                                        (master.risk || 1) === 2 ? "bg-blue-500/10 text-blue-500" :
+                                                            (master.risk || 1) === 3 ? "bg-yellow-500/10 text-yellow-500" :
+                                                                (master.risk || 1) === 4 ? "bg-orange-500/10 text-orange-500" :
+                                                                    "bg-red-500/10 text-red-500"
+                                                        }`}>
+                                                        RISK {master.risk || 1}
+                                                    </Badge>
+                                                    <div onClick={(e) => onToggleFav(e, master.id)} className="cursor-pointer hover:scale-110 transition-transform">
+                                                        {favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500" /> : <Heart size={14} className="text-gray-600 hover:text-white" />}
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-4 mb-2 relative">
+                                                    <img src={master.avatar} alt={master.name} className="w-14 h-14 rounded-full border-2 border-[#1C1F26] shadow-sm transform group-hover:scale-105 transition-transform" />
+                                                </div>
+
+                                                <h4 className="font-bold text-base text-gray-200 truncate w-full px-2 mb-1">{master.name}</h4>
+
+                                                {/* Tags & Copiers */}
+                                                <div className="flex flex-wrap justify-center gap-1 mb-1 px-1">
+                                                    {master.tags?.map((t, i) => {
+                                                        const isMatch = searchTerm && t.toLowerCase().includes(searchTerm.toLowerCase());
+                                                        return (
+                                                            <span key={i} className={`text-[10px] px-2 py-1 rounded border transition-colors cursor-pointer max-w-[80px] truncate inline-block align-middle ${isMatch ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/50" : "bg-gray-800 text-gray-400 border-gray-700 hover:bg-yellow-500/10 hover:text-yellow-500 hover:border-yellow-500/50"}`} title={t}>{t}</span>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                    <Users size={12} /> {master.followers} Copiers
+                                                </div>
                                             </div>
-                                            <h4 className="font-bold text-xs leading-tight line-clamp-1 mb-1 text-white group-hover:text-neon-purple transition-colors">{master.name}</h4>
-                                            <div className="flex justify-center gap-1 mb-1.5 flex-wrap px-1">
-                                                {master.tags?.slice(0, 2).map((t, i) => (
-                                                    <span key={i} className="text-[8px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">{t}</span>
-                                                ))}
+
+                                            {/* ROW 2: EQUITY CURVE (Middle - Centered) */}
+                                            <div className="flex-1 w-full flex items-center justify-center my-2 relative z-10 group-hover:scale-110 transition-transform duration-500 px-4">
+                                                <MasterEquityChart data={master.sparklineData || []} height={64} color={isProfit ? "#10B981" : "#EF4444"} />
                                             </div>
-                                            <p className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.3)]' : 'text-red-400'} `}>{master.roi > 0 ? "+" : ""}{master.roi}%</p>
-                                            <p className="text-[9px] text-gray-500 font-bold mt-1 group-hover:text-white transition-colors">{master.followers.toLocaleString()} Investors</p>
+
+                                            {/* ROW 3: STATS & BUTTON (Bottom) */}
+                                            <div className="z-20 relative bg-[#0F1115]/50 backdrop-blur-sm px-4 pt-4 pb-6 border-t border-white/5">
+                                                <div className="text-center mb-2">
+                                                    <div className={`text-2xl font-black tracking-tight ${isProfit ? "text-green-400" : "text-red-400"}`}>
+                                                        {isProfit ? "+" : ""}{master.roi}%
+                                                    </div>
+                                                </div>
+                                                <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`w-full text-xs font-bold py-3 rounded-lg transition-all shadow-lg ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white shadow-red-900/50" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200 hover:shadow-white/20"} `}>
+                                                    {userRole === "MASTER" ? "View Only" : activeSessions.some((s) => s.master.id === master.id) ? "Stop Copying" : "Copy"}
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`w-full text-[10px] font-bold py-2 rounded-lg transition-colors ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"} `}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Uncopy" : "Copy"}</button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
 
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                        <h3 className="font-bold text-sm text-gray-400">All Masters ({filteredMasters.length})</h3>
+                    <div className="space-y-4 pt-4 border-t border-gray-800">
+                        <h3 className="font-bold text-sm text-gray-400 px-1">All Masters ({filteredMasters.length})</h3>
                         {filteredMasters.length === 0 ? <p className="text-center text-gray-500 text-xs py-10">No masters found.</p> :
-                            filteredMasters.map((master) => (
-                                <div key={master.id} onClick={() => onViewProfile(master)} className="bg-gray-900/50 backdrop-blur-sm rounded-2xl p-3 border border-gray-800 relative hover:bg-gray-800 transition-colors cursor-pointer flex gap-3 items-center">
-                                    <img src={master.avatar} alt={master.name} className="w-12 h-12 rounded-xl" />
-                                    <div className="flex-1 min-w-0"><div className="flex justify-between items-center"><h3 className="font-bold text-sm truncate flex items-center gap-1">{master.name} <div onClick={(e) => onToggleFav(e, master.id)} className="cursor-pointer p-1 hover:scale-110 active:scale-90 transition-transform">{favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500" /> : <Heart size={14} className="text-gray-600 hover:text-red-400" />}</div></h3><span className={`text-xs font-bold ${master.roi > 0 ? 'text-green-400' : 'text-red-400'} `}>{master.roi > 0 ? "+" : ""}{master.roi}%</span></div><div className="flex justify-between items-center mt-1"><div className="flex gap-1 text-[9px] text-gray-400 overflow-hidden">{master.tags.slice(0, 2).map((t, i) => <span key={i} className={`px-1.5 py-0.5 rounded whitespace-nowrap ${searchTerm && t.toLowerCase().includes(searchTerm.toLowerCase()) ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/50" : "bg-gray-800"}`}>{t}</span>)} <span className="text-blue-400 font-bold flex items-center gap-0.5"><Users size={10} /> {master.followers.toLocaleString()}</span> <span className="text-gray-500"></span></div>{master.monthlyFee > 0 ? <span className="text-[10px] text-yellow-500 font-bold">${master.monthlyFee}/mo</span> : <span className="text-[10px] text-green-500 font-bold">Free</span>}</div></div>
-                                    <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`text-[10px] font-bold px-3 py-1.5 rounded-lg shadow shrink-0 ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white hover:bg-red-600" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200"} `}>{userRole === "MASTER" ? "Master View" : activeSessions.some((s) => s.master.id === master.id) ? "Stop" : "Copy"}</button>
-                                </div>
-                            ))
+                            <div className="space-y-3">
+                                {filteredMasters.slice(0, visibleMasterCount).map((master) => {
+                                    const isProfit = master.roi >= 0;
+                                    const startYear = master.joined ? new Date(master.joined).getFullYear() : 2024;
+                                    const joinedDate = master.joined ? new Date(master.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "2024";
+
+                                    return (
+                                        <div key={master.id} onClick={() => onViewProfile(master)} className="bg-[#0F1115] rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 gap-6 items-center border border-white/5 hover:border-gray-600 transition-all cursor-pointer hover:-translate-y-1 shadow-lg group">
+
+                                            {/* COL 1: PROFILE INFO & TAGS */}
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative shrink-0">
+                                                    <img src={master.avatar} alt={master.name} className="w-16 h-16 rounded-xl border-2 border-[#1C1F26] shadow-sm group-hover:border-neon-purple transition-colors" />
+                                                    <div className="absolute -top-2 -right-2 bg-[#0F1115] rounded-full p-1" onClick={(e) => onToggleFav(e, master.id)}>
+                                                        {favorites.includes(master.id) ? <Heart size={14} className="text-red-500 fill-red-500" /> : <Heart size={14} className="text-gray-600 hover:text-white" />}
+                                                    </div>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h4 className="font-bold text-base text-gray-200 truncate">{master.name}</h4>
+                                                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-0 font-bold ${(master.risk || 1) <= 1 ? "bg-green-500/10 text-green-500" :
+                                                            (master.risk || 1) === 2 ? "bg-blue-500/10 text-blue-500" :
+                                                                (master.risk || 1) === 3 ? "bg-yellow-500/10 text-yellow-500" :
+                                                                    (master.risk || 1) === 4 ? "bg-orange-500/10 text-orange-500" :
+                                                                        "bg-red-500/10 text-red-500"
+                                                            }`}>
+                                                            RISK {master.risk || 1}
+                                                        </Badge>
+                                                    </div>
+
+                                                    {/* TAGS (Important) */}
+                                                    <div className="flex flex-wrap gap-1 mb-2">
+                                                        {master.tags?.map((t, i) => {
+                                                            const isMatch = searchTerm && t.toLowerCase().includes(searchTerm.toLowerCase());
+                                                            return (
+                                                                <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer max-w-[80px] truncate inline-block align-middle ${isMatch ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/50" : "bg-gray-800 text-gray-400 border-gray-700 hover:bg-yellow-500/10 hover:text-yellow-500 hover:border-yellow-500/50"}`} title={t}>{t}</span>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                                        <span className="flex items-center gap-1"><Users size={10} /> {master.followers}</span>
+                                                        <span className="text-gray-700">|</span>
+                                                        <span>Sync {joinedDate}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* COL 2: EQUITY CURVE (MIDDLE) */}
+                                            <div className="h-16 w-full relative opacity-50 group-hover:opacity-80 transition-opacity block">
+                                                <MasterEquityChart data={master.sparklineData || []} height={64} color={isProfit ? "#10B981" : "#EF4444"} />
+                                            </div>
+
+                                            {/* COL 3: STATS & ACTION */}
+                                            <div className="flex items-center justify-between md:justify-end gap-6">
+                                                <div className="text-right">
+                                                    <div className={`text-2xl font-black tracking-tight ${isProfit ? "text-green-400" : "text-red-400"}`}>
+                                                        {isProfit ? "+" : ""}{master.roi}%
+                                                    </div>
+                                                    <div className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Return</div>
+                                                </div>
+
+                                                <button onClick={(e) => handleQuickCopy(e, master)} disabled={userRole === "MASTER"} className={`w-32 text-xs font-bold py-3 rounded-lg transition-all shadow-lg ${activeSessions.some((s) => s.master.id === master.id) ? "bg-red-500 text-white shadow-red-900/50" : userRole === "MASTER" ? "bg-gray-800 text-gray-500 cursor-not-allowed" : "bg-white text-black hover:bg-gray-200 hover:shadow-white/20"} `}>
+                                                    {userRole === "MASTER" ? "View" : activeSessions.some((s) => s.master.id === master.id) ? "Stop" : "Copy"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+
+                                {visibleMasterCount < filteredMasters.length && (
+                                    <div className="flex justify-center pt-4">
+                                        <button
+                                            onClick={() => setVisibleMasterCount(prev => prev + 12)}
+                                            className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded-full transition-colors border border-gray-700 hover:border-gray-500"
+                                        >
+                                            Show More Masters ({filteredMasters.length - visibleMasterCount} remaining)
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         }
                     </div>
                 </div>
@@ -1293,7 +1428,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
             pnlText: "$0",
             followers: profile.followersCount,
             balance: 0,
-            risk: 0,
+            risk: profile.riskScore || 1, // 🧠 Real AI Risk Score
             drawdown: 0,
             profitFactor: 0,
             avatar: profile.avatar,
@@ -1321,7 +1456,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
 
             {/* 🚨 Capacity Alert (Only for Master) */}
             {userRole === "MASTER" && isCritical && (
-                <div onClick={() => setShowUpgradeMaster(true)} className="bg-gradient-to-r from-orange-500 to-red-600 p-4 rounded-2xl shadow-lg shadow-orange-900/20 cursor-pointer relative overflow-hidden group">
+                <div onClick={() => setShowUpgradeMaster(true)} className="bg-linear-to-r from-orange-500 to-red-600 p-4 rounded-2xl shadow-lg shadow-orange-900/20 cursor-pointer relative overflow-hidden group">
                     <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4"><TrendingUp size={100} color="white" /></div>
                     <div className="flex justify-between items-start relative z-10">
                         <div>
@@ -1336,7 +1471,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
             {/* 1. Live Broadcasting Banner */}
             {userRole === "MASTER" && (
                 <div className="sticky top-20 z-10 -mx-4 px-4 pb-2 bg-gray-950/95 backdrop-blur-sm">
-                    <div className="bg-gradient-to-r from-gray-900 to-gray-800 border border-gray-800 p-3 rounded-2xl flex items-center justify-between shadow-lg">
+                    <div className="bg-linear-to-r from-gray-900 to-gray-800 border border-gray-800 p-3 rounded-2xl flex items-center justify-between shadow-lg">
                         <div className="flex items-center gap-3">
                             <div className="relative flex h-3 w-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -1363,11 +1498,11 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                 className="bg-gray-900 rounded-2xl p-5 border border-gray-800 relative overflow-hidden cursor-pointer hover:border-gray-600 transition-colors group"
             >
                 <div className={`absolute top - 0 left - 0 w - full h - 1 bg - gradient - to - r ${userRole === "MASTER" ? "from-purple-500 to-indigo-600" : "from-gray-700 to-gray-600"} `}></div>
-                <div className="flex items-center gap-3 mb-6 cursor-pointer" onClick={handleViewMyProfile}>
+                <div className="flex items-center gap-3 mb-6 cursor-pointer">
                     <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center font-bold text-xl border-4 border-gray-900 shadow-xl relative z-10">MK</div>
                     <div>
                         <h2 className="text-lg font-bold flex items-center gap-2 group-hover:text-purple-300 transition-colors">
-                            {profile.name} {userRole === "MASTER" && <BadgeCheck size={16} className="text-blue-400" fill="currentColor" color="black" />}
+                            {profile.name}
                         </h2>
                         {userRole === "MASTER" && (
                             <span className="bg-purple-900/30 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded border border-purple-500/30">TIER: {profile.tier}</span>
@@ -1430,7 +1565,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
                     <div
                         onClick={(e) => { e.stopPropagation(); if (userRole === "MASTER" && onOpenWallet) onOpenWallet(); }}
                         className={`relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center space-y-1 transition-all duration-300 group/wallet ${userRole === "MASTER"
-                            ? "cursor-pointer bg-gradient-to-br from-gray-900 via-gray-900 to-purple-900/20 border border-purple-500/30 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]"
+                            ? "cursor-pointer bg-linear-to-br from-gray-900 via-gray-900 to-purple-900/20 border border-purple-500/30 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]"
                             : "bg-black/30 border border-white/5 opacity-50"
                             }`}
                     >
@@ -1466,12 +1601,12 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
 
                 </div>
             ) : (
-                <div className="relative overflow-hidden rounded-2xl p-1 bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-800">
-                    <div className="absolute inset-0 bg-grid-white/[0.02] bg-[length:16px_16px]"></div>
+                <div className="relative overflow-hidden rounded-2xl p-1 bg-linear-to-br from-gray-800 to-gray-900 border border-gray-800">
+                    <div className="absolute inset-0 bg-grid-white/[0.02] bg-size-[16px_16px]"></div>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full point-events-none"></div>
 
                     <div className="relative bg-gray-950/80 backdrop-blur-xl rounded-xl p-8 text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto bg-gradient-to-tr from-purple-600 to-blue-600 rounded-full p-[2px] shadow-lg shadow-purple-900/40 animate-pulse">
+                        <div className="w-16 h-16 mx-auto bg-linear-to-tr from-purple-600 to-blue-600 rounded-full p-[2px] shadow-lg shadow-purple-900/40 animate-pulse">
                             <div className="w-full h-full bg-gray-950 rounded-full flex items-center justify-center">
                                 <Briefcase className="text-white" size={28} />
                             </div>
@@ -1481,7 +1616,7 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
 
                         <button
                             onClick={onBecomeMaster}
-                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group"
+                            className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group"
                         >
                             <span>Activate Master Mode</span>
                             <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -1530,15 +1665,27 @@ function FollowerDetailView({ follower, onBack }: FollowerDetailProps) {
 // 📦 MAIN APP COMPONENT (Moved to BOTTOM)
 // ----------------------------------------------------------------------
 // --- TYPES ---
+import { AnalyticStats, EquityPoint, MonthlyResult, SymbolDistribution } from "@/app/actions/analytics";
+
 interface SocialTradingAppProps {
     initialSlug?: string;
+    initialBrokerAccount?: BrokerAccount | null; // ✅ SSR Hydration
+    initialMaster?: Master | null; // ✅ SSR Hydration
+    initialMasters?: Master[]; // ✅ SSR Hydration (List)
+    initialAnalytics?: {
+        stats: AnalyticStats;
+        equityCurve: EquityPoint[];
+        monthlyResults: MonthlyResult[];
+        symbolDist: SymbolDistribution[];
+        history: any[];
+    } | null;
 }
 
-export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
+export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMaster, initialMasters, initialAnalytics }: SocialTradingAppProps) {
     const { data: session, status } = useSession();
 
     const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isClient, setIsClient] = useState(false); // ✅ Fix ReferenceError
+    const [isClient, setIsClient] = useState(false);
 
     // 🌍 URL STATE PERSISTENCE
     const searchParams = useSearchParams();
@@ -1571,6 +1718,8 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
     // Wrapper to update URL when view changes
     const setViewMode = (mode: UserRole) => {
         setViewModeInternal(mode);
+        // Persist preference
+        if (typeof window !== "undefined") localStorage.setItem("last_view_mode", mode);
         // Only push if we are NOT on a slug page, OR update logic to handle slug preservation if needed.
         // For now, simple param update.
         router.push(pathname + "?" + createQueryString([{ name: "view", value: toUrlView(mode) }]));
@@ -1583,17 +1732,25 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
     const initialProfileIdStr = searchParams.get("profile");
     const initialProfileId = initialProfileIdStr ? Number(initialProfileIdStr) : null;
 
-    const [accountStatus, setAccountStatus] = useState<AccountStatus>("DISCONNECTED");
+    // ✅ Initialize Status with Server Data (No Flicker)
+    const [accountStatus, setAccountStatus] = useState<AccountStatus>(
+        initialBrokerAccount ? (initialBrokerAccount.status as AccountStatus) : "DISCONNECTED"
+    );
 
-    useEffect(() => { setIsClient(true); }, []); // Hydration Fix Helper
+    useEffect(() => { setIsClient(true); }, []);
     const [userRole, setUserRole] = useState<UserRole>("FOLLOWER");
     const [walletBalance, setWalletBalance] = useState(INITIAL_BALANCE);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [activeSessions, setActiveSessions] = useState<CopySession[]>([]);
-    const [brokerAccount, setBrokerAccount] = useState<BrokerAccount | null>(null);
+
+    // ✅ Initialize Broker Account with Server Data
+    const [brokerAccount, setBrokerAccount] = useState<BrokerAccount | null>(initialBrokerAccount || null);
 
     // 🎟️ TICKET STATE
-    const [dailyTicketUsed, setDailyTicketUsed] = useState(false);
+    // Changed to Derived State: Active if ANY Standard (DAILY) session is running.
+    // User Requirement: Unlimited Resets, but only 1 concurrent copy.
+    const dailyTicketUsed = useMemo(() => activeSessions.some(s => s.type === 'DAILY'), [activeSessions]);
+    const setDailyTicketUsed = () => { }; // No-op, state is now derived.
     const [hasUsed7DayTrial, setHasUsed7DayTrial] = useState(false);
     const [favorites, setFavorites] = useState<number[]>([]);
 
@@ -1610,24 +1767,73 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
     const [selectedMaster, setSelectedMaster] = useState<Master | null>(null);
 
-    const [masterProfile, setMasterProfile] = useState<MasterProfile>({
-        name: "",
-        desc: "",
-        tags: [],
-        avatar: "",
-        tier: "ROOKIE",
-        followersCount: 0,
-        followersLimit: 100,
-        aum: 0,
-        aumLimit: 10000,
-        monthlyFee: 0,
-        minDeposit: 10, // ✅ Default
-        userId: ""
+    const [masterProfile, setMasterProfile] = useState<MasterProfile>(() => {
+        // 🚀 HYDRATION: If we are on Home (no slug) and have initialMaster, it's the Logged-In Master Profile.
+        if (!initialSlug && initialMaster) {
+            return {
+                userId: initialMaster.userId, // Map Master -> MasterProfile
+                name: initialMaster.name,
+                desc: initialMaster.desc || "",
+                tags: initialMaster.tags || [],
+                avatar: initialMaster.avatar || "",
+                tier: initialMaster.tier || "ROOKIE",
+                followersCount: initialMaster.followers,
+                followersLimit: 100, // Should come from Tier/Plan, default for now
+                aum: initialMaster.aum,
+                aumLimit: 10000,
+                monthlyFee: initialMaster.monthlyFee,
+                minDeposit: initialMaster.minDeposit || 10,
+                roi: initialMaster.roi,
+                winRate: initialMaster.winRate || 0,
+                drawdown: initialMaster.drawdown || 0,
+                isPublic: initialMaster.isPublic
+            } as MasterProfile; // Casting to ensure compatibility if types differ slightly
+        }
+        return {
+            name: "",
+            desc: "",
+            tags: [],
+            avatar: "",
+            tier: "ROOKIE",
+            followersCount: 0,
+            followersLimit: 100,
+            aum: 0,
+            aumLimit: 10000,
+            monthlyFee: 0,
+            minDeposit: 10, // ✅ Default
+            userId: ""
+        };
     });
     const [showActivationModal, setShowActivationModal] = useState(false);
 
     // ⚡ REAL-TIME SYNC
-    const { stats: realTimeStats } = useRealTimeData();
+    const { stats: realTimeStats, isConnected: isSyncing, hasAttempted } = useRealTimeData();
+    const [ignoreSync, setIgnoreSync] = useState(false); // 🛡️ Prevent race conditions on disconnect
+    const [hasSyncedOnce, setHasSyncedOnce] = useState(false); // 🛡️ Protect SSR state from premature overwrite
+    const [isManualConnect, setIsManualConnect] = useState(false); // 🛡️ Protect Manual Connect from Lagging Polls
+
+    // ⚡ SYNC REAL-TIME DATA TO GLOBAL STATE (Consolidated)
+    useEffect(() => {
+        if (ignoreSync) return; // 🛑 Block updates if we are intentionally disconnecting
+
+        if (realTimeStats) {
+            setHasSyncedOnce(true);
+            setIsManualConnect(false); // ✅ Poller caught up. Guard lifted.
+
+            // ✅ Sync Live Data to Main State
+            setBrokerAccount(prev => {
+                if (!prev) return realTimeStats as any;
+                return { ...prev, ...realTimeStats };
+            });
+
+            // ✅ Auto-Correction: If we have stats, we are CONNECTED
+            setAccountStatus("CONNECTED");
+        } else if (hasAttempted && !realTimeStats && accountStatus === "CONNECTED" && !isManualConnect) {
+            // ⚠️ Hook processed first poll and found NO Session (404)
+            // Downgrade immediately to resolve Stale SSR state.
+            setAccountStatus("DISCONNECTED");
+        }
+    }, [realTimeStats, isSyncing, accountStatus, ignoreSync, hasSyncedOnce, hasAttempted, isManualConnect]);
 
     useEffect(() => {
         if (realTimeStats?.activeSessions) {
@@ -1686,7 +1892,13 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                 if (user) {
                     if (user.role) setUserRole(user.role as UserRole);
                     // Only enforce Master view if URL doesn't specify otherwise AND not looking at a profile
-                    if (user.role === "MASTER" && !searchParams.get("view") && !initialSlug && !initialProfileId) setViewMode("MASTER");
+                    // AND if user hasn't explicitly chosen Follower mode previously
+                    const savedView = typeof window !== "undefined" ? localStorage.getItem("last_view_mode") : null;
+                    if (user.role === "MASTER" && !searchParams.get("view") && !initialSlug && !initialProfileId) {
+                        if (savedView !== "FOLLOWER") {
+                            setViewMode("MASTER");
+                        }
+                    }
                     if (user.masterProfile) {
                         // Merge with existing structure, sanitizing nulls
                         const mp = user.masterProfile;
@@ -1707,6 +1919,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                         setAccountStatus("CONNECTED");
                         setBrokerAccount(user.brokerAccount); // ✅ Set State
                     }
+                    if (user.favorites) setFavorites(user.favorites); // ✅ Load Favorites (Correctly placed)
                 }
             });
         }
@@ -1721,11 +1934,72 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
             const res = await updateMasterProfile(session.user.id, updatedProfile);
             if (res.success) {
                 toast.success("Profile Saved", { id: toastId });
+                // 🔄 Force Refresh List to ensure consistency
+                fetchMasters().then(data => {
+                    setRealMasters(data);
+                    // Also update viewing profile if it matches self
+                    if (viewingProfile && (viewingProfile.userId === session.user?.id || viewingProfile.id === 0)) {
+                        const me = data.find(d => d.userId === session.user?.id);
+                        if (me) setViewingProfile(prev => ({ ...prev, ...me }));
+                    }
+                });
             } else {
                 toast.error("Save Failed", { id: toastId, description: res.error });
             }
         }
     };
+
+    // ⚡ GLOBAL SOCKET LISTENER (Real-Time Updates across App)
+    useEffect(() => {
+        // Connect to Socket Server
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:3001` : "http://localhost:3001");
+
+        // Dynamically import socket.io-client to avoid SSR issues if strictly client-side, 
+        // but typically we can just import at top if "use client" is set. 
+        // Using dynamic import here for safety or standard import if available.
+        // Since we are adding logic inside existing component, let's assume 'io' needs to be imported.
+        // We will add the import at the top in a separate step if needed, or use require here.
+        // But cleaner to assume import. I will add import in separate edit if needed.
+        // For now, I'll use `import("socket.io-client")` promise or just assume I'll add the import line.
+        // Actually, I can't add import *and* this block in one 'replace_file_content' unless I replace the whole file or large chunk.
+        // So I will use `require` or rely on a second edit.
+        // Let's use standard import in a separate edit 2.
+        // WAIT, I really should add the import.
+
+        // Let's check if I can use window.io (CDN) or just standard import. Be safe:
+        import("socket.io-client").then(({ io }) => {
+            const socket = io(socketUrl);
+
+            socket.on("master_updated", (updatedProfile: any) => {
+                // 1. Update List (Discovery)
+                setRealMasters(prev => prev.map(m => {
+                    const match = (m.userId === updatedProfile.userId) || (m.id === updatedProfile.id) || (m.username && updatedProfile.username && m.username === updatedProfile.username);
+                    if (match) {
+                        return { ...m, ...updatedProfile };
+                    }
+                    return m;
+                }));
+
+                // 2. Update Viewing Profile (if active)
+                setViewingProfile(curr => {
+                    if (curr) {
+                        const match = (curr.userId === updatedProfile.userId) || (curr.id === updatedProfile.id) || (curr.username && updatedProfile.username && curr.username === updatedProfile.username);
+                        if (match) return { ...curr, ...updatedProfile };
+                    }
+                    return curr;
+                });
+
+                // 3. Update Self (if Master)
+                if (currentUserId && updatedProfile.userId === currentUserId) {
+                    setMasterProfile(prev => ({ ...prev, ...updatedProfile }));
+                }
+            });
+
+            return () => {
+                socket.disconnect();
+            };
+        });
+    }, [currentUserId]);
 
     // 🔔 GLOBAL CONFIRMATION MODAL STATE
     const [globalModal, setGlobalModal] = useState<{
@@ -1776,15 +2050,32 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
     const [showStopAll, setShowStopAll] = useState(false);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
-    const [realMasters, setRealMasters] = useState<Master[]>([]); // ✅ Lifted State (Moved Up)
+    // ✅ Initialize with Server Data
+    const [realMasters, setRealMasters] = useState<Master[]>(initialMasters || []);
 
     // 🔍 VIEWING STATE (Refactored to Object for Self-View Support)
-    const [viewingProfile, setViewingProfile] = useState<Master | null>(null);
+
+
+    // 🔍 VIEWING STATE (Refactored to Object for Self-View Support)
+    const [viewingProfile, setViewingProfile] = useState<Master | null>(() => {
+        // Only set default viewing profile if we are on a Target Profile Page (has Slug)
+        if (initialSlug && initialMaster) return initialMaster;
+        return null;
+    });
 
     const [viewingFollower, setViewingFollower] = useState<any | null>(null);
     const [startOnBroker, setStartOnBroker] = useState(false);
 
-
+    useEffect(() => {
+        // Sync Viewing Profile with URL/Server State
+        // If we have a slug, we MUST show that profile.
+        if (initialSlug && initialMaster) {
+            setViewingProfile(initialMaster);
+        } else if (!initialSlug && !searchParams.get("profile")) {
+            // If NO slug and NO profile param, ensure we are closed (Fixes Back Nav bug)
+            setViewingProfile(null);
+        }
+    }, [initialMaster, initialSlug, searchParams]);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -1806,7 +2097,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                     // 🎟️ SYNC TICKET STATUS
                     getTicketStatuses(session.user.id!).then(status => {
                         if (status) {
-                            setDailyTicketUsed(status.dailyUsed);
+                            // setDailyTicketUsed(status.dailyUsed); // Derived state, no-op used.
                             setHasUsed7DayTrial(status.welcomeUsed);
                         }
                     });
@@ -1833,18 +2124,12 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
             });
 
             // 🔄 REAL-TIME POLLING (Every 5s)
-            const poller = setInterval(() => {
-                // 1. Refresh Broker Data (Equity/Balance)
-                getBrokerAccount().then((account: any) => {
-                    if (account) {
-                        setBrokerAccount(account);
-                        setAccountStatus(account.status as AccountStatus);
-                        setWalletBalance(account.balance); // ✅ Sync wallet balance for real-time updates
-                    }
-                });
-            }, 5000);
+            // 🔄 REAL-TIME POLLING (Redundant - Handled by useRealTimeData hook)
+            // Removed 5s interval to prevent state conflicts/flicker.
+            // setBrokerAccount and setAccountStatus are now driven by the 1s Hook.
 
-            return () => clearInterval(poller);
+            // Cleanup handled by hooks
+            return () => { };
 
         } else if ((status as string) === "unauthenticated") {
             setIsLoggedIn(false);
@@ -1853,6 +2138,12 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
 
     // 🌍 PUBLIC: Fetch Masters on Mount (Regardless of Auth)
     useEffect(() => {
+        // ✅ SKIP if already hydrated from Server
+        if (initialMasters && initialMasters.length > 0) {
+            setMastersLoaded(true);
+            return;
+        }
+
         fetchMasters().then((data) => {
             setRealMasters(data);
             setMastersLoaded(true);
@@ -1864,9 +2155,11 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
 
     // url hydration effect for PROFILE (ID or SLUG)
     useEffect(() => {
-        console.log("🔍 Hydration Effect Triggered", { mastersLoaded, viewingProfile: !!viewingProfile, initialSlug, mastersCount: realMasters.length });
+        // console.log("🔍 Hydration Effect Triggered", { mastersLoaded, viewingProfile: !!viewingProfile, initialSlug, mastersCount: realMasters.length });
 
-        if (mastersLoaded && !viewingProfile) {
+        // ✅ FIX: If initialMaster is provided (Server-Side), DO NOT run client hydration logic.
+        // This prevents overwriting the detailed server object with a generic list object.
+        if (mastersLoaded && !viewingProfile && !initialMaster) {
             // 1. Slug Lookup (Priority)
             if (initialSlug) {
                 const master = realMasters.find(m => m.username?.toLowerCase() === initialSlug.toLowerCase());
@@ -1911,28 +2204,9 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
         const fetchAllMasters = () => {
             fetchMasters().then(masters => {
                 setRealMasters(masters);
-                setViewingProfile(current => {
-                    if (current && current.id !== 0) {
-                        const fresh = masters.find(m => m.id === current.id);
-                        if (fresh) {
-                            // 🧠 Smart Merge: Preserve rich details if poll returns lean object
-                            return {
-                                ...fresh,
-                                desc: fresh.desc || current.desc,
-                                avatar: fresh.avatar || current.avatar,
-                                minDeposit: fresh.minDeposit || current.minDeposit,
-                                leverage: fresh.leverage || current.leverage,
-                                monthlyFee: fresh.monthlyFee ?? current.monthlyFee,
-                                tags: (fresh.tags && fresh.tags.length > 0) ? fresh.tags : current.tags,
-                                // Preserve Stats if missing in poll
-                                winRate: fresh.winRate || current.winRate,
-                                roi: fresh.roi || current.roi,
-                            };
-                        }
-                        return current;
-                    }
-                    return current;
-                });
+                // ⚡ OPTIMIZATION: Do not update viewingProfile from generic list poll.
+                // MasterProfileView handles its own real-time updates via Socket.
+                // This prevents "flicker" where detailed server data is overwritten by summary list data.
             }).catch(console.error);
         };
 
@@ -1940,7 +2214,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
         fetchAllMasters();
 
         // Poll every 5s
-        const interval = setInterval(fetchAllMasters, 5000);
+        const interval = setInterval(fetchAllMasters, 900000); // 15 Minutes Polling
         return () => clearInterval(interval);
     }, []);
 
@@ -1959,19 +2233,26 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
     };
 
 
-    const handleToggleFavorite = (e?: React.MouseEvent, masterId?: number) => {
+    const handleToggleFavorite = async (e?: React.MouseEvent, masterId?: number) => {
         if (e) e.stopPropagation();
         const idToToggle = masterId;
+        if (!currentUserId || !idToToggle) return;
 
-        requireAuth(() => {
-            if (!idToToggle) return;
-            if (favorites.includes(idToToggle)) {
-                setFavorites(prev => prev.filter(fid => fid !== idToToggle));
-                toast.success("Removed from Favorites");
-            } else {
-                setFavorites(prev => [...prev, idToToggle]);
-                toast.success("Added to Favorites ❤️");
-            }
+        // Optimistic Update
+        const wasFav = favorites.includes(idToToggle);
+        setFavorites(prev => wasFav ? prev.filter(id => id !== idToToggle) : [...prev, idToToggle]);
+
+        // Server Action
+        import('@/app/actions/user').then(({ toggleFavorite }) => {
+            toggleFavorite(currentUserId, idToToggle).then(res => {
+                if (res.success) {
+                    toast.success(wasFav ? "Removed from Favorites" : "Added to Favorites ❤️");
+                } else {
+                    // Rollback
+                    setFavorites(prev => wasFav ? [...prev, idToToggle] : prev.filter(id => id !== idToToggle));
+                    toast.error("Failed to update favorites");
+                }
+            });
         });
     };
 
@@ -2017,18 +2298,12 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
             return;
         }
 
-        // 🛡️ 3. CHECK: DAILY PASS QUOTA
+        // 🛡️ 3. CHECK: DAILY PASS QUOTA (REMOVED: Unlimited Duration & Reset)
+        /*
         if (sessionType === "DAILY") {
-            if (dailyTicketUsed) {
-                openGlobalModal(
-                    "🚫 Daily Pass Expired",
-                    "Daily Pass used for today. Wait for tomorrow or Upgrade to VIP.",
-                    () => setShowVIP(true),
-                    "warning"
-                );
-                return;
-            }
+            if (dailyTicketUsed) { ... }
         }
+        */
 
         if (amount > walletBalance) {
             openGlobalModal("Insufficient Balance", "Please top up your wallet to continue.", () => { });
@@ -2038,7 +2313,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
         // Calculate Expiry
         let expiry: number | null = null;
         if (sessionType === "TRIAL_7DAY") expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
-        else if (sessionType === "DAILY") expiry = Date.now() + (4 * 60 * 60 * 1000); // 4 Hours for Daily Pass
+        else if (sessionType === "DAILY") expiry = Date.now() + (10 * 365 * 24 * 60 * 60 * 1000); // Unlimited (10 Years) for Standard Pass
 
         const masterUserId = String(master.id); // Assuming Master ID is used as User ID for now, or we need to add a userId to Master interface.
         // Actually, let's fix this properly. The Master interface ID is a number, but we need the string ID for the User relation.
@@ -2112,7 +2387,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                     setWalletBalance(prev => prev + amount);
 
                     // ↩️ Rollback Ticket State
-                    if (sessionType === "DAILY") setDailyTicketUsed(false);
+                    if (sessionType === "DAILY") {/* setDailyTicketUsed(false) - AUTO */ }
                     if (sessionType === "TRIAL_7DAY") setHasUsed7DayTrial(false);
                 }
             })
@@ -2120,7 +2395,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                 toast.error("Connection Error", { id: toastId, description: "Please try again." });
                 setActiveSessions(prev => prev.filter(s => s.id !== newSession.id));
                 setWalletBalance(prev => prev + amount);
-                if (sessionType === "DAILY") setDailyTicketUsed(false);
+                if (sessionType === "DAILY") {/* setDailyTicketUsed(false) - AUTO */ }
                 if (sessionType === "TRIAL_7DAY") setHasUsed7DayTrial(false);
             });
 
@@ -2129,43 +2404,56 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
             setHasUsed7DayTrial(true);
             toast.success("7-Day Free Trial Started!", { description: "Use it wisely. Copying active." });
         } else if (sessionType === "DAILY") {
-            setDailyTicketUsed(true);
+            // setDailyTicketUsed(true); // Derived automatically
         }
     };
 
-    const stopCopying = async (masterId: number) => {
+    const stopCopying = async (masterId: number, confirmed: boolean = false) => {
         // Find session
         const session = activeSessions.find(s => s.master.id === masterId);
         if (!session) return;
 
-        openGlobalModal(
-            "Stop Copying?",
-            `Stop copying ${session.master.name}? This will mark the session as inactive.`,
-            () => {
-                // Optimistic Client Update
-                setWalletBalance(prev => prev + session.allocation);
-                setActiveSessions(prev => prev.filter(s => s.master.id !== masterId));
+        const executeStop = () => {
+            // Optimistic Client Update
+            setWalletBalance(prev => prev + session.allocation);
+            setActiveSessions(prev => prev.filter(s => s.master.id !== masterId));
 
-                // Decrement follower count locally immediately
-                setRealMasters(prev => prev.map(m =>
-                    m.id === session.master.id ? { ...m, followers: Math.max(0, m.followers - 1) } : m
-                ));
+            // Decrement follower count locally immediately
+            setRealMasters(prev => prev.map(m =>
+                m.id === session.master.id ? { ...m, followers: Math.max(0, m.followers - 1) } : m
+            ));
 
-                console.log("🛑 Client: Stopping session", session.id); // Log added
-                // Server Action
-                stopCopySession(session.id).then(res => {
-                    if (res.success) {
-                        toast.success("Stopped Copying");
-                    } else {
-                        console.error("❌ Server Action Failed:", res.error);
-                        toast.error("Failed to update status on server");
-                    }
-                });
+            console.log("🛑 Client: Stopping session", session.id); // Log added
+            // Server Action
+            stopCopySession(session.id).then(res => {
+                if (res.success) {
+                    toast.success("Stopped Copying");
+                } else {
+                    console.error("❌ Server Action Failed:", res.error);
+                    toast.error("Failed to update status on server");
 
-                setGlobalModal(p => ({ ...p, isOpen: false }));
-            },
-            "danger"
-        );
+                    // Rollback on failure
+                    // We should probably re-fetch but for now just warn
+                    // Or ideally revert the optimistic update by re-adding the session
+                    getActiveSessions(currentUserId!).then(realSessions => {
+                        setActiveSessions(realSessions as CopySession[]);
+                    });
+                }
+            });
+
+            setGlobalModal(p => ({ ...p, isOpen: false }));
+        };
+
+        if (confirmed) {
+            executeStop();
+        } else {
+            openGlobalModal(
+                "Stop Copying?",
+                `Stop copying ${session.master.name}? This will mark the session as inactive.`,
+                executeStop,
+                "danger"
+            );
+        }
     };
 
     const confirmStopAll = async () => {
@@ -2272,6 +2560,20 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
         signOut({ callbackUrl: "/" });
     };
 
+    // ✅ Wrapper to handle Disconnect > Pause Sync logic
+    const handleBrokerUpdate = (account: any) => {
+        if (account.status === "DISCONNECTED") {
+            setIgnoreSync(true); // 🛑 Stop listening to real-time events temporarily
+            setAccountStatus("DISCONNECTED");
+        } else {
+            // If manual connect, re-enable sync
+            setIgnoreSync(false);
+            setIsManualConnect(true); // 🛡️ Prevent immediate downgrade by lagging poller
+            setAccountStatus(account.status);
+        }
+        setBrokerAccount(account);
+    };
+
     return (
         <div className="min-h-screen bg-gray-950 text-white font-sans pb-24 selection:bg-green-500 selection:text-black">
             <style jsx global>{` .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; } `}</style>
@@ -2354,10 +2656,13 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                         <FollowerFlow
                             requireAuth={requireAuth}
                             onViewProfile={(master) => {
-                                setViewingProfile(master);
                                 if (master.username) {
+                                    // 🚀 FAST ROUTE: Just push URL, let page load.
+                                    // Do NOT set local state, forcing "double load".
                                     router.push(`/${master.username}`);
                                 } else {
+                                    // Legacy/ID Mode: Open Overlay
+                                    setViewingProfile(master);
                                     router.push(pathname + "?" + createQueryString([{ name: "profile", value: String(master.id) }]));
                                 }
                             }}
@@ -2402,6 +2707,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
                             onOpenSettings={() => requireAuth(() => { setStartOnBroker(true); setShowSettings(true); })}
                             dailyTicketUsed={dailyTicketUsed}
                             isOwner={viewingProfile.id === 9999 || Boolean(session?.user?.id && viewingProfile.userId === session.user.id)}
+                            initialAnalytics={(initialMaster && viewingProfile.userId === initialMaster.userId) ? initialAnalytics : null}
                         />
                     ) : viewingFollower ?
                         <FollowerDetailView follower={viewingFollower} onBack={() => setViewingFollower(null)} />
@@ -2422,7 +2728,7 @@ export function SocialTradingApp({ initialSlug }: SocialTradingAppProps) {
             </div>
 
             {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setStartOnBroker(false); }} status={accountStatus} setStatus={setAccountStatus} role={userRole} setRole={setUserRole} setViewMode={setViewMode} onLogout={handleLogout}
-                activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={setBrokerAccount} />}
+                activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={handleBrokerUpdate} />}
 
             {showActivationModal && <MasterActivationModal onClose={() => setShowActivationModal(false)} onConfirm={confirmActivation} />}
 

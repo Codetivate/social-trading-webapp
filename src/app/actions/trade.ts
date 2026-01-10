@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { SessionType } from "@prisma/client";
+import { redis } from "@/lib/redis";
 
 export async function startCopySession(
     followerId: string,
@@ -116,7 +117,7 @@ export async function startCopySession(
                         timeConfig: timeConfig ?? existingSession.timeConfig, // Keep old config if null passed? Or overwrite? 
                         // Usually Start args > Old args.
 
-                        expiry: type === "DAILY" ? new Date(Date.now() + 4 * 60 * 60 * 1000)
+                        expiry: type === "DAILY" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 Years (Unlimited)
                             : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                                 : type === "PAID" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Paid = 30 Days default
                                     : null
@@ -137,7 +138,7 @@ export async function startCopySession(
                         shardId: Math.floor(Math.random() * 10),
                         autoRenew: autoRenew,
                         timeConfig: timeConfig,
-                        expiry: type === "DAILY" ? new Date(Date.now() + 4 * 60 * 60 * 1000)
+                        expiry: type === "DAILY" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 Years (Unlimited)
                             : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                                 : type === "PAID" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
                                     : null,
@@ -463,11 +464,119 @@ export async function getTicketStatuses(userId: string) {
     }
 }
 
-// --- 🔄 FORCE REFRESH MASTER STATS ---
+// --- 🧠 AI RISK SCORE ALGORITHM ---
+// Standardized volatility-based scoring used by top platforms (ZuluTrade/Exness)
+function calculateRiskScore(maxDrawdown: number, dailyReturns: number[]): number {
+    // 1. Volatility Score (StdDev of Daily Returns)
+    let volatilityScore = 1;
+    if (dailyReturns.length > 1) {
+        const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
+        const variance = dailyReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (dailyReturns.length - 1);
+        const stdDev = Math.sqrt(variance);
+
+        // Thresholds: <1% (1), 1-2.5% (2), 2.5-4.5% (3), 4.5-7% (4), >7% (5)
+        if (stdDev < 1.0) volatilityScore = 1;
+        else if (stdDev < 2.5) volatilityScore = 2;
+        else if (stdDev < 4.5) volatilityScore = 3;
+        else if (stdDev < 7.0) volatilityScore = 4;
+        else volatilityScore = 5;
+    }
+
+    // 2. Drawdown Score (Max Peak-to-Valley Loss)
+    // Thresholds: <10% (1), 10-20% (2), 20-35% (3), 35-50% (4), >50% (5)
+    let ddScore = 1;
+    if (maxDrawdown < 10) ddScore = 1;
+    else if (maxDrawdown < 20) ddScore = 2;
+    else if (maxDrawdown < 35) ddScore = 3;
+    else if (maxDrawdown < 50) ddScore = 4;
+    else ddScore = 5;
+
+    // Final Score is MAX of both factors (Safety First)
+    return Math.max(volatilityScore, ddScore);
+}
+
 export async function refreshMasterStats(masterId: string) {
     if (!masterId) return { success: false };
 
     try {
+        // Fetch Trade History for Risk Analysis (New DB Logic)
+        const trades = await prisma.tradeHistory.findMany({
+            where: { followerId: masterId },
+            orderBy: { closeTime: 'asc' },
+            select: { netProfit: true, closeTime: true }
+        });
+
+        // 🏦 Fetch Real Account Balance for Accurate Drawdown
+        const account = await prisma.brokerAccount.findFirst({
+            where: { userId: masterId },
+            select: { balance: true }
+        });
+
+        // If no linked account, assume a standard $10,000 prop firm size or $1,000 retail
+        // But if trades exist, we can infer starting balance if we assume current balance is correct.
+        const currentBalance = account?.balance || 10000;
+
+        // 📊 Calculate Stats for Formula
+        let maxDrawdown = 0;
+        let riskScore = 1; // Default Safe
+
+        if (trades.length > 0) {
+            // 1. Calculate Total Realized Profit to Back-Calculate Starting Balance
+            const totalRealizedProfit = trades.reduce((sum, t) => sum + t.netProfit, 0);
+
+            // Start Balance = Current Balance - Net Profit
+            // (Ignoring Deposits/Withdrawals for now as simple heuristic, consistent with analytics.ts)
+            let equity = currentBalance - totalRealizedProfit;
+            if (equity <= 0) equity = 1000; // Fallback to prevent divide by zero if user blew account
+
+            const startBalance = equity; // Snapshot for reference
+
+            // 2. Max Drawdown % (Peak-to-Valley) based on Equity Curve
+            let peakEquity = startBalance;
+            let currentDrawdownPct = 0;
+
+            // 3. Daily Returns for Volatility
+            const dailyPnL = new Map<string, number>();
+
+            trades.forEach(t => {
+                // Update Equity
+                equity += t.netProfit;
+
+                // Track Peak
+                if (equity > peakEquity) peakEquity = equity;
+
+                // Calculate Drawdown from Peak
+                const dd = peakEquity - equity;
+                const ddPct = peakEquity > 0 ? (dd / peakEquity) * 100 : 0;
+
+                if (ddPct > maxDrawdown) maxDrawdown = ddPct;
+
+                // Daily PnL Aggregation
+                const day = t.closeTime.toISOString().split('T')[0];
+                dailyPnL.set(day, (dailyPnL.get(day) || 0) + t.netProfit);
+            });
+
+            // 4. Calculate Daily Volatility (Returns %)
+            const dailyReturns: number[] = [];
+            // We need to re-simulate equity day-by-day for accurate returns
+            let dayStartEquity = startBalance;
+
+            // Sort days to be sure
+            const sortedDays = Array.from(dailyPnL.keys()).sort();
+
+            sortedDays.forEach(day => {
+                const profit = dailyPnL.get(day) || 0;
+                if (dayStartEquity > 0) {
+                    const ret = (profit / dayStartEquity) * 100;
+                    dailyReturns.push(ret);
+                }
+                dayStartEquity += profit;
+            });
+
+            // 5. Calculate AI Score
+            riskScore = calculateRiskScore(maxDrawdown, dailyReturns);
+        }
+
         const stats = await prisma.$transaction(async (tx) => {
             // Count Followers (Exclude Self)
             const followersCount = await tx.copySession.count({
@@ -488,17 +597,24 @@ export async function refreshMasterStats(masterId: string) {
                 _sum: { allocation: true }
             });
 
-            // Update Master Profile
-            await tx.masterProfile.update({
+            // Update Master Profile with Stats AND Risk
+            const updatedProfile = await tx.masterProfile.update({
                 where: { userId: masterId },
                 data: {
                     followersCount: followersCount,
-                    aum: trueAum._sum.allocation || 0
+                    aum: trueAum._sum.allocation || 0,
+                    riskScore: riskScore, // 🧠 AI Update
+                    drawdown: parseFloat(maxDrawdown.toFixed(2)) // Persist DD too
                 }
             });
 
-            return { aum: trueAum._sum.allocation || 0, followersCount };
+            return { ...updatedProfile, riskScore };
         });
+
+        // 🚀 REAL-TIME UPDATE via Redis
+        if (stats) {
+            await redis.publish("channel:master_updates", JSON.stringify(stats));
+        }
 
         revalidatePath('/');
         return { success: true, ...stats };

@@ -34,6 +34,6 @@ Write-Host "Using MT5: $MT5" -ForegroundColor Gray
 # 4. Launch
 Write-Host "Launching Processes..." -ForegroundColor Magenta
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/orchestrator.py"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/executor.py --mode TURBO --mt5-path '$MT5'"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/executor.py --mode TURBO --mt5-path '$MT5' --user-id '270766441'"
 
 Write-Host "Done! Check new windows." -ForegroundColor Green

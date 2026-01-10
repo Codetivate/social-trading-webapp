@@ -33,7 +33,10 @@ export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIs
     return (
         <nav className="fixed top-0 w-full z-40 glass-panel pt-3 pb-3 px-4">
             <div className="flex justify-between items-center">
-                <Link href="/" className="flex items-center gap-3 cursor-pointer group">
+                <Link href="/" onClick={(e) => {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }} className="flex items-center gap-3 cursor-pointer group">
                     {/* 🔹 LOGO: SignalTrade w/ Neon Glow */}
                     <div className="relative w-8 h-8 transition-transform duration-300 group-hover:scale-110">
                         <div className="absolute inset-0 bg-neon-purple/50 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -53,7 +56,7 @@ export function Navbar({ viewMode, onSwitch, wallet, status, isLoggedIn: propsIs
                 </div>
                 <div className="flex items-center gap-2">
                     {onBecomeMaster && viewMode === "FOLLOWER" && isAuthenticated && (
-                        <button onClick={onBecomeMaster} className="hidden md:flex items-center gap-1.5 bg-gradient-to-r from-neon-purple to-indigo-600 text-white px-3 py-1.5 rounded-full text-[10px] font-bold shadow-[0_0_15px_rgba(139,92,246,0.4)] hover:shadow-neon-purple/60 transition-all active:scale-95 border border-white/10">
+                        <button onClick={onBecomeMaster} className="hidden md:flex items-center gap-1.5 bg-linear-to-r from-neon-purple to-indigo-600 text-white px-3 py-1.5 rounded-full text-[10px] font-bold shadow-[0_0_15px_rgba(139,92,246,0.4)] hover:shadow-neon-purple/60 transition-all active:scale-95 border border-white/10">
                             <Briefcase size={12} /> Become Master
                         </button>
                     )}

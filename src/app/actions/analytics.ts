@@ -14,8 +14,22 @@ export type AnalyticStats = {
     expectancy: number;
     totalProfit: number;
     maxDrawdown: number;
+    growth: number;
     longPercent: number;
     shortPercent: number;
+    // 🆕 Advanced Metrics
+    bestTrade: number;
+    worstTrade: number;
+    bestTradeDate: string;
+    worstTradeDate: string;
+    lastTradeDate: string;
+    avgDuration: string;
+    estDeposit: number;
+    estWithdrawal: number;
+    // 🆕 Account State
+    balance: number;
+    equity: number;
+    tradesPerWeek: number;
 };
 
 export type MonthlyResult = {
@@ -28,6 +42,8 @@ export type MonthlyResult = {
 export type EquityPoint = {
     date: string; // ISO date
     profit: number; // Cumulative PnL
+    growth: number;
+    drawdown: number;
 };
 
 export type SymbolDistribution = {
@@ -55,6 +71,14 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
             orderBy: { closeTime: 'asc' }
         });
 
+        // 🏦 Fetch Current Balance for Growth/DD Calc
+        const account = await prisma.brokerAccount.findFirst({
+            where: { userId: masterId },
+            select: { balance: true, equity: true }
+        });
+        // Approx End Balance. If no account, assume $10,000 baseline
+        const endBalance = account?.balance || 10000;
+
         if (trades.length === 0) {
             return {
                 stats: {
@@ -68,12 +92,25 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
                     expectancy: 0,
                     totalProfit: 0,
                     maxDrawdown: 0,
+                    growth: 0,
                     longPercent: 0,
-                    shortPercent: 0
+                    shortPercent: 0,
+                    bestTrade: 0,
+                    worstTrade: 0,
+                    bestTradeDate: "-",
+                    worstTradeDate: "-",
+                    lastTradeDate: "-",
+                    avgDuration: "0m",
+                    estDeposit: 0,
+                    estWithdrawal: 0,
+                    balance: 0,
+                    equity: 0,
+                    tradesPerWeek: 0
                 },
                 equityCurve: [],
                 monthlyResults: [],
-                symbolDist: []
+                symbolDist: [],
+                history: []
             };
         }
 
@@ -133,8 +170,37 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
             }
         }
 
+        const totalProfit = totalWinAmt - totalLossAmt;
+        const startBalance = endBalance - totalProfit;
+        const growth = startBalance > 0 ? (totalProfit / startBalance) * 100 : 0;
+
+        // 🆕 CALC ADVANCED METRICS
+        const sortedByProfit = [...trades].sort((a, b) => b.netProfit - a.netProfit);
+        const bestTradeObj = sortedByProfit[0];
+        const worstTradeObj = sortedByProfit[sortedByProfit.length - 1];
+
+        const lastTradeObj = trades[trades.length - 1]; // Already sorted asc by time
+
+        // Duration
+        const totalDurationMs = trades.reduce((acc, t) => acc + (t.closeTime.getTime() - t.openTime.getTime()), 0);
+        const avgDurMs = totalDurationMs / trades.length;
+        const avgDurHours = Math.floor(avgDurMs / (1000 * 60 * 60));
+        const avgDurMins = Math.round((avgDurMs % (1000 * 60 * 60)) / (1000 * 60));
+        const avgDurationStr = `${avgDurHours}h ${avgDurMins}m`;
+
+        // Trades per Week
+        const firstTrade = trades[0];
+        const lastTrade = trades[trades.length - 1];
+        let weeksActive = 1;
+        if (firstTrade && lastTrade) {
+            const diffMs = lastTrade.closeTime.getTime() - firstTrade.closeTime.getTime();
+            weeksActive = Math.max(1, diffMs / (1000 * 60 * 60 * 24 * 7));
+        }
+        const tradesPerWeek = totalCount / weeksActive;
+
         const stats: AnalyticStats = {
             totalTrades: totalCount,
+            tradesPerWeek, // 🆕 Added
             winRate: (wins.length / totalCount) * 100,
             avgWin,
             avgLoss: -avgLoss, // Display as negative
@@ -142,31 +208,54 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
             rrr: avgLoss > 0 ? avgWin / avgLoss : 0,
             sharpe: sharpe,
             expectancy,
-            totalProfit: totalWinAmt - totalLossAmt,
-            maxDrawdown: 0, // Need equity curve
+            totalProfit,
+            maxDrawdown: 0, // Placeholder
+            growth,
             longPercent: totalCount > 0 ? (longTrades / totalCount) * 100 : 0,
-            shortPercent: totalCount > 0 ? (shortTrades / totalCount) * 100 : 0
+            shortPercent: totalCount > 0 ? (shortTrades / totalCount) * 100 : 0,
+            // 🆕 New Fields
+            bestTrade: bestTradeObj ? bestTradeObj.netProfit : 0,
+            worstTrade: worstTradeObj ? worstTradeObj.netProfit : 0,
+            bestTradeDate: bestTradeObj ? bestTradeObj.closeTime.toISOString().split('T')[0] : "-",
+            worstTradeDate: worstTradeObj ? worstTradeObj.closeTime.toISOString().split('T')[0] : "-",
+            lastTradeDate: lastTradeObj ? lastTradeObj.closeTime.toISOString() : "-", // Full ISO for "ago" calc
+            avgDuration: avgDurationStr,
+            estDeposit: startBalance > 0 ? startBalance : 0, // Assumption
+            estWithdrawal: 0, // Placeholder until Transaction Integration
+            // 🆕 Account State
+            balance: account?.balance || 0,
+            equity: account?.equity || 0
         };
 
-        // --- 2. EQUITY CURVE & MAX DRAWDOWN ---
+        // --- 2. EQUITY CURVE & MAX DRAWDOWN (%) ---
         let runningPnL = 0;
-        let peakPnL = -Infinity;
-        let maxDD = 0;
+        let ddEquity = startBalance;
+        let ddPeakEquity = startBalance;
+        let maxDDPercent = 0;
         const equityCurve: EquityPoint[] = [];
 
         trades.forEach(t => {
             runningPnL += t.netProfit;
-            if (runningPnL > peakPnL) peakPnL = runningPnL;
-            const dd = peakPnL - runningPnL;
-            if (dd > maxDD) maxDD = dd;
+            ddEquity += t.netProfit;
+
+            if (ddEquity > ddPeakEquity) ddPeakEquity = ddEquity;
+
+            const dd = ddPeakEquity - ddEquity;
+            const ddPercent = ddPeakEquity > 0 ? (dd / ddPeakEquity) * 100 : 0;
+
+            if (ddPercent > maxDDPercent) maxDDPercent = ddPercent;
+
+            const currentGrowth = startBalance > 0 ? (runningPnL / startBalance) * 100 : 0;
 
             equityCurve.push({
                 date: t.closeTime.toISOString().split('T')[0],
-                profit: runningPnL
+                profit: runningPnL, // Keep curve as PnL for display consistency
+                growth: currentGrowth,
+                drawdown: ddPercent
             });
         });
 
-        stats.maxDrawdown = maxDD;
+        stats.maxDrawdown = maxDDPercent;
 
         // --- 3. MONTHLY BREAKDOWN ---
         const monthMap = new Map<string, MonthlyResult>();
@@ -209,7 +298,8 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
             stats,
             equityCurve,
             monthlyResults,
-            symbolDist
+            symbolDist,
+            history: trades
         };
 
     } catch (error) {

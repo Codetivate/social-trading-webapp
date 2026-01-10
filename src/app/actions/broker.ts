@@ -5,6 +5,7 @@ import { auth } from "@/auth"; // Server-side auth helper
 import crypto from "crypto";
 import { revalidatePath } from "next/cache";
 
+
 // 🔐 ENCRYPTION CONFIG
 const ALGORITHM = "aes-256-cbc";
 const ENCRYPTION_KEY = process.env.BROKER_SECRET || "01234567890123456789012345678901"; // Must be 32 chars
@@ -99,25 +100,48 @@ export async function connectBroker(formData: FormData) {
 
 export async function getBrokerAccount() {
     const session = await auth();
-    if (!session?.user?.id) return null;
+    // Support either Session ID or Email for robust lookup
+    if (!session?.user) return null;
 
     try {
-        const account = await prisma.brokerAccount.findFirst({
-            where: { userId: session.user.id, status: "CONNECTED" }, // Prioritize CONNECTED accounts
-            orderBy: { id: 'desc' }, // Get latest
-            select: {
-                id: true,
-                server: true,
-                login: true,
-                status: true,
-                balance: true,
-                equity: true, // ✅ Added Equity
-                currency: true
-            }
+        // 1. Unified Lookup: Resolve all User IDs linked to this email (Handles duplicates/OAuth splits)
+        let userIds: string[] = [];
+
+        if (session.user.id) userIds.push(session.user.id);
+
+        if (session.user.email) {
+            const users = await prisma.user.findMany({
+                where: { email: session.user.email },
+                select: { id: true }
+            });
+            const emailIds = users.map(u => u.id);
+            // Merge unique IDs
+            userIds = Array.from(new Set([...userIds, ...emailIds]));
+        }
+
+        if (userIds.length === 0) return null;
+
+        // 2. Prioritize CONNECTED accounts active across ANY of these user IDs
+        const connectedAccount = await prisma.brokerAccount.findFirst({
+            where: {
+                userId: { in: userIds },
+                status: "CONNECTED"
+            },
+            orderBy: { updatedAt: 'desc' }
         });
-        return account;
+
+        if (connectedAccount) return connectedAccount;
+
+        // 3. Fallback: Return most recent account (Disconnected)
+        const anyAccount = await prisma.brokerAccount.findFirst({
+            where: { userId: { in: userIds } },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        return anyAccount;
+
     } catch (error) {
-        console.error("Get Broker Error:", error);
+        console.error("Get Broker Account Error:", error);
         return null;
     }
 }

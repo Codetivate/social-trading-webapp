@@ -1,11 +1,12 @@
 
 import React, { useState } from "react";
-import { Info, Image as ImageIcon, CheckCircle2, DollarSign, X, Edit3, Save, Eye, EyeOff } from "lucide-react";
+import { Info, Image as ImageIcon, CheckCircle2, DollarSign, X, Edit3, Save, Eye, EyeOff, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { UserRole, MasterProfile, Master } from "@/types";
 import { MasterProfileView } from "@/features/social/components/MasterProfileView";
 import { forceStopMasterSessions } from "@/app/actions/trade";
-import { updateMasterProfile } from "@/app/actions/user"; // ✅ Import Save Action
+// import { updateMasterProfile } from "@/app/actions/user"; // ✅ Removed, handled by parent
+
 
 interface MasterProfileEditorProps {
     onClose: () => void;
@@ -110,7 +111,7 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
         const updatedProfile = {
             ...profile,
             name,
-            username, // ✅ Save Local
+            username,
             desc,
             tags,
             avatar: avatar,
@@ -121,27 +122,14 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
             isPublic: isPublic
         };
 
-        // 1. Optimistic Update
-        setProfile(updatedProfile);
+        // Delegate to Parent (SocialTradingApp) which handles:
+        // 1. Optimistic Update (setMasterProfile)
+        // 2. Server Persistence (updateMasterProfile)
+        // 3. Toasts (Success/Error)
+        await setProfile(updatedProfile);
 
-        // 2. Server Persistence
-        const res = await updateMasterProfile(profile.userId, {
-            name, username, desc, tags, avatar, // ✅ Save Server
-            monthlyFee: safeFee,
-            minDeposit: safeMinDeposit,
-            winRate: safeWinRate,
-            roi: safeRoi,
-            isPublic
-        });
-
-        if (res.success) {
-            toast.success("Profile Updated", { description: "Your changes have been saved." });
-            window.location.reload(); // 🔨 Force full reload to ensure image cleanup & fetch
-            onClose();
-        } else {
-            toast.error("Save Failed", { description: res.error });
-            // Revert state? Ideally yes, but keeping simple for now
-        }
+        // Close Editor immediately (Parent handles feedback)
+        onClose();
         setIsSaving(false);
     };
 
@@ -171,13 +159,47 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
             <div className="space-y-2"><label className="text-xs text-gray-400">Display Name</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none" /></div>
 
             <div className="space-y-2">
-                <label className="text-xs text-gray-400">Username (Handle)</label>
-                <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none placeholder:text-gray-700"
-                    placeholder="e.g. masternes"
-                />
+                <label className="text-xs text-gray-400">Username & Share Link</label>
+                <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center bg-gray-950 border border-gray-700 rounded-xl overflow-hidden focus-within:border-purple-500 transition-colors">
+                        <span className="pl-3 pr-1 text-sm text-gray-500 font-mono select-none">copy.trade/</span>
+                        <input
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="flex-1 bg-transparent p-3 pl-0 text-sm text-white outline-none placeholder:text-gray-700 font-mono"
+                            placeholder="username"
+                        />
+                    </div>
+                    <button
+                        onClick={() => {
+                            const url = `https://copy.trade/${username || "username"}`;
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(url).then(() => {
+                                    toast.success("Link copied!");
+                                }).catch(() => {
+                                    toast.error("Failed to copy");
+                                });
+                            } else {
+                                // Fallback for older browsers / non-secure contexts
+                                const textArea = document.createElement("textarea");
+                                textArea.value = url;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                try {
+                                    document.execCommand('copy');
+                                    toast.success("Link copied!");
+                                } catch (err) {
+                                    toast.error("Failed to copy");
+                                }
+                                document.body.removeChild(textArea);
+                            }
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                        title="Copy Profile Link"
+                    >
+                        <Copy size={18} />
+                    </button>
+                </div>
             </div>
 
             {/* 💰 Fee Setting (Updated UI) */}
@@ -192,8 +214,8 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
                     <div className="animate-in slide-in-from-top-2 pt-2">
                         <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Fixed Monthly Subscription</label>
                         <div className="relative">
-                            <DollarSign size={16} className="absolute left-3 top-3 text-green-500" />
-                            <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-green-500 outline-none font-mono" placeholder="10" />
+                            <DollarSign size={16} className="absolute left-3 top-3 text-blue-500" />
+                            <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-blue-500 outline-none font-mono" placeholder="10" />
                         </div>
                         <p className="text-[10px] text-blue-400 text-right mt-1">Platform fee 20% will be deducted.</p>
                     </div>

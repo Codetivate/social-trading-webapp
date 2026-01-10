@@ -19,6 +19,7 @@ export function useRealTimeData() {
     const [stats, setStats] = useState<BrokerStats | null>(null);
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [isConnected, setIsConnected] = useState(false);
+    const [hasAttempted, setHasAttempted] = useState(false);
 
     useEffect(() => {
         if (!session?.user?.id) return;
@@ -34,9 +35,6 @@ export function useRealTimeData() {
                 if (res.ok) {
                     const data = await res.json();
                     setStats(prev => {
-                        // Preserve activeSessions if we have a pending real-time update? 
-                        // Actually, server is authority. But server takes 1s to update.
-                        // We will let SSE override/prune this.
                         return data;
                     });
                     setLastUpdated(new Date());
@@ -47,6 +45,8 @@ export function useRealTimeData() {
             } catch (e) {
                 console.error("Pulse Failed", e);
                 setIsConnected(false);
+            } finally {
+                setHasAttempted(true);
             }
         };
 
@@ -92,5 +92,5 @@ export function useRealTimeData() {
         };
     }, [session?.user?.id]);
 
-    return { stats, lastUpdated, isConnected };
+    return { stats, lastUpdated, isConnected, hasAttempted };
 }

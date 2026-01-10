@@ -1,0 +1,19 @@
+(node:53760) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/nesnk/Desktop/social-trading-webapp/my-copy-app/scripts/debug/check_signals.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\nesnk\Desktop\social-trading-webapp\my-copy-app\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+🔍 Checking Signals in Database...
+✅ Found 10 recent signals:
+- [PENDING] CLOSE XAUUSDm (Vol: 0.15) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] CLOSE XAUUSDm (Vol: 0.01) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] CLOSE XAUUSDm (Vol: 0.01) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] OPEN XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] OPEN XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] CLOSE XAUUSDm (Vol: 0.25) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] CLOSE XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] OPEN XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] OPEN XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+- [PENDING] OPEN XAUUSDm (Vol: 0.35) -> FollowerID: cea89d76-eacd-42a2-a4e3-b935352d9734
+
+ℹ️ Active Copy Sessions: 1
+- e3a37995-7718-4123-a986-8b9f4a07b55e -> cea89d76-eacd-42a2-a4e3-b935352d9734

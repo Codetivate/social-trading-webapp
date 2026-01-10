@@ -13,6 +13,7 @@ export type SignalPayload = {
     tp?: number;
     // 📊 PnL Data (on Close)
     openPrice?: number;
+    openTime?: number; // ✅ UNIX Timestamp from MT5
     profit?: number;
     swap?: number;
     commission?: number;
@@ -50,8 +51,7 @@ export class SmartRouter {
                             volume: Number(signal.volume || 0),
                             openPrice: Number(signal.openPrice || 0),
                             closePrice: Number(signal.price || 0),
-                            openTime: new Date(), // We don't have exact open time in payload yet, using Now as fallback or could query Position.
-                            // Ideally Broadcaster sends openTime too. For now this is "best effort" for history.
+                            openTime: signal.openTime ? new Date(signal.openTime * 1000) : new Date(), // ✅ Use real Open Time
                             closeTime: signal.closeTime ? new Date(signal.closeTime * 1000) : new Date(),
                             profit: Number(signal.profit),
                             commission: Number(signal.commission || 0),

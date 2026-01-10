@@ -1,0 +1,415 @@
+When the Init Failed that the follower account that is previously logged in has been removed but after I have tried to reconnect then the order is not closing but if I close the python and it's reconnected, the reconnected missed order is closing as normal correctly
+
+
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [WARN] Sync Balance Failed: HTTPConnectionPool(host='192.168.252.237.nip.io', port=3000): Read timed out. (read timeout=1)
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18422.06
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: []
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [TURBO] Signal for Master e3a37995-7718-4123-a986-8b9f4a07b55e -> 1 Targets Found.
+[INFO] Fetching credentials from Cloud for cea89d76-eacd-42a2-a4e3-b935352d9734...
+   [OK] Found credentials at 192.168.252.237.nip.io
+🚀 Dispatching 1 Jobs to Swarm...
+       -> Slave 270766441: ✅ OPEN Done (Ticket: 1047618411)
+[DEBUG] Terminal Lock Key: lock:terminal:799424abadd5d0c921709175004c9b63
+   [HFT] Execution Report:
+       -> Slave 270766441: ✅  (Deal: 1047618411)
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 18422.06 Equity: 18416.51
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+   [💰 SYNC] Balance: 18422.06 Equity: 18424.26
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+   [💰 SYNC] Balance: 18422.06 Equity: 18354.21
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+   [💰 SYNC] Balance: 18422.06 Equity: 18355.16
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 1
+   [DEBUG-GHOST] Sample Position 0: Ticket=1047618411, Magic=234000, Comment='CPY:3094863230'
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 9636.18 Equity: 0.0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 9636.18 Equity: 0.0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 9636.18 Equity: 0.0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [💰 SYNC] Balance: 9636.18 Equity: 0.0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [💰 SYNC] Balance: 0.0 Equity: 0.0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [DEBUG-GHOST] Local Positions Scanned: 0
+[RECON] 🧐 Checking for missed trades...
+   [DEBUG-MASTER] Master Pos Keys: ['3094863230']
+[DEBUG] TURBO Swarm Loaded: 1 Masters monitored.
+   [DEBUG-GHOST] Local Positions Scanned: 0
+   [TURBO] Signal for Master e3a37995-7718-4123-a986-8b9f4a07b55e -> 1 Targets Found.
+[INFO] Fetching credentials from Cloud for cea89d76-eacd-42a2-a4e3-b935352d9734...
+   [OK] Found credentials at 192.168.252.237.nip.io
+🚀 Dispatching 1 Jobs to Swarm...
+[DEBUG] Terminal Lock Key: lock:terminal:799424abadd5d0c921709175004c9b63
+   [HFT] Execution Report:
+       -> Slave 0: ❌ Init Failed: C:\Program Files\MetaTrader 5 EXNESS 003\terminal64.exe (Deal: 0)

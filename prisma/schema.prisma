@@ -225,15 +225,16 @@ model MasterProfile {
   isPublic Boolean  @default(false) // ✅ Private by default (Followers)
 
   // Metrics
-  roi            Float @default(0)
-  winRate        Float @default(0)
-  drawdown       Float @default(0)
-  riskScore      Float @default(0)
-  riskReward     Float @default(0) // ✅ Added Risk Reward
-  profitFactor   Float @default(0) // ✅ Added Profit Factor
-  netProfit      Float @default(0) // ✅ Added Net Profit (for filtering)
-  followersCount Int   @default(0)
-  aum            Float @default(0)
+  roi            Float   @default(0)
+  winRate        Float   @default(0)
+  drawdown       Float   @default(0)
+  riskScore      Float   @default(1) // 1-5 Scale
+  riskReason     String? // 📝 Explanation for tooltip (e.g. "HI_VOLATILITY")
+  riskReward     Float   @default(0) // ✅ Added Risk Reward
+  profitFactor   Float   @default(0) // ✅ Added Profit Factor
+  netProfit      Float   @default(0) // ✅ Added Net Profit (for filtering)
+  followersCount Int     @default(0)
+  aum            Float   @default(0)
 
   // 📈 Business Tier Limits
   tier           MasterTier @default(ROOKIE)
@@ -257,9 +258,10 @@ model FollowerProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  equity   Float    @default(0)
-  totalPnl Float    @default(0)
-  joinedAt DateTime @default(now())
+  equity    Float    @default(0)
+  totalPnl  Float    @default(0)
+  joinedAt  DateTime @default(now())
+  favorites Int[]    @default([]) // ✅ Store Favorited Master IDs
 }
 
 enum ExecutionLane {

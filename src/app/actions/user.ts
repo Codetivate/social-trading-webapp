@@ -1,9 +1,10 @@
 "use server";
 
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { MasterProfile } from "@/types"; // Ensure this type matches your Prisma schema or is mapped correctly
-import { revalidatePath } from "next/cache";
+import { redis } from "@/lib/redis";
 
 // --- 📥 GET USER PROFILE ---
 export async function getUserProfile(userId: string) {
@@ -14,7 +15,8 @@ export async function getUserProfile(userId: string) {
             where: { id: userId },
             include: {
                 masterProfile: true, // Fetch related master profile if exists
-                brokerAccounts: true // Fetch connected broker accounts
+                brokerAccounts: true, // Fetch connected broker accounts
+                followerProfile: true // ✅ Fetch follower profile for favorites
             }
         });
 
@@ -27,7 +29,8 @@ export async function getUserProfile(userId: string) {
             image: user.image,
             role: user.role as UserRole,
             masterProfile: user.masterProfile,
-            brokerAccount: user.brokerAccounts?.[0] || null // Return the first/primary broker account if exists
+            brokerAccount: user.brokerAccounts?.[0] || null, // Return the first/primary broker account if exists
+            favorites: user.followerProfile?.favorites || [] // ✅ Return favorites or empty array
         };
     } catch (error) {
         console.error("Error fetching user profile:", error);
@@ -71,7 +74,7 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
             }
         }
 
-        await prisma.masterProfile.upsert({
+        const updatedProfile = await prisma.masterProfile.upsert({
             where: { userId: userId },
             update: {
                 desc: data.desc,
@@ -98,8 +101,17 @@ export async function updateMasterProfile(userId: string, data: Partial<MasterPr
                 winRate: data.winRate || 0,
                 drawdown: 0,
                 followersCount: 0,
+                isPublic: true
             }
         });
+
+        // 🚀 REAL-TIME UPDATE
+        await redis.publish("channel:master_updates", JSON.stringify(updatedProfile));
+
+        // 🔄 REVALIDATE CACHE
+        // revalidateTag('masters-list'); // ⚡ Instant List Update (Commented out due to TS quirk)
+        revalidatePath("/");
+        revalidatePath(`/${updatedProfile.username}`);
 
         return { success: true };
     } catch (error) {
@@ -182,6 +194,10 @@ export async function activateMasterAccount(userId: string, fee: number) {
             }
         });
 
+        // 🔄 REVALIDATE
+        // revalidateTag('masters-list');
+        revalidatePath("/");
+
         return { success: true };
     } catch (error) {
         console.error("Activate Master Error:", error);
@@ -256,32 +272,42 @@ export async function resetMasterStats(userId: string) {
 }
 
 // --- 🔌 DISCONNECT BROKER ---
+// --- 🔌 DISCONNECT BROKER ---
 export async function disconnectBroker(userId: string) {
     if (!userId) return { success: false, error: "User ID required" };
 
     try {
-        // Find the connected broker account
-        const brokerAccount = await prisma.brokerAccount.findFirst({
-            where: {
-                userId: userId,
-                status: "CONNECTED"
-            }
-        });
+        // 1. Resolve all Identity IDs (Duplicate User Check)
+        let targetUserIds = [userId];
+        const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
 
-        if (!brokerAccount) {
-            return { success: false, error: "No connected broker account found." };
+        if (user?.email) {
+            const allUsers = await prisma.user.findMany({ where: { email: user.email }, select: { id: true } });
+            targetUserIds = allUsers.map(u => u.id);
         }
 
-        // Update status to DISCONNECTED
-        await prisma.brokerAccount.update({
-            where: { id: brokerAccount.id },
+        // 2. Disconnect ALL accounts linked to this identity (Clean Slate)
+        const result = await prisma.brokerAccount.updateMany({
+            where: {
+                userId: { in: targetUserIds },
+                status: "CONNECTED"
+            },
             data: {
                 status: "DISCONNECTED",
-                pid: null, // Clear process ID if any
-                port: null // Clear port if any
+                pid: null, // Clear process ID
+                port: null // Clear port
             }
         });
 
+        if (result.count === 0) {
+            // ✅ Idempotent Fix: If already disconnected, just return success.
+            revalidatePath("/");
+            revalidatePath("/dashboard");
+            return { success: true };
+        }
+
+        revalidatePath("/");
+        revalidatePath("/dashboard");
         return { success: true };
     } catch (error) {
         console.error("Disconnect Broker Error:", error);
@@ -325,3 +351,47 @@ export async function getOpenPositions(userId: string) {
 }
 
 // (VIP Logic Removed)
+
+// --- ❤️ TOGGLE FAVORITE ---
+export async function toggleFavorite(userId: string, masterId: number) {
+    if (!userId) return { success: false, error: "User ID required" };
+
+    try {
+        // 1. Get or Create FollowerProfile
+        let profile = await prisma.followerProfile.findUnique({
+            where: { userId }
+        });
+
+        if (!profile) {
+            profile = await prisma.followerProfile.create({
+                data: {
+                    userId,
+                    favorites: [] // Init empty
+                }
+            });
+        }
+
+        // 2. Toggle Logic
+        let newFavorites = [...profile.favorites];
+        if (newFavorites.includes(masterId)) {
+            // Remove
+            newFavorites = newFavorites.filter(id => id !== masterId);
+        } else {
+            // Add
+            newFavorites.push(masterId);
+        }
+
+        // 3. Save
+        await prisma.followerProfile.update({
+            where: { userId },
+            data: { favorites: newFavorites }
+        });
+
+        revalidatePath('/'); // Refresh UI
+        return { success: true, favorites: newFavorites };
+    } catch (error) {
+        console.error("Toggle Favorite Error:", error);
+        return { success: false, error: "Failed to update favorites" };
+    }
+}
+

@@ -1,0 +1,4 @@
+﻿Checking Accounts...
+Found 2 records:
+ID: 17f336e3-270d-4b88-afe2-d5f403773c7e | User: Numsin Ketchaisri (e3a37995-7718-4123-a986-8b9f4a07b55e) | Login: 206872179 | Status: CONNECTED | Updated: Fri Jan 09 2026 16:26:49 GMT+0700 (เน€เธงเธฅเธฒเธญเธดเธเนเธ”เธเธตเธ)
+ID: dd50193c-046f-48b7-bdec-5a2c9a49979f | User: Numsin Ketchaisri (cea89d76-eacd-42a2-a4e3-b935352d9734) | Login: 270766441 | Status: DISCONNECTED | Updated: Fri Jan 09 2026 16:22:47 GMT+0700 (เน€เธงเธฅเธฒเธญเธดเธเนเธ”เธเธตเธ)

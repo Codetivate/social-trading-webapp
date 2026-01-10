@@ -27,10 +27,12 @@ export interface Master {
     joined: string;
     currentOrders: Order[];
     monthlyFee: number;
+    monthlyProfit?: number; // ✅ Added
     minDeposit?: number; // ✅ Added
     isPremium: boolean;
     isPublic?: boolean; // ✅ Added
     tier?: string; // ✅ Added
+    sparklineData?: { date: string; value: number }[]; // ✅ Added for Chart
 }
 
 export interface Order {
@@ -83,4 +85,5 @@ export interface MasterProfile {
     winRate?: number; // ✅ User Configurable (or dynamic)
     roi?: number; // ✅ User Configurable (or dynamic)
     riskReward?: number; // ✅ User Configurable (or dynamic)
+    riskScore?: number; // 🧠 AI Caulated
 }
