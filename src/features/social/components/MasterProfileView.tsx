@@ -151,11 +151,26 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
     }, [localMaster]);
 
     // 🔄 Self-Healing Stats (Exclude Self-Copy from AUM)
+    // 🔄 Auto-Refresh Stats (Risk, AUM, Followers) on Mount
     useEffect(() => {
-        if (localMaster.id === 0 && userRole === "MASTER" && resolvedUserId) {
-            refreshMasterStats(resolvedUserId);
+        // Always refresh to ensure Risk Score and AUM are up-to-date with DB logic
+        if (localMaster.userId) {
+            refreshMasterStats(localMaster.userId)
+                .then((res) => {
+                    if (res.success) {
+                        const data = res as any;
+                        setLocalMaster(prev => ({
+                            ...prev,
+                            risk: data.riskScore || 1,
+                            aum: data.aum || 0,
+                            followers: data.followersCount || 0,
+                            drawdown: data.drawdown || 0
+                        }));
+                    }
+                })
+                .catch(err => console.error("Stats Refresh Failed", err));
         }
-    }, [localMaster.id, userRole, resolvedUserId]);
+    }, [localMaster.userId]);
 
     const isPremium = localMaster.monthlyFee > 0;
     const canUse7DayTrial = isPremium && !hasUsed7DayTrial;

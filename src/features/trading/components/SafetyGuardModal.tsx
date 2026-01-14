@@ -311,8 +311,8 @@ export function SafetyGuardModal({
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-gray-400">Example:</span> (Your Eq / Master Eq) × <span className="text-white font-bold">{proRataPercent || 100}%</span>
-                                        <div className="text-orange-400/80 mt-0.5 font-bold">Adjusts dynamically as equity changes.</div>
+                                        <span className="text-gray-400">Example:</span> (Your Equity / Master Equity) × <span className="text-white font-bold">{proRataPercent || 100}%</span>
+                                        <div className="text-orange-400/80 mt-0.5 font-bold">Adjusts dynamically as Investment Amount.</div>
                                     </>
                                 )}
                             </div>
