@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         const equity = vData.equity || 0;
         const leverage = vData.leverage || 0;
 
-        let account;
+        let account: any;
         if (existing) {
             account = await prisma.brokerAccount.update({
                 where: { id: existing.id },
@@ -104,30 +104,47 @@ export async function POST(req: NextRequest) {
         }
 
         // 📜 IMPORT HISTORY (Background)
+        let importedDeposits = 0;
+        let importedWithdrawals = 0;
+
         if (vData.history && Array.isArray(vData.history)) {
             // Processing deals to generic TradeHistory (Best Effort)
             const historyOps = vData.history
-                .filter((h: any) => h.entry === 1) // 1 = ENTRY_OUT (Closing Deal)
                 .map((h: any) => {
                     let masterId = "SELF";
                     // Try to parse Master from comment "CPY:..."
                     if (h.comment && h.comment.startsWith("CPY")) {
-                        // Attempt parse if needed, or leave generic for now
                         masterId = "IMPORTED";
                     }
 
-                    return prisma.tradeHistory.create({
-                        data: {
+                    // Determine Type
+                    let pType = h.type === 0 ? "BUY" : (h.type === 1 ? "SELL" : "UNKNOWN");
+                    if (h.type === 2) { // MT5 Balance Deal
+                        if (h.profit >= 0) {
+                            pType = "DEPOSIT";
+                            importedDeposits += h.profit;
+                        } else {
+                            pType = "WITHDRAWAL";
+                            importedWithdrawals += (h.profit); // Usually negative
+                        }
+                    }
+
+                    return prisma.tradeHistory.upsert({
+                        where: { id: `hist_${h.ticket}_${h.time}` }, // Unique ID Key
+                        update: {}, // Skip if exists
+                        create: {
                             id: `hist_${h.ticket}_${h.time}`, // Unique ID
                             followerId: userId,
                             masterId: masterId,
-                            symbol: h.symbol,
-                            ticket: h.ticket,
-                            type: h.type === 0 ? "BUY" : "SELL", // 0=Buy, 1=Sell (Check MT5 enums if needed)
+                            brokerAccountId: account.id, // Link to Account
+                            symbol: h.symbol || "BALANCE",
+                            ticket: String(h.ticket),
+                            deal: String(h.ticket),
+                            type: pType,
                             volume: h.volume,
-                            openPrice: 0, // Unknown from single deal
+                            openPrice: 0,
                             closePrice: h.price,
-                            openTime: new Date(h.time * 1000), // Default to same time
+                            openTime: new Date(h.time * 1000),
                             closeTime: new Date(h.time * 1000),
                             profit: h.profit,
                             swap: h.swap,
@@ -137,8 +154,31 @@ export async function POST(req: NextRequest) {
                     }).catch(err => console.error("History Import Skip:", err.message));
                 });
 
-            // Execute parallel (fire and forget)
-            Promise.all(historyOps).then(() => console.log(`[IMPORT] Imported ${historyOps.length} trades.`));
+            // Execute parallel
+            Promise.all(historyOps).then(async () => {
+                console.log(`[IMPORT] Imported ${historyOps.length} records.`);
+
+                // Update Totals on Account
+                await prisma.brokerAccount.update({
+                    where: { id: account.id },
+                    data: {
+                        totalDeposits: importedDeposits,
+                        totalWithdrawals: Math.abs(importedWithdrawals)
+                    }
+                });
+
+                // 🚀 TRIGGER FULL HISTORY SYNC (Background)
+                console.log("[CONNECT] Spawning Full History Sync (Background)...");
+                const { spawn } = require("child_process"); // Lazy import
+                const pythonProcess = spawn("python", [
+                    "src/engine/broadcaster.py",
+                    "--user-id", userId,
+                    "--sync-history", "3650", // 10 Years (Optimized)
+                    "--exit-after-sync"
+                ], { detached: true, stdio: "ignore", windowsHide: true });
+                pythonProcess.unref();
+
+            });
         }
 
         return NextResponse.json({ status: "OK", account });

@@ -1,0 +1,3 @@
+                               print(f"   [CRITICAL] ❌ Login Failed: {mt5.last_error()}. Stopping Sync.")
+                               import os
+                               os._exit(1) # Force Exit

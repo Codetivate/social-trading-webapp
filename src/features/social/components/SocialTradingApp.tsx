@@ -143,7 +143,7 @@ interface FilterConfig {
     maxFee: number;
     freeOnly: boolean;
     favoritesOnly: boolean;
-    sortBy: "RECOMMENDED" | "PROFIT" | "LOW_PROFIT" | "POPULAR";
+    sortBy: "NEW" | "RECOMMENDED" | "PROFIT" | "LOW_PROFIT" | "POPULAR";
 }
 
 interface FilterModalProps {
@@ -549,7 +549,7 @@ interface FollowerFlowProps {
     onViewProfile: (master: Master) => void;
     activeSessions: CopySession[];
     onStopCopy: (id: number) => void;
-    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => void;
+    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any, invertCopy?: boolean }) => void;
     favorites: number[];
     walletBalance: number;
     onStopAll: () => void;
@@ -581,7 +581,8 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
     // ⚙️ Advanced Settings State (Lifted for Dashboard)
     const [autoRenew, setAutoRenew] = useState(true); // Default ON
-    const [timeConfig, setTimeConfig] = useState<any>({ mode: "24/7", start: "09:00", end: "17:00" }); // Default 24/7
+    const [timeConfig, setTimeConfig] = useState<any>({ mode: "24/7", start: "09:00", end: "17:00" });
+    const [invertCopy, setInvertCopy] = useState(false); // Default 24/7
 
     // 🔍 Advanced Filter Logic
     // 🔍 Advanced Filter Logic
@@ -630,7 +631,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     }, [searchTerm]);
 
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
-    const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
+    const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(100);
     const [allocation, setAllocation] = useState<number | string>(1000);
     // const [ticketTime, setTicketTime] = useState(14400); // REPLACED by derived state
 
@@ -1305,29 +1306,33 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
             {safetyModalOpen && selectedMaster && (
                 <SafetyGuardModal
-                    initialRisk={aiGuardRisk}
+                    initialRisk={20} // Legacy Risk Score (Fixed)
                     initialAllocation={allocation}
+                    initialProRata={Number(aiGuardRisk) || 100} // ✅ Persist Pro-Rata Preference
                     maxAlloc={availableBalance} // ✅ Fixed: Use local availableBalance
                     initialAutoRenew={true}
-                    initialTimeConfig={null} // Default
+                    initialTimeConfig={timeConfig} // Default
+                    initialInvert={invertCopy} // ✅ Persist Invert
                     initialUseWelcome={useWelcomeTicket} // ✅ Pass Auto-Selection
                     showWelcomeOption={!hasUsed7DayTrial}
                     onClose={() => setSafetyModalOpen(false)}
                     onConfirm={(data) => {
                         // 1. Update State (for UI consistency next open)
-                        setAiGuardRisk(data.risk);
+                        setAiGuardRisk(data.proRataPercent); // ✅ Save Pro-Rata 
                         setAllocation(data.allocation);
                         setAutoRenew(data.autoRenew);
                         setTimeConfig(data.timeConfig);
+                        setInvertCopy(data.invertCopy); // ✅ Save Invert Pref
                         if (data.useWelcome) setUseWelcomeTicket(true);
 
 
-                        // 2. Logic from confirmCopy() but using FREH 'data'
+                        // 2. Logic from confirmCopy() but using Data
                         let sessionType = "DAILY";
                         if (data.useWelcome) sessionType = "TRIAL_7DAY";
 
                         if (selectedMaster) {
-                            onStartCopy(selectedMaster, Number(data.allocation), data.risk, sessionType as SessionType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
+                            // ✅ PASS PRO-RATA PERCENT AS RISK FACTOR
+                            onStartCopy(selectedMaster, Number(data.allocation), data.proRataPercent, sessionType as SessionType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig, invertCopy: data.invertCopy });
                         }
 
                         setSafetyModalOpen(false);
@@ -2256,7 +2261,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
         });
     };
 
-    const startCopying = (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => {
+    const startCopying = (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any, invertCopy?: boolean, copyMode?: "FIXED" | "EQUITY" }) => {
         // 🔒 -1. CHECK: AUTH
         if (!isLoggedIn) {
             setShowLogin(true);
@@ -2298,13 +2303,6 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
             return;
         }
 
-        // 🛡️ 3. CHECK: DAILY PASS QUOTA (REMOVED: Unlimited Duration & Reset)
-        /*
-        if (sessionType === "DAILY") {
-            if (dailyTicketUsed) { ... }
-        }
-        */
-
         if (amount > walletBalance) {
             openGlobalModal("Insufficient Balance", "Please top up your wallet to continue.", () => { });
             return;
@@ -2315,12 +2313,14 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
         if (sessionType === "TRIAL_7DAY") expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
         else if (sessionType === "DAILY") expiry = Date.now() + (10 * 365 * 24 * 60 * 60 * 1000); // Unlimited (10 Years) for Standard Pass
 
-        const masterUserId = String(master.id); // Assuming Master ID is used as User ID for now, or we need to add a userId to Master interface.
-        // Actually, let's fix this properly. The Master interface ID is a number, but we need the string ID for the User relation.
-        // For now, I'll pass currentUserId for testing unless I update the master interface.
-        // Let's rely on the server action to handle the lookup if needed.
-        // Wait, the Master object in fetchMasters comes from Prisma masterProfile.
-        // We need to ensure we have the userId.
+        // 🔥 INJECT COPY MODE into TimeConfig (DB Hack to avoid Schema Change)
+        // Ensure we preserve existing timeConfig properties
+        const finalTimeConfig = {
+            ...(advanced?.timeConfig || {}),
+            copyMode: advanced?.copyMode || "EQUITY" // 🛠️ FORCE DEFAULT TO EQUITY
+        };
+
+        const masterUserId = String(master.id);
 
         // Optimistic UI Update first
         const newSession: CopySession = {
@@ -2338,7 +2338,9 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
 
         setActiveSessions([...activeSessions, newSession]);
         setWalletBalance(prev => prev - amount);
-        const toastId = toast.loading("Processing Investment...");
+        // 🛠️ DEBUG: Default to EQUITY if missing
+        const debugMode = advanced?.copyMode || "EQUITY";
+        const toastId = toast.loading(`Processing Investment... (Mode: ${debugMode})`);
 
         // Server Action
         if (!master.userId) {
@@ -2352,7 +2354,10 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
             Number(risk),
             sessionType as SessionType,
             advanced?.autoRenew ?? true, // Default true
-            advanced?.timeConfig // Pass time config
+            finalTimeConfig, // ✅ Pass Combined Config
+            undefined, // dailyLimit
+            undefined, // minEquity
+            advanced?.invertCopy // ✅ Invert Copy
         ) // Casting logic
             .then(res => {
                 if (res.success && res.data) {

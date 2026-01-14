@@ -13,7 +13,15 @@ async function startServer() {
 
     // 1. Setup Redis Subscriber via ioredis
     // @ts-ignore
-    const redisSubscriber = new Redis(REDIS_URL);
+    const parsedUrl = new URL(REDIS_URL);
+    // @ts-ignore
+    const redisSubscriber = new Redis({
+        host: parsedUrl.hostname,
+        port: parseInt(parsedUrl.port || "6379"),
+        username: parsedUrl.username,
+        password: parsedUrl.password,
+        tls: REDIS_URL.includes("rediss://") ? { rejectUnauthorized: false } : undefined
+    });
 
     if (REDIS_URL.includes("upstash")) {
         console.log(`[Socket] Connected to Redis Cloud`);

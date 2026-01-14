@@ -2,7 +2,14 @@ import Redis from "ioredis";
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
-const redis = new Redis(REDIS_URL);
+const parsedUrl = new URL(REDIS_URL);
+const redis = new Redis({
+    host: parsedUrl.hostname,
+    port: parseInt(parsedUrl.port || "6379"),
+    username: parsedUrl.username,
+    password: parsedUrl.password,
+    tls: REDIS_URL.includes("rediss://") ? { rejectUnauthorized: false } : undefined
+});
 const STREAM_KEY = 'stream:signals';
 const GROUP_NAME = 'router_group';
 const CONSUMER_NAME = 'router_worker_1';

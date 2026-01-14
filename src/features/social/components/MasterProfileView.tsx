@@ -28,7 +28,7 @@ interface MasterProfileViewProps {
     // Removing isPreview
     isFav?: boolean;
     onToggleFav?: () => void;
-    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any }) => void;
+    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any, invertCopy?: boolean, copyMode?: "FIXED" | "EQUITY" }) => void;
     onStopCopy: (id: number, confirmed?: boolean) => void;
     isCopying?: boolean;
     maxAlloc?: number;
@@ -123,7 +123,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
     }, [localMaster.userId, localMaster.id]);
 
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
-    const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(20);
+    const [aiGuardRisk, setAiGuardRisk] = useState<number | string>(100);
     const [allocation, setAllocation] = useState<number | string>(1000);
     const [selectedSessionType, setSelectedSessionType] = useState<SessionType>("DAILY");
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false);
@@ -134,6 +134,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
     // ⚙️ Advanced Settings State (Lifted)
     const [autoRenew, setAutoRenew] = useState(true); // Default ON
     const [timeConfig, setTimeConfig] = useState<any>({ mode: "24/7", start: "09:00", end: "17:00" }); // Default 24/7
+    const [invertCopy, setInvertCopy] = useState(false);
 
     const [resolvedUserId, setResolvedUserId] = useState<string | null>(localMaster.masterUserId || localMaster.userId || null);
 
@@ -503,23 +504,29 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
             {
                 safetyModalOpen && (
                     <SafetyGuardModal
-                        initialRisk={aiGuardRisk}
+                        // key={Date.now()} // 🧹 Removed to prevent flicking (frequent remounts)
+                        initialRisk={20} // Legacy
                         initialAllocation={allocation}
+                        initialProRata={Number(aiGuardRisk) || 100} // ✅ Persist Pro-Rata
                         maxAlloc={maxAlloc || 0}
                         initialAutoRenew={autoRenew}
                         initialTimeConfig={timeConfig}
+                        initialInvert={invertCopy}
                         initialUseWelcome={useWelcomeTicket}
                         showWelcomeOption={!hasUsed7DayTrial && selectedSessionType === "DAILY"}
                         onClose={() => setSafetyModalOpen(false)}
                         onConfirm={(data) => {
                             // Persist preferences locally if needed
-                            setAiGuardRisk(data.risk);
+                            setAiGuardRisk(data.proRataPercent); // ✅ Save Pro-Rata
                             setAllocation(data.allocation);
                             setAutoRenew(data.autoRenew);
                             setTimeConfig(data.timeConfig);
+                            setInvertCopy(data.invertCopy);
 
                             const finalType = (selectedSessionType === "DAILY" && data.useWelcome) ? "TRIAL_7DAY" : selectedSessionType;
-                            onStartCopy(localMaster, data.allocation, data.risk, finalType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig });
+                            // ✅ Uses proRataPercent as Risk Factor
+                            console.log("👤 MasterProfileView received data:", data);
+                            onStartCopy(localMaster, data.allocation, data.proRataPercent, finalType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig, invertCopy: data.invertCopy, copyMode: data.copyMode });
 
 
                             setSafetyModalOpen(false);

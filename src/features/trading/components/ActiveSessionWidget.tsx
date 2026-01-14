@@ -85,7 +85,7 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, se
             </div>
             <div className="flex justify-between text-[10px] text-gray-400 mb-2">
                 <div className="flex gap-3">
-                    <span>Guard: <span className="text-red-400 font-bold">-{risk}%</span></span>
+                    {/* Guard Removed */}
                     {/* ✅ Session PnL (Prioritize Unrealized) */}
                     {(session.unrealizedPnL !== undefined || session.pnl !== undefined) && (
                         <span>

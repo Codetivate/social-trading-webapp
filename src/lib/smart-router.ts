@@ -60,6 +60,16 @@ export class SmartRouter {
                         }
                     });
                     console.log(`[SmartRouter] 📜 Persisted Master Trade History: ${signal.ticket}`);
+                } else if (exists.closePrice === 0 && Number(signal.price || 0) > 0) {
+                    // 🩹 HEAL ZERO PRICE
+                    await prisma.tradeHistory.update({
+                        where: { id: exists.id },
+                        data: {
+                            closePrice: Number(signal.price),
+                            netProfit: Number(signal.profit) + Number(signal.commission || 0) + Number(signal.swap || 0)
+                        }
+                    });
+                    console.log(`[SmartRouter] 🩹 Healed Zero Price for ${signal.ticket}: ${signal.price}`);
                 }
             } catch (e) {
                 console.error("[SmartRouter] Failed to persist master history:", e);

@@ -1,0 +1,76 @@
+[2026-01-14T05:14:48.927Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-14T05:34:56.541Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-14T05:55:59.813Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-14T06:06:35.459Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-14T06:11:05.551Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-14T06:20:30.781Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T06:26:59.719Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T06:29:14.885Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T06:34:58.764Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T06:50:01.391Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T07:43:06.882Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:05:06.672Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:16:26.806Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:31:02.018Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:32:18.205Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:33:43.158Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:39:29.742Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:43:36.800Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T08:58:38.873Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------

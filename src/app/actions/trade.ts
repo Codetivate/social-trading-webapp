@@ -14,12 +14,25 @@ export async function startCopySession(
     autoRenew: boolean = true, // ⚙️ Default Auto-Recopy
     timeConfig: any = null,    // 🕒 Trading Hours (JSON)
     dailyLoss?: number, // 🛡️ Daily Loss Limit
-    minEquity?: number  // 🛡️ Hard Stop Equity
+    minEquity?: number, // 🛡️ Hard Stop Equity
+    invertCopy: boolean = false // 🔄 Invert Copy
 ) {
     if (!followerId || !masterUserId) return { success: false, error: "Invalid IDs" };
     if (amount <= 0) return { success: false, error: "Invalid amount" };
 
+    console.log("🚀 startCopySession CALLED");
+    console.log("   -> Type:", type);
+    console.log("   -> TimeConfig (Raw):", JSON.stringify(timeConfig, null, 2));
+
     try {
+        // 🔍 FILE LOGGING DEBUG
+        let fs: any;
+        try { fs = require('fs'); } catch { };
+        if (fs) {
+            const logData = `[${new Date().toISOString()}] startCopySession\nType: ${type}\nTimeConfig: ${JSON.stringify(timeConfig)}\n-------------------\n`;
+            try { fs.appendFileSync('debug_trade.log', logData); } catch (e) { console.error("Log failed", e); }
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             // 1. Check Follower (Wallet Check Disabled)
             const follower = await tx.user.findUnique({ where: { id: followerId } });
@@ -115,6 +128,7 @@ export async function startCopySession(
                         executionLane: lane,
                         autoRenew: autoRenew,
                         timeConfig: timeConfig ?? existingSession.timeConfig, // Keep old config if null passed? Or overwrite? 
+                        invertCopy: invertCopy, // ✅ Update Invert Mode
                         // Usually Start args > Old args.
 
                         expiry: type === "DAILY" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 Years (Unlimited)
@@ -138,6 +152,7 @@ export async function startCopySession(
                         shardId: Math.floor(Math.random() * 10),
                         autoRenew: autoRenew,
                         timeConfig: timeConfig,
+                        invertCopy: invertCopy, // ✅ Set Invert Mode
                         expiry: type === "DAILY" ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000) // 10 Years (Unlimited)
                             : type === "TRIAL_7DAY" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                                 : type === "PAID" ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)

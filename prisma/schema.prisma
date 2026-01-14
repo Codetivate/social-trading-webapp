@@ -183,11 +183,13 @@ model BrokerAccount {
   mt5Path  String? // 📍 Local Path to MT5 Terminal
 
   // State
-  balance  Float         @default(0)
-  equity   Float         @default(0)
-  leverage Int           @default(0) // ✅ Default 0 (N/A)
-  currency String        @default("USD")
-  status   AccountStatus @default(CONNECTED)
+  balance          Float         @default(0)
+  equity           Float         @default(0)
+  totalDeposits    Float         @default(0) // ✅ Cached Total Deposits
+  totalWithdrawals Float         @default(0) // ✅ Cached Total Withdrawals
+  leverage         Int           @default(0) // ✅ Default 0 (N/A)
+  currency         String        @default("USD")
+  status           AccountStatus @default(CONNECTED)
 
   // 🛡️ RISK CONTROLS
   maxDailyLoss Float? // Max allowed loss per day (USD)
@@ -205,7 +207,8 @@ model BrokerAccount {
   masterProfiles MasterProfile[]
 
   // 📈 OPEN POSITIONS (Real-Time Sync)
-  positions Position[]
+  positions      Position[]
+  tradeHistories TradeHistory[]
 
   @@index([userId])
   @@index([login, server]) // Faster lookup for uniqueness check in app logic
@@ -295,8 +298,9 @@ model CopySession {
   autoRenew  Boolean @default(false) // ✅ Default Auto-Renew
   timeConfig Json? // 🕒 Trading Hours { mode: "24/7" | "LONDON" | "CUSTOM", start: "09:00", end: "17:00" }
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+  invertCopy Boolean  @default(false) // 🔄 Invert Master Trades (Buy -> Sell)
+  createdAt  DateTime @default(now())
 
   @@index([followerId])
   @@index([masterId])
@@ -436,21 +440,25 @@ model TradeHistory {
   id String @id @default(uuid())
 
   // Relationships
-  followerId String
-  masterId   String
-  // No direct relation to User to keep writes fast/decoupled? 
-  // actually better to separate logs from core User graph for now or add relation if needed for querying.
-  // Let's keep it simple: IDs for filtering.
+  followerId      String
+  masterId        String
+  brokerAccountId String? // ✅ Linked to specific broker account
+  brokerAccount   BrokerAccount? @relation(fields: [brokerAccountId], references: [id])
 
   // Trade Info
-  symbol String
-  ticket String // Follower Ticket
-  type   String // BUY/SELL
-  volume Float
+  symbol  String
+  ticket  String // Follower Ticket
+  deal    String? // MT5 Deal ID (distinct from ticket/order)
+  type    String // BUY/SELL
+  volume  Float
+  magic   Int? // ✅ Strategy ID
+  comment String?
 
   // Price Info
   openPrice  Float
   closePrice Float
+  sl         Float?
+  tp         Float?
 
   // Time Info
   openTime  DateTime
@@ -460,12 +468,14 @@ model TradeHistory {
   profit     Float // Gross Profit
   commission Float @default(0)
   swap       Float @default(0)
+  fee        Float @default(0) // Platform Fee?
   netProfit  Float // Final PnL
 
   createdAt DateTime @default(now())
 
   @@index([followerId])
   @@index([masterId])
+  @@index([brokerAccountId])
   @@index([closeTime])
 }
 

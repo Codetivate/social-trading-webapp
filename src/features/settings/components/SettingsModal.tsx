@@ -161,8 +161,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
 
             const toastId = toast.loading("Verifying credentials with Broker..."); // 🟢 Better UX
 
-            // ⏳ Simulate Verification Delay
-            await new Promise(r => setTimeout(r, 1500));
+
 
             const res = await fetch("/api/user/broker", {
                 method: "POST",
@@ -210,7 +209,6 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
     return (
         <div
             className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200"
-            onClick={onClose} // 🟢 Close on Backdrop Click
         >
             {/* 🎨 Main Modal Card with Neon Glow */}
             <Card
