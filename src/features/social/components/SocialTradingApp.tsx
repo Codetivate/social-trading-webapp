@@ -131,138 +131,39 @@ function FilterButton({ label, active, onClick }: FilterButtonProps) {
     return <button onClick={onClick} className={`px - 4 py - 2 rounded - full text - [10px] font - bold whitespace - nowrap border transition - all ${active ? "bg-white text-black border-white shadow-lg" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}>{label}</button>
 }
 
+// 🎣 Infinite Scroll Hook
+function useIntersectionObserver(
+    callback: () => void,
+    options: IntersectionObserverInit = { root: null, rootMargin: "200px", threshold: 0 }
+) {
+    const targetRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) {
+                callback();
+            }
+        }, options);
+
+        const currentTarget = targetRef.current;
+        if (currentTarget) observer.observe(currentTarget);
+
+        return () => {
+            if (currentTarget) observer.unobserve(currentTarget);
+        };
+    }, [callback, options]);
+
+    return targetRef;
+}
+
 
 
 // --- 2. MODAL COMPONENTS (Defined BEFORE Usage)
 // ----------------------------------------------------------------------
 
-interface FilterConfig {
-    minProfit: number;
-    maxProfit: number;
-    minFee: number;
-    maxFee: number;
-    freeOnly: boolean;
-    favoritesOnly: boolean;
-    sortBy: "NEW" | "RECOMMENDED" | "PROFIT" | "LOW_PROFIT" | "POPULAR";
-}
-
-interface FilterModalProps {
-    config: FilterConfig;
-    setConfig: (c: FilterConfig) => void;
-    onClose: () => void;
-    resultsCount: number;
-}
-
-function FilterModal({ config, setConfig, onClose, resultsCount }: FilterModalProps) {
-    const handleSort = (type: FilterConfig["sortBy"]) => setConfig({ ...config, sortBy: type });
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-space w-full max-w-sm rounded-3xl border border-white/10 shadow-2xl overflow-hidden font-sans relative">
-                {/* Glow Effect */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-neon-purple/50 blur-lg"></div>
-
-                {/* Header */}
-                <div className="p-5 border-b border-white/5 flex justify-between items-center bg-space/50 backdrop-blur-md">
-                    <h3 className="font-bold text-lg text-white flex items-center gap-2"><SlidersHorizontal size={18} className="text-neon-purple" /> Filter & Sort</h3>
-                    <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors"><X size={16} /></button>
-                </div>
-
-                {/* Body */}
-                <div className="p-6 space-y-6">
-                    {/* 1. Sort By */}
-                    <div className="space-y-4">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1"><ArrowUpDown size={12} /> Sort By</label>
-                        <div className="grid grid-cols-2 gap-3">
-                            {(["RECOMMENDED", "PROFIT", "LOW_PROFIT", "POPULAR"] as const).map((type) => (
-                                <button
-                                    key={type}
-                                    onClick={() => handleSort(type)}
-                                    className={`h-12 px-4 rounded-xl text-sm font-bold transition-all border flex items-center justify-center ${config.sortBy === type ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-gray-800/40 border-transparent text-gray-400 hover:bg-gray-700/50"} `}
-                                >
-                                    {type === "RECOMMENDED" && "Recommended"}
-                                    {type === "PROFIT" && "Highest Profit"}
-                                    {type === "LOW_PROFIT" && "Lowest Profit"}
-                                    {type === "POPULAR" && "Most Popular"}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* 2. Profit Range */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                            <label>From Profit (ROI)</label>
-                            <label>To Profit (ROI)</label>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
-                                {/* Removed static '+' to allow negative input */}
-                                <input
-                                    type="number"
-                                    value={config.minProfit === -Infinity ? "" : config.minProfit}
-                                    onChange={(e) => setConfig({ ...config, minProfit: e.target.value === "" ? -Infinity : Number(e.target.value) })}
-                                    className={`w-full bg-transparent text-left text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${config.minProfit !== -Infinity && config.minProfit < 0 ? 'text-red-400' : 'text-green-400'}`}
-                                    placeholder="From"
-                                />
-                                <span className={`text-sm font-bold select-none text-[10px] ${config.minProfit !== -Infinity && config.minProfit < 0 ? 'text-red-400' : 'text-gray-600'}`}>%</span>
-                            </div>
-                            <div className="w-4 h-0.5 bg-gray-700/50"></div>
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500 transition-all">
-                                {/* Removed static '+' */}
-                                <input
-                                    type="number"
-                                    value={config.maxProfit === Infinity ? "" : config.maxProfit}
-                                    onChange={(e) => setConfig({ ...config, maxProfit: e.target.value === "" ? Infinity : Number(e.target.value) })}
-                                    className={`w-full bg-transparent text-left text-sm font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${config.maxProfit !== Infinity && config.maxProfit < 0 ? 'text-red-400' : 'text-green-400'}`}
-                                    placeholder="To"
-                                />
-                                <span className={`text-sm font-bold select-none text-[10px] ${config.maxProfit !== Infinity && config.maxProfit < 0 ? 'text-red-400' : 'text-gray-600'}`}>%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. Fee Range */}
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center text-xs font-bold text-gray-500 uppercase tracking-wider">
-                            <label>Min Monthly Fee</label>
-                            <label>Max Monthly Fee</label>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
-                                <span className="text-sm font-bold text-yellow-400 select-none">$</span>
-                                <input
-                                    type="number"
-                                    value={config.minFee}
-                                    onChange={(e) => setConfig({ ...config, minFee: Number(e.target.value) })}
-                                    className="w-full bg-transparent text-left text-sm font-bold text-yellow-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                />
-                            </div>
-                            <div className="w-4 h-0.5 bg-gray-700/50"></div>
-                            <div className="flex-1 flex items-center gap-1 bg-gray-800/40 rounded-lg px-3 py-3 border border-gray-700/50 focus-within:border-yellow-500 focus-within:ring-1 focus-within:ring-yellow-500 transition-all">
-                                <span className="text-sm font-bold text-yellow-400 select-none">$</span>
-                                <input
-                                    type="number"
-                                    value={config.maxFee === Infinity ? "" : config.maxFee}
-                                    onChange={(e) => setConfig({ ...config, maxFee: e.target.value === "" ? Infinity : Number(e.target.value) })}
-                                    className="w-full bg-transparent text-left text-sm font-bold text-yellow-400 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    placeholder="∞"
-                                />
-                            </div>
-                        </div>
-                    </div>
+import { FilterSortModal, FilterConfig } from "@/features/social/components/FilterSortModal";
 
 
-                </div>
-
-                {/* Footer */}
-                <div className="p-5 border-t border-white/5 bg-space/50">
-                    <button onClick={onClose} className="w-full bg-white hover:bg-gray-200 text-black font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-95 shadow-white/10">Show {resultsCount} Results</button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ----------------------------------------------------------------------
 // 3. MAIN PAGE COMPONENT
@@ -594,7 +495,10 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         maxFee: Infinity,
         freeOnly: false,
         favoritesOnly: false,
-        sortBy: "RECOMMENDED"
+        sortBy: "RECOMMENDED",
+        minDrawdown: 0,
+        maxDrawdown: 100,
+        minTimeActive: 0
     });
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -609,6 +513,8 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     useEffect(() => {
         setVisibleMasterCount(12);
     }, [searchTerm, filterConfig]);
+
+
 
     // 🔍 ANALYTICS: Track Search Terms (Debounced)
 
@@ -922,6 +828,26 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
         if (filterConfig.favoritesOnly) result = result.filter(m => favorites.includes(m.id));
 
+        // 🛡️ Drawdown Filter
+        const minDD = typeof filterConfig.minDrawdown === 'number' ? filterConfig.minDrawdown : 0;
+        const maxDD = typeof filterConfig.maxDrawdown === 'number' ? filterConfig.maxDrawdown : 100;
+
+        if (minDD > 0 || maxDD < 100) {
+            result = result.filter(m => (m.drawdown || 0) >= minDD && (m.drawdown || 0) <= maxDD);
+        }
+
+        // ⏱️ Time Active Filter (Months)
+        if (filterConfig.minTimeActive > 0) {
+            const now = Date.now();
+            const oneMonthMs = 1000 * 60 * 60 * 24 * 30;
+            result = result.filter(m => {
+                if (!m.joined) return false;
+                const activeMs = now - new Date(m.joined).getTime();
+                const activeMonths = activeMs / oneMonthMs;
+                return activeMonths >= filterConfig.minTimeActive;
+            });
+        }
+
         if (filterConfig.sortBy === "PROFIT") result = [...result].sort((a, b) => b.roi - a.roi);
         else if (filterConfig.sortBy === "LOW_PROFIT") result = [...result].sort((a, b) => a.roi - b.roi); // Ascending
         else if (filterConfig.sortBy === "POPULAR") result = [...result].sort((a, b) => b.followers - a.followers);
@@ -929,6 +855,15 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
         return result;
     }, [searchTerm, filterConfig, favorites, masters]); /* Added realMasters dependency */
+
+    // 🔄 Infinite Scroll Implementation (Placed AFTER filteredMasters)
+    const loadMoreMasters = useCallback(() => {
+        if (visibleMasterCount < filteredMasters.length) {
+            setVisibleMasterCount(prev => Math.min(prev + 12, filteredMasters.length));
+        }
+    }, [visibleMasterCount, filteredMasters.length]);
+
+    const loadingSentinelRef = useIntersectionObserver(loadMoreMasters, { rootMargin: "400px" }); // Pre-load well before bottom
 
     // Calculate visible tickets for dynamic grid layout
     const showWelcome = !hasUsed7DayTrial;
@@ -1102,7 +1037,26 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                     </div>
 
                     {/* Rendering Filter Modal */}
-                    {showFilterModal && <FilterModal config={filterConfig} setConfig={setFilterConfig} onClose={() => setShowFilterModal(false)} resultsCount={filteredMasters.length} />}
+                    {showFilterModal && (
+                        <FilterSortModal
+                            config={filterConfig}
+                            setConfig={setFilterConfig}
+                            onClose={() => setShowFilterModal(false)}
+                            resultsCount={filteredMasters.length}
+                            onReset={() => setFilterConfig({
+                                minProfit: -Infinity,
+                                maxProfit: Infinity,
+                                minFee: 0,
+                                maxFee: Infinity,
+                                freeOnly: false,
+                                favoritesOnly: false,
+                                sortBy: "RECOMMENDED",
+                                minDrawdown: 0,
+                                maxDrawdown: 100,
+                                minTimeActive: 0
+                            })}
+                        />
+                    )}
 
                     {!searchTerm && filterConfig.sortBy === "RECOMMENDED" && !filterConfig.freeOnly && (
                         <div className="space-y-2 relative group/scroll">
@@ -1248,15 +1202,21 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     )
                                 })}
 
-                                {visibleMasterCount < filteredMasters.length && (
-                                    <div className="flex justify-center pt-4">
-                                        <button
-                                            onClick={() => setVisibleMasterCount(prev => prev + 12)}
-                                            className="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold rounded-full transition-colors border border-gray-700 hover:border-gray-500"
-                                        >
-                                            Show More Masters ({filteredMasters.length - visibleMasterCount} remaining)
-                                        </button>
+                                {visibleMasterCount < filteredMasters.length ? (
+                                    <div ref={loadingSentinelRef} className="flex justify-center py-8">
+                                        <div className="flex items-center gap-2 text-gray-500 text-xs font-bold animate-pulse">
+                                            <div className="w-2 h-2 bg-neon-purple rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                            <div className="w-2 h-2 bg-neon-purple rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                            <div className="w-2 h-2 bg-neon-purple rounded-full animate-bounce"></div>
+                                            <span className="ml-2 uppercase tracking-wider">Loading Masters...</span>
+                                        </div>
                                     </div>
+                                ) : (
+                                    filteredMasters.length > 0 && (
+                                        <div className="text-center py-8 text-gray-600 text-xs font-bold uppercase tracking-widest opacity-50">
+                                            All Masters Loaded
+                                        </div>
+                                    )
                                 )}
                             </div>
                         }
@@ -1719,6 +1679,14 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
     // Initialize View Mode directly from URL or Default
     const initialView = fromUrlView(searchParams.get("view"));
     const [viewMode, setViewModeInternal] = useState<UserRole>(initialView);
+
+    // ✅ FIX: Sync View Mode with URL (Back Button Support)
+    useEffect(() => {
+        const modeFromUrl = fromUrlView(searchParams.get("view"));
+        if (modeFromUrl !== viewMode) {
+            setViewModeInternal(modeFromUrl);
+        }
+    }, [searchParams.get("view")]); // Only dependent on the 'view' param
 
     // Wrapper to update URL when view changes
     const setViewMode = (mode: UserRole) => {
@@ -2201,8 +2169,40 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                 const master = realMasters.find(m => m.id === TARGET_ID);
                 if (master) setViewingProfile(master);
             }
+            // 3. User Self-View (Refresh Support)
+            else if (searchParams.get("profile") === "me" && userRole === "MASTER") {
+                // Construct "Me" object on the fly for hydration
+                const myProfileAsMaster: Master = {
+                    id: 9999,
+                    userId: currentUserId || "",
+                    name: masterProfile.name,
+                    type: "HUMAN",
+                    winRate: masterProfile.winRate || 0,
+                    roi: masterProfile.roi || 0,
+                    pnlText: "$0",
+                    followers: masterProfile.followersCount,
+                    balance: 0,
+                    risk: masterProfile.riskScore || 1,
+                    drawdown: masterProfile.drawdown || 0,
+                    profitFactor: 0,
+                    avatar: masterProfile.avatar,
+                    desc: masterProfile.desc,
+                    tags: masterProfile.tags,
+                    joined: "2026",
+                    currentOrders: [],
+                    monthlyFee: masterProfile.monthlyFee,
+                    isPremium: masterProfile.monthlyFee > 0,
+                    isPublic: masterProfile.isPublic ?? true,
+                    aum: masterProfile.aum,
+                    minDeposit: masterProfile.minDeposit || 10,
+                    leverage: (brokerAccount?.status === "CONNECTED") ? (brokerAccount.leverage) : 0,
+                    riskReward: 0,
+                    tier: masterProfile.tier
+                };
+                setViewingProfile(myProfileAsMaster);
+            }
         }
-    }, [initialProfileId, initialSlug, realMasters, viewingProfile, searchParams, pathname, router]);
+    }, [initialProfileId, initialSlug, realMasters, viewingProfile, searchParams, pathname, router, masterProfile, userRole, brokerAccount, mastersLoaded, currentUserId]); // Added deps
 
     // 🔄 GLOBAL POLLING (Masters - Works for Guests too)
     useEffect(() => {
@@ -2635,7 +2635,10 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                             onBack={() => {
                                 // If we are on a slug page (initialSlug is set), we should go HOME.
                                 if (initialSlug) {
-                                    router.push("/");
+                                    // ✅ FIX: Restore Tab State
+                                    const returnTab = searchParams.get("tab") || "market";
+                                    router.push(`/?tab=${returnTab}`);
+                                    // router.push("/"); 
                                     // DO NOT set viewingProfile(null) here.
                                     // Reason: If we clear state while initialSlug prop is still true (during nav transition),
                                     // the hydration useEffect will immediately re-open the profile, causing a flicker/double-click issue.
@@ -2664,7 +2667,9 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                                 if (master.username) {
                                     // 🚀 FAST ROUTE: Just push URL, let page load.
                                     // Do NOT set local state, forcing "double load".
-                                    router.push(`/${master.username}`);
+                                    // ✅ FIX: Pass Tab State
+                                    const currentTab = searchParams.get("tab") || "market";
+                                    router.push(`/${master.username}?tab=${currentTab}`);
                                 } else {
                                     // Legacy/ID Mode: Open Overlay
                                     setViewingProfile(master);
@@ -2727,7 +2732,15 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                             onBecomeMaster={handleBecomeMasterRequest}
                             followers={[]} // Using real data (empty initially)
                             brokerAccount={brokerAccount} // ✅ Pass Broker Account
-                            onViewProfile={(master) => setViewingProfile(master)} // ✅ Pass Navigation Handler
+                            onViewProfile={(master) => {
+                                setViewingProfile(master);
+                                // ✅ FIX: Persist "Me" view in URL to prevent auto-close by useEffect
+                                if (master.id === 9999) {
+                                    router.push(pathname + "?" + createQueryString([{ name: "profile", value: "me" }]));
+                                } else {
+                                    router.push(pathname + "?" + createQueryString([{ name: "profile", value: String(master.id) }]));
+                                }
+                            }}
                         />
                 ) : null}
             </div>

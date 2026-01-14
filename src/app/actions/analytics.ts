@@ -56,18 +56,20 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
     if (!masterId) return null;
 
     try {
-        // Build Date Filter
-        const dateFilter: any = {};
-        if (startDate) dateFilter.gte = startDate;
-        if (endDate) dateFilter.lte = endDate;
+        // Build Where Clause Explicitly
+        const where: any = {
+            followerId: masterId,
+        };
 
-        // Fetch all trade history for this master (Self-Traded)
+        if (startDate || endDate) {
+            where.closeTime = {};
+            if (startDate) where.closeTime.gte = startDate;
+            if (endDate) where.closeTime.lte = endDate;
+        }
+
+        // Fetch all trade history for this master
         const trades = await prisma.tradeHistory.findMany({
-            where: {
-                followerId: masterId, // Master's own record
-                profit: { not: 0 }, // Exclude zero/cancel trades? optional
-                closeTime: Object.keys(dateFilter).length > 0 ? dateFilter : undefined
-            },
+            where,
             orderBy: { closeTime: 'asc' }
         });
 

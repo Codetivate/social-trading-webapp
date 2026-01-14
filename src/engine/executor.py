@@ -2207,6 +2207,8 @@ def _internal_reconcile_logic(api_url, cached_subs=None):
             state = json.loads(data)
             master_positions = state.get("positions", {}) # New Full State
             master_equity_snapshot = float(state.get("equity", 0.0))
+            if master_equity_snapshot <= 0:
+                 print(f"   [WARN] Master Equity recorded as {master_equity_snapshot}. Ratio mode may fail.")
             
             # 👻 GHOST BUSTER MOVED TO END (Priority Adjustment)
             pass

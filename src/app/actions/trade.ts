@@ -274,7 +274,11 @@ export async function getActiveSessions(userId: string) {
                 orders: [],
                 isTrial: s.isTrial,
                 type: s.type,
-                expiry: s.expiry ? s.expiry.getTime() : null
+                expiry: s.expiry ? s.expiry.getTime() : null,
+                // ✅ Settings
+                autoRenew: s.autoRenew,
+                invertCopy: s.invertCopy,
+                timeConfig: s.timeConfig
             };
         }));
     } catch (e) {

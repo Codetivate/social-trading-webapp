@@ -56,6 +56,10 @@ export interface Session {
     isTrial: boolean;
     type: SessionType;
     expiry: number | null;
+    // ✅ Settings
+    autoRenew?: boolean;
+    invertCopy?: boolean;
+    timeConfig?: any;
 }
 
 export interface Follower {

@@ -74,3 +74,15 @@ TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
 Type: DAILY
 TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
 -------------------
+[2026-01-14T09:55:03.370Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T10:16:39.244Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-14T10:46:24.345Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------

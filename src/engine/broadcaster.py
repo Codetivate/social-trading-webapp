@@ -538,6 +538,7 @@ def follow_signals():
                         state_payload = json.dumps({
                             "tickets": list(known_positions.keys()),
                             "positions": known_positions,
+                            "equity": float(start_info.equity if start_info else 0.0), # 🆕 PERSIST EQUITY for Match
                             "timestamp": time.time(),
                             "count": len(known_positions)
                         }, default=str)
