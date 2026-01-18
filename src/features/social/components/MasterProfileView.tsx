@@ -1,5 +1,5 @@
 "use client";
-import { getGMTOffset } from "@/lib/utils";
+import { getGMTOffset, calculateDaysActive } from "@/lib/utils";
 
 // ... (imports remain)
 import { useState, useEffect, useCallback } from "react";
@@ -164,7 +164,8 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                             risk: data.riskScore || 1,
                             aum: data.aum || 0,
                             followers: data.followersCount || 0,
-                            drawdown: data.drawdown || 0
+                            drawdown: data.drawdown || 0,
+                            joined: data.joined || prev.joined // ✅ Sync Accurate Join Date
                         }));
                     }
                 })
@@ -278,7 +279,7 @@ export function MasterProfileView({ master, onBack, requireAuth, isFav, onToggle
                                 <div className="flex items-center gap-1.5 justify-center px-3 py-1 bg-white/5 rounded-full border border-white/5 backdrop-blur-sm">
                                     <CalendarDays size={12} className="text-gray-500" />
                                     <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">
-                                        Joined {localMaster.joined ? new Date(localMaster.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "N/A"} <span className="text-gray-600">|</span> {getGMTOffset()}
+                                        Joined {localMaster.joined ? new Date(localMaster.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "N/A"} <span className="text-gray-600">|</span> <span className="text-neon-cyan font-bold">{calculateDaysActive(localMaster.joined)} Days</span>
                                     </span>
                                 </div>
                             </div>

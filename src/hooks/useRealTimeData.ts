@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
@@ -20,6 +19,9 @@ export function useRealTimeData() {
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [isConnected, setIsConnected] = useState(false);
     const [hasAttempted, setHasAttempted] = useState(false);
+
+    // 🆕 MASTER PnL MAP: Tracks each Master's real-time unrealized PnL
+    const [masterPnLMap, setMasterPnLMap] = useState<Record<string, number>>({});
 
     useEffect(() => {
         if (!session?.user?.id) return;
@@ -61,6 +63,31 @@ export function useRealTimeData() {
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
+                console.log("[SSE] 📨 Received Event:", data.type, data); // DEBUG LOG
+
+                if (data.type === 'POSITIONS_UPDATE') {
+                    // ⚡ INSTANT SOCKET UPDATE
+                    console.log("[SSE] 📈 Updating Positions:", data.positions?.length); // DEBUG LOG
+                    setStats(prev => {
+                        // If we don't have stats yet, we can't merge, but we can't create thin object either easily.
+                        // Ideally we wait for first poll.
+                        if (!prev) return null;
+                        return {
+                            ...prev,
+                            positions: data.positions
+                        };
+                    });
+                    setLastUpdated(new Date());
+                }
+
+                // 🆕 MASTER PnL UPDATE Handler
+                if (data.type === 'MASTER_PNL_UPDATE') {
+                    console.log("[SSE] 📡 Master PnL Update:", data.masterId, data.unrealizedPnL);
+                    setMasterPnLMap(prev => ({
+                        ...prev,
+                        [data.masterId]: data.unrealizedPnL
+                    }));
+                }
 
                 if (data.type === 'SESSION_EXPIRED') {
                     // ⚡ INSTANT LOCAL UPDATE
@@ -92,5 +119,5 @@ export function useRealTimeData() {
         };
     }, [session?.user?.id]);
 
-    return { stats, lastUpdated, isConnected, hasAttempted };
+    return { stats, lastUpdated, isConnected, hasAttempted, masterPnLMap };
 }

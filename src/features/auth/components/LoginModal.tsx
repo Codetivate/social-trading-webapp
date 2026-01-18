@@ -22,7 +22,7 @@ export function LoginModal({ onClose, onLoginSuccess }: LoginModalProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-100 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="relative w-full max-w-sm bg-gray-950 border border-white/10 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-white/5 mx-auto animate-in zoom-in-95 duration-300 slide-in-from-bottom-5">
 
                 {/* 🌟 Ambient Glow Effect */}
@@ -39,7 +39,7 @@ export function LoginModal({ onClose, onLoginSuccess }: LoginModalProps) {
                 <div className="relative z-10 flex flex-col items-center justify-center p-8 text-center pt-12">
 
                     {/* Animated Icon */}
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] animate-pulse-slow">
+                    <div className="w-16 h-16 bg-linear-to-br from-blue-500/20 to-purple-500/20 rounded-2xl flex items-center justify-center mb-6 ring-1 ring-white/10 shadow-[0_0_30px_-5px_rgba(59,130,246,0.3)] animate-pulse-slow">
                         {/* Custom Signal Logo SVG */}
                         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 drop-shadow-lg">
                             <rect width="40" height="40" rx="12" fill="#FFFFFF" />
@@ -49,7 +49,7 @@ export function LoginModal({ onClose, onLoginSuccess }: LoginModalProps) {
 
                     <h2 className="text-3xl font-bold text-white tracking-tight mb-2">SignalTrade</h2>
                     <p className="text-gray-400 text-sm mb-8 leading-relaxed max-w-[240px]">
-                        Sign in to access your portfolio and follow expert signals instantly.
+                        Automate your portfolio with elite global signals.
                     </p>
 
                     {/* Google Button - High Contrast (Netflix/Apple Style) */}
@@ -74,6 +74,15 @@ export function LoginModal({ onClose, onLoginSuccess }: LoginModalProps) {
                     </button>
 
 
+                </div>
+                {/* Footer Legal Links */}
+                <div className="absolute bottom-4 w-full text-center z-50">
+                    <p className="text-[10px] text-gray-500 font-sans">
+                        By signing in, I agree to the{" "}
+                        <a href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white underline decoration-gray-600 transition-all font-medium">Terms & Conditions</a>
+                        {" "}&{" "}
+                        <a href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white underline decoration-gray-600 transition-all font-medium">Privacy Policy</a>.
+                    </p>
                 </div>
             </div>
         </div>

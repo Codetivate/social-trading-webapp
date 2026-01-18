@@ -12,11 +12,36 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_SECRET = os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro")
 
+# 🔒 POSTGRES CONNECTION POOL
+from psycopg2 import pool
+PG_POOL = None
+try:
+    if DATABASE_URL:
+        PG_POOL = pool.SimpleConnectionPool(minconn=1, maxconn=5, dsn=DATABASE_URL)
+        print("[OK] Orchestrator DB Pool Initialized.")
+except Exception as e:
+    print(f"[ERROR] Failed to init DB Pool: {e}")
+
+import atexit
+def cleanup():
+    try:
+        if PG_POOL: PG_POOL.closeall()
+    except: pass
+atexit.register(cleanup)
+
 # 🏗️ Registry of Running Processes: { "userId": subprocess.Popen }
 workers = {}
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+    if not PG_POOL: return psycopg2.connect(DATABASE_URL)
+    return PG_POOL.getconn()
+
+def close_db_connection(conn):
+    if not conn: return
+    try:
+        if PG_POOL: PG_POOL.putconn(conn)
+        else: conn.close()
+    except: pass
 
 def fetch_active_accounts():
     """
@@ -45,6 +70,8 @@ def fetch_active_accounts():
     except Exception as e:
         print(f"[ERROR] DB Fetch Failed: {e}")
         return []
+    finally:
+        close_db_connection(conn)
 
 # 🏭 TERMINAL FACTORY & MANAGER
 class TerminalManager:

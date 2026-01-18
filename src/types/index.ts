@@ -33,6 +33,7 @@ export interface Master {
     isPublic?: boolean; // ✅ Added
     tier?: string; // ✅ Added
     sparklineData?: { date: string; value: number }[]; // ✅ Added for Chart
+    assetTypes?: string[]; // ✅ Asset Classes (Forex, Crypto, etc.)
 }
 
 export interface Order {
@@ -88,6 +89,8 @@ export interface MasterProfile {
     isPublic?: boolean; // ✅ Added
     winRate?: number; // ✅ User Configurable (or dynamic)
     roi?: number; // ✅ User Configurable (or dynamic)
+    drawdown?: number; // ✅ Added
     riskReward?: number; // ✅ User Configurable (or dynamic)
     riskScore?: number; // 🧠 AI Caulated
+    joined?: string; // ✅ First Trade Date or Joined Date
 }

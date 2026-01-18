@@ -15,7 +15,7 @@ import { startCopySession, getActiveSessions, stopCopySession, stopAllActiveSess
 import { BrokerAccount } from "@prisma/client";
 // import { Session } from '@prisma/client'; // ❌ Removing Prisma Session to avoid conflict. Using custom type.
 
-import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp, Radio, AlertTriangle, ArrowUpRight, BadgeCheck, Edit3, Briefcase, SlidersHorizontal, Lock, CheckCircle2, ChevronRight, Search, X, CalendarDays, Crown, Zap, PieChart, Sprout, ArrowUpDown, CreditCard, AlertOctagon, DollarSign, CheckCircle, Layers, Clock, Eye, Server, Activity } from "lucide-react";
+import { ChevronLeft, Heart, Bot, ShieldCheck, Ticket, Sparkles, Copy, Users, Wallet, TrendingUp, Radio, AlertTriangle, ArrowUpRight, BadgeCheck, Edit3, Briefcase, SlidersHorizontal, Lock, CheckCircle2, ChevronRight, Search, X, CalendarDays, Crown, Zap, PieChart, Sprout, ArrowUpDown, CreditCard, AlertOctagon, DollarSign, CheckCircle, Layers, Clock, Eye, Server, Activity, Shield } from "lucide-react";
 import { MasterWalletModal } from "@/features/wallet/components/MasterWalletModal";
 import { MasterProfileView } from "@/features/social/components/MasterProfileView";
 import { MasterEquityChart } from "@/features/social/components/MasterEquityChart"; // ✅ New Chart
@@ -36,6 +36,8 @@ import { Transaction } from "@/features/wallet/types";
 import { Navbar } from "@/components/layout/Navbar";
 import { OpenPositionsTable } from "@/features/trading/components/OpenPositionsTable";
 import { UserRole, AccountStatus, SessionType, Master, Session as CopySession, Follower, MasterProfile } from "@/types"; // ✅ Renamed Session to CopySession
+import { calculateDaysActive } from "@/lib/utils";
+import { AssetClass, CATEGORIES } from "@/lib/market-utils"; // ✅ Import Market Utils
 
 // --- 📝 TYPESCRIPT INTERFACES (Moved to @/types) ---
 // See src/types/index.ts
@@ -307,6 +309,55 @@ function MasterActivationModal({ onClose, onConfirm }: MasterActivationModalProp
     );
 }
 
+function LimitReachedModal({ onClose, onUpgrade }: { onClose: () => void; onUpgrade: () => void }) {
+    return (
+        <div className="fixed inset-0 z-80 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-sm bg-[#0F1115] border border-white/10 rounded-3xl shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+                {/* 🎨 Neon Glows */}
+                <div className="absolute top-0 inset-x-0 h-1 bg-linear-to-r from-transparent via-orange-500 to-transparent opacity-75 blur-sm"></div>
+                <div className="absolute -top-20 -right-20 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-20">
+                    <X size={20} />
+                </button>
+
+                <div className="p-8 text-center space-y-6 relative z-10">
+                    {/* Icon */}
+                    <div className="w-20 h-20 mx-auto bg-orange-500/10 rounded-full flex items-center justify-center border border-orange-500/20 shadow-[0_0_20px_rgba(249,115,22,0.1)] mb-4">
+                        <Lock size={32} className="text-orange-500 drop-shadow-[0_0_5px_rgba(249,115,22,0.5)]" />
+                    </div>
+
+                    <div className="space-y-2">
+                        <h3 className="text-2xl font-black text-white tracking-tight">Limit Reached</h3>
+                        <p className="text-gray-400 text-sm font-medium leading-relaxed">
+                            Free Plan allows <span className="text-white font-bold">5 Masters</span> max.
+                        </p>
+                        <p className="text-xs text-gray-500">
+                            Upgrade to <span className="text-orange-400 font-bold">Pro</span> for unlimited copying & higher speed.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <button
+                            onClick={onUpgrade}
+                            className="w-full py-3.5 rounded-xl bg-linear-to-r from-orange-500 to-red-500 text-white font-bold text-sm shadow-lg shadow-orange-900/20 hover:scale-[1.02] hover:shadow-orange-500/30 transition-all flex items-center justify-center gap-2 group"
+                        >
+                            <Zap size={16} className="group-hover:text-yellow-200 transition-colors" />
+                            Unlock Unlimited
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 rounded-xl bg-transparent hover:bg-white/5 text-gray-500 hover:text-white font-bold text-xs transition-colors"
+                        >
+                            No thanks, I'll stay limited
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function MasterPlanModal({ onClose, currentTier, onSelectPlan }: MasterPlanModalProps) {
     const plans = [
         { id: "ROOKIE", name: "Rookie", icon: <Sprout size={24} />, price: "Free", limit: 10, aum: 50000, fee: "20%", desc: "Start building your track record with essential tools.", current: currentTier === "ROOKIE", newLimit: 10, newAum: 50000 },
@@ -450,7 +501,7 @@ interface FollowerFlowProps {
     onViewProfile: (master: Master) => void;
     activeSessions: CopySession[];
     onStopCopy: (id: number) => void;
-    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any, invertCopy?: boolean }) => void;
+    onStartCopy: (master: Master, amount: number, risk: number | string, sessionType: SessionType, advanced?: { autoRenew: boolean, timeConfig: any, invertCopy?: boolean, copyMode?: "FIXED" | "EQUITY" }) => void;
     favorites: number[];
     walletBalance: number;
     onStopAll: () => void;
@@ -465,9 +516,11 @@ interface FollowerFlowProps {
     setHasUsed7DayTrial: (used: boolean) => void;
     defaultTab?: "DISCOVER" | "PORTFOLIO";
     onTabChange?: (tab: "DISCOVER" | "PORTFOLIO") => void;
+    realTimePositions?: any[]; // ✅ Added
+    masterPnLMap?: Record<string, number>; // 🆕 Master's Real-Time PnL Map
 }
 
-function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, setHasUsed7DayTrial, brokerAccount, masters, masterProfile, defaultTab = "DISCOVER", onTabChange }: FollowerFlowProps) {
+function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, onStartCopy, favorites, walletBalance, onStopAll, dailyTicketUsed, setDailyTicketUsed, userRole, onToggleFav, hasUsed7DayTrial, setHasUsed7DayTrial, brokerAccount, masters, masterProfile, defaultTab = "DISCOVER", onTabChange, realTimePositions, masterPnLMap }: FollowerFlowProps) {
     const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState<"DISCOVER" | "PORTFOLIO">(defaultTab);
 
@@ -500,6 +553,9 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
         maxDrawdown: 100,
         minTimeActive: 0
     });
+
+    // 🏷️ Asset Class Filter
+    const [assetFilter, setAssetFilter] = useState<AssetClass>("ALL");
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -800,6 +856,11 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
     const filteredMasters = useMemo(() => {
         let result = masters; // ✅ Use Real DB Data Only (Seeded Mocks)
 
+        // 🏷️ 1. Asset Class Filter (Pre-Search)
+        if (assetFilter !== "ALL") {
+            result = result.filter(m => m.assetTypes?.includes(assetFilter));
+        }
+
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             result = result.filter(m =>
@@ -848,13 +909,36 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
             });
         }
 
-        if (filterConfig.sortBy === "PROFIT") result = [...result].sort((a, b) => b.roi - a.roi);
+        // 🧠 SMART RECOMMENDED ALGORITHM
+        // Weighted scoring considering: Hot (trending), Low Risk, High Yield
+        if (filterConfig.sortBy === "RECOMMENDED") {
+            result = [...result].sort((a, b) => {
+                // 🔥 HOT (40%): Popularity + Recency bonus
+                const hotScoreA = (a.followers * 0.7) + (a.joined ? (Date.now() - new Date(a.joined).getTime() < 90 * 24 * 60 * 60 * 1000 ? 20 : 0) : 0);
+                const hotScoreB = (b.followers * 0.7) + (b.joined ? (Date.now() - new Date(b.joined).getTime() < 90 * 24 * 60 * 60 * 1000 ? 20 : 0) : 0);
+
+                // 🛡️ LOW RISK (30%): Inverse of drawdown + risk bonus
+                const riskScoreA = (100 - (a.drawdown || 0)) + ((a.risk || 3) <= 2 ? 20 : 0);
+                const riskScoreB = (100 - (b.drawdown || 0)) + ((b.risk || 3) <= 2 ? 20 : 0);
+
+                // 💎 HIGH YIELD (30%): ROI performance
+                const yieldScoreA = Math.min(a.roi, 500); // Cap at 500% to prevent outliers
+                const yieldScoreB = Math.min(b.roi, 500);
+
+                // Weighted composite score
+                const scoreA = (hotScoreA * 0.4) + (riskScoreA * 0.3) + (yieldScoreA * 0.3);
+                const scoreB = (hotScoreB * 0.4) + (riskScoreB * 0.3) + (yieldScoreB * 0.3);
+
+                return scoreB - scoreA; // Descending
+            });
+        }
+        else if (filterConfig.sortBy === "PROFIT") result = [...result].sort((a, b) => b.roi - a.roi);
         else if (filterConfig.sortBy === "LOW_PROFIT") result = [...result].sort((a, b) => a.roi - b.roi); // Ascending
         else if (filterConfig.sortBy === "POPULAR") result = [...result].sort((a, b) => b.followers - a.followers);
         else if (filterConfig.sortBy === "NEW") result = [...result].sort((a, b) => new Date(b.joined || 0).getTime() - new Date(a.joined || 0).getTime());
 
         return result;
-    }, [searchTerm, filterConfig, favorites, masters]); /* Added realMasters dependency */
+    }, [searchTerm, filterConfig, favorites, masters, assetFilter]); /* Added realMasters dependency */
 
     // 🔄 Infinite Scroll Implementation (Placed AFTER filteredMasters)
     const loadMoreMasters = useCallback(() => {
@@ -1004,6 +1088,25 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 <SlidersHorizontal size={12} /> {filterConfig.sortBy === "RECOMMENDED" ? "Filters" : filterConfig.sortBy}
                             </button>
 
+                            {/* Quick Filter: Favorites (Moved to First Tag) */}
+                            <button onClick={() => setFilterConfig(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.favoritesOnly ? "bg-red-500/20 text-red-400 border-red-500/50" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}>
+                                {filterConfig.favoritesOnly ? "Favorites Only ❤️" : "Favorites"}
+                            </button>
+
+                            {/* 🏷️ Asset Class Tags (Dynamic) */}
+                            {CATEGORIES.map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => setAssetFilter(cat)}
+                                    className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${assetFilter === cat
+                                        ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                                        : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white"
+                                        }`}
+                                >
+                                    {cat === "FUTURES_CME" ? "Futures CME" : cat.charAt(0) + cat.slice(1).toLowerCase()}
+                                </button>
+                            ))}
+
                             {/* Quick Filter: New */}
                             <button
                                 onClick={() => setFilterConfig(prev => ({ ...prev, sortBy: prev.sortBy === "NEW" ? "RECOMMENDED" : "NEW" }))}
@@ -1017,10 +1120,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                 {filterConfig.freeOnly ? "Free Only ✓" : "Free"}
                             </button>
 
-                            {/* Quick Filter: Favorites (Separated Logic for simple toggle) */}
-                            <button onClick={() => setFilterConfig(prev => ({ ...prev, favoritesOnly: !prev.favoritesOnly }))} className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap border transition-all ${filterConfig.favoritesOnly ? "bg-red-500/20 text-red-400 border-red-500/50" : "bg-gray-900 text-gray-400 border-gray-700 hover:border-gray-500"} `}>
-                                {filterConfig.favoritesOnly ? "Favorites Only ❤️" : "Favorites"}
-                            </button>
+                            {/* Quick Filter: Favorites (Moved Logic) */}
 
                             {/* Sort Toggle: Profit */}
                             <button
@@ -1062,10 +1162,11 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                         <div className="space-y-2 relative group/scroll">
                             <div className="flex justify-between items-center px-1"><h3 className="font-bold text-sm text-gray-200">Recommended</h3><div className="flex gap-2"><button onClick={() => scroll('left')} className="hidden md:flex w-6 h-6 bg-gray-800 rounded-full items-center justify-center hover:bg-white hover:text-black transition-colors"><ChevronLeft size={14} /></button><button onClick={() => scroll('right')} className="hidden md:flex w-6 h-6 bg-gray-800 rounded-full items-center justify-center hover:bg-white hover:text-black transition-colors"><ChevronRight size={14} /></button></div></div>
                             <div ref={scrollRef} className="flex gap-4 overflow-x-auto py-6 snap-x no-scrollbar scroll-smooth px-2">
-                                {filteredMasters.slice(0, 5).map((master) => {
+                                {filteredMasters.slice(0, 10).map((master) => {
                                     const isProfit = master.roi >= 0;
                                     const startYear = master.joined ? new Date(master.joined).getFullYear() : 2024;
                                     const joinedDate = master.joined ? new Date(master.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "2024";
+                                    const daysActive = calculateDaysActive(master.joined);
 
                                     return (
                                         <div key={master.id} onClick={() => onViewProfile(master)} className="snap-center min-w-[240px] w-[240px] h-[360px] bg-[#0F1115] rounded-2xl flex flex-col justify-between relative overflow-hidden group border border-white/5 hover:border-gray-600 transition-all cursor-pointer hover:-translate-y-1 shadow-lg hover:shadow-2xl ">
@@ -1102,7 +1203,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                                     })}
                                                 </div>
                                                 <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                    <Users size={12} /> {master.followers} Copiers
+                                                    <Users size={12} /> {master.followers} Copiers <span className="text-gray-700 mx-1">|</span> <span className="text-[10px] text-neon-cyan">{daysActive}d</span>
                                                 </div>
                                             </div>
 
@@ -1137,6 +1238,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                     const isProfit = master.roi >= 0;
                                     const startYear = master.joined ? new Date(master.joined).getFullYear() : 2024;
                                     const joinedDate = master.joined ? new Date(master.joined).toLocaleDateString("en-GB", { day: 'numeric', month: 'short', year: 'numeric' }) : "2024";
+                                    const daysActive = calculateDaysActive(master.joined);
 
                                     return (
                                         <div key={master.id} onClick={() => onViewProfile(master)} className="bg-[#0F1115] rounded-2xl p-4 grid grid-cols-1 md:grid-cols-3 gap-6 items-center border border-white/5 hover:border-gray-600 transition-all cursor-pointer hover:-translate-y-1 shadow-lg group">
@@ -1175,7 +1277,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
                                                     <div className="flex items-center gap-3 text-[10px] text-gray-500">
                                                         <span className="flex items-center gap-1"><Users size={10} /> {master.followers}</span>
                                                         <span className="text-gray-700">|</span>
-                                                        <span>Sync {joinedDate}</span>
+                                                        <span className="flex items-center gap-1">{joinedDate} <span className="text-neon-cyan font-bold">({daysActive}d)</span></span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1228,27 +1330,39 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
 
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Active Masters</p><div className="flex items-center gap-2"><Users size={16} className="text-blue-400" /><span className="font-bold text-sm text-white">{activeSessions.length} / 1</span></div></div>
+                        <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Active Masters</p><div className="flex items-center gap-2"><Users size={16} className="text-blue-400" /><span className="font-bold text-sm text-white">{activeSessions.length} / 5</span></div></div>
                         <div className="bg-gray-900 p-3 rounded-xl border border-gray-800"><p className="text-[10px] text-gray-500 uppercase mb-1">Time Remaining</p><div className="flex items-center gap-2"><Clock size={16} className="text-green-400" /><span className="font-bold text-sm text-white">{formatTime(ticketTime)}</span></div></div>
                     </div>
 
                     <div className="space-y-4 pb-24">
                         <h3 className="font-bold text-sm text-gray-400 uppercase tracking-wide">Active Portfolios</h3>
                         {activeSessions.length === 0 ? (<div className="text-center py-10 text-gray-500 space-y-2 border border-dashed border-gray-800 rounded-2xl"><Briefcase className="mx-auto opacity-50" size={40} /><p className="text-xs">No active copies.</p></div>) : (
-                            activeSessions.map((session) => (
-                                <ActiveSessionWidget
-                                    key={session.id}
-                                    master={session.master}
-                                    time={ticketTime}
-                                    risk={session.risk}
-                                    allocation={session.allocation}
-                                    onStop={() => onStopCopy(session.master.id)}
-                                    session={session}
-                                    onClick={() => onViewProfile(session.master)} // ✅ Navigation
-                                    currencySymbol={currencySymbol}
-                                />
+                            activeSessions.map((session) => {
+                                // 🧠 MASTER PnL DISPLAY (Show ONLY Master's PnL, not Follower's)
+                                // Source: masterPnLMap (from API polling via useMasterPnL hook)
 
-                            ))
+                                // Get Master ID for lookup
+                                const masterKey = session.master.masterUserId || session.master.userId || '';
+
+                                // Get Master's PnL ONLY (no Follower fallback)
+                                // masterPnLMap is populated by the useMasterPnL polling hook
+                                const rtPnL = masterPnLMap?.[masterKey] ?? undefined;
+
+                                return (
+                                    <ActiveSessionWidget
+                                        key={session.id}
+                                        master={session.master}
+                                        time={ticketTime}
+                                        risk={session.risk}
+                                        allocation={session.allocation}
+                                        onStop={() => onStopCopy(session.master.id)}
+                                        session={session}
+                                        onClick={() => onViewProfile(session.master)} // ✅ Navigation
+                                        currencySymbol={currencySymbol}
+                                        realTimePnL={rtPnL} // ✅ Live PnL Sync
+                                    />
+                                );
+                            })
                         )}
 
                         {/* Removed Open Positions Table from here */}
@@ -1292,7 +1406,7 @@ function FollowerFlow({ requireAuth, onViewProfile, activeSessions, onStopCopy, 
 
                         if (selectedMaster) {
                             // ✅ PASS PRO-RATA PERCENT AS RISK FACTOR
-                            onStartCopy(selectedMaster, Number(data.allocation), data.proRataPercent, sessionType as SessionType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig, invertCopy: data.invertCopy });
+                            onStartCopy(selectedMaster, Number(data.allocation), data.proRataPercent, sessionType as SessionType, { autoRenew: data.autoRenew, timeConfig: data.timeConfig, invertCopy: data.invertCopy, copyMode: data.copyMode });
                         }
 
                         setSafetyModalOpen(false);
@@ -1339,19 +1453,21 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
         setPaymentModalOpen(true);
     }
 
-    // 🔄 Self-Fix Stats on Load
+    // 🔄 Self-Fix Stats on Load (Includes Performance + Drawdown)
     useEffect(() => {
         if (userRole === "MASTER" && profile.userId) {
             refreshMasterStats(profile.userId).then((res: any) => {
-                if (res.success && res.aum !== undefined) {
-                    // Update Local State if different
-                    if (res.aum !== profile.aum || res.followersCount !== profile.followersCount) {
-                        setProfile({
-                            ...profile,
-                            aum: res.aum,
-                            followersCount: res.followersCount || 0
-                        });
-                    }
+                if (res.success) {
+                    // Update Local State with ALL latest stats from TradeHistory analysis
+                    setProfile({
+                        ...profile,
+                        aum: res.aum ?? profile.aum,
+                        followersCount: res.followersCount ?? profile.followersCount,
+                        joined: res.joined || profile.joined,
+                        roi: res.roi ?? profile.roi, // ✅ Sync Performance
+                        drawdown: res.drawdown ?? profile.drawdown, // ✅ Sync Max Drawdown
+                        riskScore: res.riskScore ?? profile.riskScore // ✅ Sync Risk Score
+                    });
                 }
             });
         }
@@ -1417,187 +1533,150 @@ function MasterFlow({ onOpenSettings, onViewFollower, userRole, profile, setProf
     };
 
     return (
-        <div className="animate-in slide-in-from-right-4 space-y-6 pb-20">
 
-            {/* 🚨 Capacity Alert (Only for Master) */}
-            {userRole === "MASTER" && isCritical && (
-                <div onClick={() => setShowUpgradeMaster(true)} className="bg-linear-to-r from-orange-500 to-red-600 p-4 rounded-2xl shadow-lg shadow-orange-900/20 cursor-pointer relative overflow-hidden group">
-                    <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4"><TrendingUp size={100} color="white" /></div>
-                    <div className="flex justify-between items-start relative z-10">
-                        <div>
-                            <h3 className="text-white font-bold text-base flex items-center gap-2"><AlertTriangle size={18} className="animate-bounce" /> Shop Limit Reached!</h3>
-                            <p className="text-orange-100 text-xs mt-1">Upgrade to accept more followers & income.</p>
-                        </div>
-                        <button className="bg-white text-orange-600 text-[10px] font-bold px-3 py-1.5 rounded-full shadow-sm group-hover:scale-105 transition-transform">Upgrade</button>
-                    </div>
-                </div>
-            )}
+        <div className="animate-in slide-in-from-right-4 space-y-6 pb-24 max-w-lg mx-auto md:max-w-4xl">
 
-            {/* 1. Live Broadcasting Banner */}
+            {/* 1. 🟢 LIVE SIGNAL STATUS */}
             {userRole === "MASTER" && (
-                <div className="sticky top-20 z-10 -mx-4 px-4 pb-2 bg-gray-950/95 backdrop-blur-sm">
-                    <div className="bg-linear-to-r from-gray-900 to-gray-800 border border-gray-800 p-3 rounded-2xl flex items-center justify-between shadow-lg">
+                <div className="relative overflow-hidden rounded-2xl p-px bg-linear-to-r from-green-500/50 to-emerald-500/50 shadow-lg shadow-green-900/20">
+                    <div className="absolute inset-0 bg-green-500/10 blur-xl"></div>
+                    <div className="relative bg-gray-950/90 backdrop-blur-xl rounded-2xl p-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="relative flex h-3 w-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500 shadow-md shadow-green-400"></span>
                             </div>
                             <div>
-                                <p className="font-bold text-xs text-white flex items-center gap-2">
-                                    Signal Active
-                                    <span className="px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-500 text-[9px] font-bold border border-green-500/20">LIVE</span>
+                                <p className="font-bold text-sm text-white flex items-center gap-2 tracking-wide">
+                                    Broadcast Active
                                 </p>
-
+                                <p className="text-[10px] text-green-400 font-medium">Signals are live & synchronized</p>
                             </div>
                         </div>
-                        <div className="bg-gray-800 p-2 rounded-full cursor-pointer hover:bg-gray-700 transition-colors">
-                            <Radio size={16} className="text-gray-400" />
+                        <div className="bg-gray-900/50 p-2 rounded-full border border-gray-700/50">
+                            <Radio size={18} className="text-green-500 animate-pulse" />
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Profile Card */}
+            {/* 2. 👤 MASTER PROFILE CARD */}
             <div
+                className="relative group cursor-pointer"
                 onClick={handleViewMyProfile}
-                className="bg-gray-900 rounded-2xl p-5 border border-gray-800 relative overflow-hidden cursor-pointer hover:border-gray-600 transition-colors group"
             >
-                <div className={`absolute top - 0 left - 0 w - full h - 1 bg - gradient - to - r ${userRole === "MASTER" ? "from-purple-500 to-indigo-600" : "from-gray-700 to-gray-600"} `}></div>
-                <div className="flex items-center gap-3 mb-6 cursor-pointer">
-                    <div className="w-14 h-14 bg-purple-600 rounded-full flex items-center justify-center font-bold text-xl border-4 border-gray-900 shadow-xl relative z-10">MK</div>
-                    <div>
-                        <h2 className="text-lg font-bold flex items-center gap-2 group-hover:text-purple-300 transition-colors">
-                            {profile.name}
-                        </h2>
-                        {userRole === "MASTER" && (
-                            <span className="bg-purple-900/30 text-purple-400 text-[9px] font-bold px-2 py-0.5 rounded border border-purple-500/30">TIER: {profile.tier}</span>
-                        )}
-                    </div>
-                    <div className="ml-auto"><Eye size={16} className="text-gray-600 group-hover:text-white" /></div>
-                </div>
+                {/* Background Glow */}
+                <div className="absolute -inset-0.5 bg-linear-to-r from-purple-600 to-blue-600 rounded-3xl opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
 
-                {/* 📊 Capacity Dashboard */}
-                {userRole === "MASTER" && (
-                    <div
-                        className="relative group/capacity space-y-4 bg-black/40 p-3 rounded-xl border border-gray-800 cursor-pointer hover:border-purple-500/50 hover:bg-black/60 transition-all overflow-hidden"
-                        onClick={(e) => { e.stopPropagation(); setShowUpgradeMaster(true); }}
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-0 group-hover/capacity:opacity-100 transition-opacity">
-                            <span className="text-[10px] font-bold text-purple-400 flex items-center gap-1">
-                                Expand Business <ChevronRight size={10} />
-                            </span>
-                        </div>
+                <div className="relative bg-gray-950 rounded-2xl p-6 border border-gray-800 shadow-2xl group-hover:border-gray-700 transition-colors">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
 
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                                <span>Total Investor</span>
-                                <span className={followerPercent >= 90 ? "text-red-400" : "text-white"}>{profile.followersCount} / {profile.followersLimit}</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                                <div className={`h - full rounded - full transition - all duration - 1000 ${followerPercent >= 90 ? "bg-red-500" : "bg-blue-500"} `} style={{ width: `${followerPercent}% ` }}></div>
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                                <span>Investor Allocation</span>
-                                <span className={aumPercent >= 90 ? "text-red-400" : "text-white"}>${profile.aum.toLocaleString()} / ${profile.aumLimit.toLocaleString()}</span>
-                            </div>
-                            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-                                <div className={`h - full rounded - full transition - all duration - 1000 ${aumPercent >= 90 ? "bg-red-500" : "bg-green-500"} `} style={{ width: `${aumPercent}% ` }}></div>
-                            </div>
-                            {/* Hover Overlay Hint */}
-                            <div className="hidden group-hover/capacity:flex absolute inset-0 bg-purple-900/10 backdrop-blur-[1px] items-center justify-center rounded-xl">
-                                <div className="bg-gray-950/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-xl border border-purple-500/30 flex items-center gap-2">
-                                    <TrendingUp size={14} className="text-purple-400" />
-                                    Expand Business
+                        {/* Avatar */}
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-purple-500 blur-md opacity-40 rounded-full"></div>
+                            {profile.avatar ? (
+                                <img src={profile.avatar} alt="Profile" className="w-20 h-20 rounded-full border-2 border-gray-800 relative z-10 object-cover" />
+                            ) : (
+                                <div className="w-20 h-20 bg-linear-to-br from-purple-700 to-indigo-800 rounded-full flex items-center justify-center font-bold text-2xl text-white border-2 border-gray-800 relative z-10 shadow-inner">
+                                    {profile.name.substring(0, 2).toUpperCase()}
                                 </div>
+                            )}
+                            {/* Tier Badge */}
+                            <div className="absolute -bottom-1 -right-1 z-20 bg-gray-900 border border-purple-500/50 rounded-lg px-2 py-0.5 shadow-lg flex items-center gap-1">
+                                <Crown size={10} className="text-yellow-400" />
+                                <span className="text-[10px] font-bold text-white uppercase">{profile.tier}</span>
+                            </div>
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 text-center md:text-left space-y-1">
+                            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center justify-center md:justify-start gap-2">
+                                {profile.name}
+                                <Eye
+                                    size={16}
+                                    className="text-gray-500 hover:text-purple-400 cursor-pointer transition-colors"
+                                    onClick={handleViewMyProfile}
+                                />
+                            </h2>
+                            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                                {/* Risk Badges */}
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${profile.riskScore && profile.riskScore >= 4 ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                    RISK SCORE: {profile.riskScore || 1}
+                                </span>
+                                {profile.isPublic ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">PUBLIC</span>
+                                ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-700/30 text-gray-400 border border-gray-600/30">PRIVATE</span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Divider on Mobile */}
+                        <div className="w-full h-px bg-gray-800 md:hidden"></div>
+
+                        {/* Key Stats */}
+                        <div className="flex items-center gap-8 md:gap-12">
+                            <div className="text-center">
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Followers</p>
+                                <p className="text-2xl font-mono font-bold text-white">{profile.followersCount}</p>
+                            </div>
+                            <div className="w-px h-8 bg-gray-800"></div>
+                            <div className="text-center">
+                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Active Since</p>
+                                <p className="text-xl font-mono font-bold text-gray-300">
+                                    {profile.joined ? new Date(profile.joined).toLocaleDateString("en-GB", { month: 'short', year: 'numeric' }) : "2026"}
+                                    <span className="text-sm text-neon-cyan ml-2">({calculateDaysActive(profile.joined)}d)</span>
+                                </p>
                             </div>
                         </div>
                     </div>
-                )}
 
-                <div className="mt-6 grid grid-cols-2 gap-4">
-                    {/* 👥 Followers Stat */}
-                    <div className="glass-panel p-4 rounded-xl flex flex-col items-center justify-center space-y-1">
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                            <Users size={12} className="text-gray-500" />
-                            Followers
-                        </div>
-                        <p className="text-2xl font-bold font-mono text-white">{userRole === "MASTER" ? profile.followersCount : "-"}</p>
-                    </div>
-
-                    {/* 💰 Wallet / GP Earned Stat */}
-                    <div
-                        onClick={(e) => { e.stopPropagation(); if (userRole === "MASTER" && onOpenWallet) onOpenWallet(); }}
-                        className={`relative overflow-hidden p-4 rounded-xl flex flex-col items-center justify-center space-y-1 transition-all duration-300 group/wallet ${userRole === "MASTER"
-                            ? "cursor-pointer bg-linear-to-br from-gray-900 via-gray-900 to-purple-900/20 border border-purple-500/30 hover:border-green-500/50 hover:shadow-[0_0_20px_rgba(34,197,94,0.15)]"
-                            : "bg-black/30 border border-white/5 opacity-50"
-                            }`}
-                    >
-                        {userRole === "MASTER" && (
-                            <div className="absolute top-0 right-0 p-1.5 opacity-0 group-hover/wallet:opacity-100 transition-opacity">
-                                <ArrowUpRight size={10} className="text-green-400" />
-                            </div>
-                        )}
-                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider group-hover/wallet:text-green-400 transition-colors">
-                            <Wallet size={12} className={userRole === "MASTER" ? "group-hover/wallet:rotate-12 transition-transform text-gray-500 group-hover/wallet:text-green-500" : "text-gray-600"} />
-                            My Wallet
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                            <p className={`text-2xl font-bold font-mono ${userRole === "MASTER" ? "text-green-400 group-hover/wallet:text-green-300 group-hover/wallet:scale-105 transition-all" : "text-gray-600"}`}>
-                                {userRole === "MASTER" ? "$0.00" : "$0.00"}
-                            </p>
-                        </div>
+                    {/* Action Bar */}
+                    <div className="mt-6 pt-4 border-t border-gray-800 flex items-center gap-3">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onOpenSettings(); }}
+                            className="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold py-2.5 rounded-xl border border-gray-700 transition-all flex items-center justify-center gap-2 group/btn"
+                        >
+                            <Edit3 size={14} className="group-hover/btn:text-purple-400 transition-colors" />
+                            Edit Profile
+                        </button>
+                        {/* Hidden View Profile Button (Icon used instead) */}
                     </div>
                 </div>
             </div>
 
-            <div onClick={onOpenSettings} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:bg-gray-800 transition-colors group">
-                <div className="flex items-center gap-3">
-                    <div className="bg-purple-900/20 p-2.5 rounded-lg border border-purple-500/20"><Edit3 className="text-purple-400" size={20} /></div>
-                    <div><p className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors">Edit Public Profile</p><p className="text-[10px] text-gray-500">Manage Subscription, Bio, Tags & Avatar</p></div>
+            {/* 3. 🛡️ PERFORMANCE PREVIEW */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 flex flex-col justify-center gap-2">
+                    <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase">
+                        <Activity size={14} /> Performance
+                    </div>
+                    <div className="flex items-end gap-2">
+                        <span className={`text-3xl font-bold ${Number(profile.roi || 0) > 0 ? "text-green-400" : Number(profile.roi || 0) < 0 ? "text-red-500" : "text-white"}`}>
+                            {Number(profile.roi || 0) > 0 ? "+" : ""}{profile.roi || "0.0"}%
+                        </span>
+                    </div>
                 </div>
-                <ChevronRight className="text-gray-600 group-hover:text-white" size={18} />
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 flex flex-col justify-center gap-2">
+                    <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase">
+                        <Shield size={14} /> Max Drawdown
+                    </div>
+                    <div className="text-3xl font-bold text-white">{profile.drawdown || "0.0"}%</div>
+                </div>
             </div>
 
-            {/* 2. Recent Followers */}
+            {/* 2. Recent Followers (Placeholder/Keep) */}
             {userRole === "MASTER" ? (
-                <div className="space-y-3">
-
+                <div className="space-y-3 pt-4">
+                    {/* Can add Recent Activity here later */}
                 </div>
             ) : (
                 <div className="relative overflow-hidden rounded-2xl p-1 bg-linear-to-br from-gray-800 to-gray-900 border border-gray-800">
-                    <div className="absolute inset-0 bg-grid-white/[0.02] bg-size-[16px_16px]"></div>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full point-events-none"></div>
-
-                    <div className="relative bg-gray-950/80 backdrop-blur-xl rounded-xl p-8 text-center space-y-4">
-                        <div className="w-16 h-16 mx-auto bg-linear-to-tr from-purple-600 to-blue-600 rounded-full p-[2px] shadow-lg shadow-purple-900/40 animate-pulse">
-                            <div className="w-full h-full bg-gray-950 rounded-full flex items-center justify-center">
-                                <Briefcase className="text-white" size={28} />
-                            </div>
-                        </div>
-
-
-
-                        <button
-                            onClick={onBecomeMaster}
-                            className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-900/30 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group"
-                        >
-                            <span>Activate Master Mode</span>
-                            <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                        </button>
-
-                        <div>
-
-                            <p className="text-xs text-gray-400 max-w-[200px] mx-auto">publishing your signals and earning income.</p>
-                        </div>
-                    </div>
+                    {/* ... (Follower Promo Block - Keep unchanged if needed, but logic implies this is Master View) ... */}
                 </div>
             )}
-
-            {showUpgradeMaster && <MasterPlanModal onClose={() => setShowUpgradeMaster(false)} currentTier={profile.tier} onSelectPlan={handleSelectPlan} />}
-            {paymentModalOpen && <UniversalPaymentModal onClose={() => setPaymentModalOpen(false)} onSuccess={handleUpgradeSuccess} planDetails={selectedPlan} />}
         </div>
+
     );
 }
 
@@ -1680,6 +1759,22 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
     const initialView = fromUrlView(searchParams.get("view"));
     const [viewMode, setViewModeInternal] = useState<UserRole>(initialView);
 
+    // ⚡ Real-Time Data Hook
+    const { stats } = useRealTimeData();
+
+    // ✅ Sync Real-Time Stats with Local State
+    useEffect(() => {
+        if (stats) {
+            setBrokerAccount(prev => ({
+                ...prev,
+                ...stats,
+                login: String(stats.login) // ✅ Fix Login Type Mismatch
+            } as any as BrokerAccount));
+            if (stats.balance) setWalletBalance(stats.balance);
+            // setAccountStatus("CONNECTED");
+        }
+    }, [stats]);
+
     // ✅ FIX: Sync View Mode with URL (Back Button Support)
     useEffect(() => {
         const modeFromUrl = fromUrlView(searchParams.get("view"));
@@ -1738,6 +1833,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
     const [allocation, setAllocation] = useState<string | number>(1000); // Default alloc
     const [useWelcomeTicket, setUseWelcomeTicket] = useState(false);
     const [safetyModalOpen, setSafetyModalOpen] = useState(false);
+    const [showLimitModal, setShowLimitModal] = useState(false); // ✅ Ne w: Limit Modal State
     const [selectedMaster, setSelectedMaster] = useState<Master | null>(null);
 
     const [masterProfile, setMasterProfile] = useState<MasterProfile>(() => {
@@ -1780,10 +1876,63 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
     const [showActivationModal, setShowActivationModal] = useState(false);
 
     // ⚡ REAL-TIME SYNC
-    const { stats: realTimeStats, isConnected: isSyncing, hasAttempted } = useRealTimeData();
+    const { stats: realTimeStats, isConnected: isSyncing, hasAttempted, masterPnLMap: sseMasterPnLMap } = useRealTimeData();
     const [ignoreSync, setIgnoreSync] = useState(false); // 🛡️ Prevent race conditions on disconnect
     const [hasSyncedOnce, setHasSyncedOnce] = useState(false); // 🛡️ Protect SSR state from premature overwrite
     const [isManualConnect, setIsManualConnect] = useState(false); // 🛡️ Protect Manual Connect from Lagging Polls
+    const [isLegalAgreed, setIsLegalAgreed] = useState(false); // ⚖️ Master Legal Consent
+
+    // 📊 MASTER PnL POLLING (10s interval, with anti-flicker caching)
+    const [polledMasterPnL, setPolledMasterPnL] = useState<Record<string, number>>({});
+    const lastValidMasterPnL = useRef<Record<string, number>>({});
+    const lastSuccessfulFetch = useRef<Record<string, number>>({}); // Track last successful fetch time
+    const STALE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+    useEffect(() => {
+        const fetchMasterPnLs = async () => {
+            const now = Date.now();
+
+            for (const session of activeSessions) {
+                const masterId = session.master.masterUserId || session.master.userId;
+                if (!masterId) continue;
+
+                try {
+                    const res = await fetch(`/api/master/${masterId}/pnl?t=${now}`, { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const pnl = data.unrealizedPnL;
+
+                        // 🛡️ Only update if valid number (anti-flicker)
+                        if (pnl !== null && pnl !== undefined && !isNaN(pnl)) {
+                            lastValidMasterPnL.current[masterId] = pnl;
+                            lastSuccessfulFetch.current[masterId] = now; // Record successful fetch
+                            setPolledMasterPnL(prev => ({ ...prev, [masterId]: pnl }));
+                        }
+                    }
+                } catch (e) {
+                    // Keep previous cached value
+                }
+
+                // ⏰ STALE CACHE CHECK: If no successful fetch in 15 mins, reset to 0
+                const lastFetch = lastSuccessfulFetch.current[masterId] || 0;
+                if (lastFetch > 0 && (now - lastFetch) > STALE_TIMEOUT_MS) {
+                    console.warn(`[PnL] ⚠️ Stale cache for ${masterId} (>${STALE_TIMEOUT_MS / 60000}min). Resetting to 0.`);
+                    lastValidMasterPnL.current[masterId] = 0;
+                    lastSuccessfulFetch.current[masterId] = 0; // Reset timer
+                    setPolledMasterPnL(prev => ({ ...prev, [masterId]: 0 }));
+                }
+            }
+        };
+
+        if (activeSessions.length > 0) {
+            fetchMasterPnLs(); // Initial fetch
+            const interval = setInterval(fetchMasterPnLs, 10000); // Poll every 10s
+            return () => clearInterval(interval);
+        }
+    }, [activeSessions]);
+
+    // Merge polled PnL with SSE PnL (polled takes priority for reliability)
+    const masterPnLMap = { ...sseMasterPnLMap, ...polledMasterPnL };
 
     // ⚡ SYNC REAL-TIME DATA TO GLOBAL STATE (Consolidated)
     useEffect(() => {
@@ -2201,6 +2350,10 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                 };
                 setViewingProfile(myProfileAsMaster);
             }
+            // 4. Cleanup: If URL param is gone, clear profile
+            else if (viewingProfile && !initialSlug) {
+                setViewingProfile(null);
+            }
         }
     }, [initialProfileId, initialSlug, realMasters, viewingProfile, searchParams, pathname, router, masterProfile, userRole, brokerAccount, mastersLoaded, currentUserId]); // Added deps
 
@@ -2291,15 +2444,10 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
             }
         }
 
-        // 🛡️ 2. CHECK: NO DOUBLE DIPPING (Limit 1 Master for Non-VIP)
+        // 🛡️ 2. CHECK: NO DOUBLE DIPPING (Limit 5 Masters for Non-VIP)
         const isUnlimitedUser = sessionType === "PAID";
-        if (!isUnlimitedUser && activeSessions.length >= 1) {
-            openGlobalModal(
-                "🚫 Limit Reached (1 Master Max)",
-                "You are on a Free/Trial plan. You can only follow 1 Master at a time.\n\nSubscribe to a Paid Signal for Unlimited Copying!",
-                () => { },
-                "warning"
-            );
+        if (!isUnlimitedUser && activeSessions.length >= 5) {
+            setShowLimitModal(true); // ✅ New: Trigger Custom Modal
             return;
         }
 
@@ -2317,7 +2465,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
         // Ensure we preserve existing timeConfig properties
         const finalTimeConfig = {
             ...(advanced?.timeConfig || {}),
-            copyMode: advanced?.copyMode || "EQUITY" // 🛠️ FORCE DEFAULT TO EQUITY
+            copyMode: advanced?.copyMode || "FIXED" // ✅ Default to FIXED if not provided
         };
 
         const masterUserId = String(master.id);
@@ -2339,7 +2487,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
         setActiveSessions([...activeSessions, newSession]);
         setWalletBalance(prev => prev - amount);
         // 🛠️ DEBUG: Default to EQUITY if missing
-        const debugMode = advanced?.copyMode || "EQUITY";
+        const debugMode = advanced?.copyMode || "FIXED";
         const toastId = toast.loading(`Processing Investment... (Mode: ${debugMode})`);
 
         // Server Action
@@ -2524,9 +2672,14 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                     setShowActivationModal(false); // Close the blocking modal
                     setStartOnBroker(true);
                     setShowSettings(true);
+                    setTimeout(() => setShowActivationModal(true), 300);
                 }, 1000);
+                return;
             }
-        }
+
+            setShowSettings(true);
+            setTimeout(() => setShowActivationModal(true), 300);
+        };
     };
 
     const handleBecomeMasterRequest = () => {
@@ -2597,6 +2750,97 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
             <div className="pt-24 px-4 max-w-7xl mx-auto">
                 {isClient && isLoggedIn && accountStatus === "ERROR" && <div onClick={() => setShowSettings(true)} className="bg-red-900/20 border border-red-500/50 p-4 rounded-xl mb-4 flex items-center justify-between animate-pulse cursor-pointer"><div className="flex items-center gap-3"><AlertTriangle className="text-red-500" /><div><p className="font-bold text-sm text-red-400">Connection Error</p><p className="text-[10px] text-gray-400">Tap to reconnect.</p></div></div><span className="text-xs font-bold text-red-500 underline">Fix</span></div>}
 
+                {/* 🌟 BECOME A MASTER MODAL (Dark Neon Redesign) */}
+                {isClient && showActivationModal && (
+                    <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-[#0a0a0a] border border-white/10 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+                            {/* 🎨 GLOW EFFECTS */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-1 bg-linear-to-r from-purple-500 via-blue-500 to-purple-500 blur-sm"></div>
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                            {/* HEADER */}
+                            <div className="relative p-6 sm:p-8 text-center space-y-2">
+                                <button onClick={() => setShowActivationModal(false)} className="absolute top-4 right-4 p-2 text-gray-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors z-20">
+                                    <X size={20} />
+                                </button>
+
+                                <div className="w-16 h-16 mx-auto bg-linear-to-br from-purple-500/20 to-blue-500/20 rounded-2xl flex items-center justify-center border border-white/10 mb-4 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
+                                    <Crown className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]" size={32} />
+                                </div>
+
+                                <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                                    Become a <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-blue-400">Master</span>
+                                </h2>
+                                <p className="text-sm text-gray-400 max-w-md mx-auto">
+                                    Publish your strategy, gain followers, and build your trading legacy.
+                                </p>
+                            </div>
+
+                            {/* CONTENT: SINGLE OPTION (GROWTH) */}
+                            <div className="p-6 sm:p-8 pt-0 space-y-6">
+                                {/* SELECTION CARD */}
+                                <div
+                                    onClick={() => {
+                                        if (!isLegalAgreed) {
+                                            toast.error("Please accept the Legal Declaration first.");
+                                            return;
+                                        }
+                                        confirmActivation(0);
+                                    }}
+                                    className={`group relative overflow-hidden border rounded-2xl p-5 cursor-pointer transition-all duration-300 transform active:scale-[0.98] ${isLegalAgreed ? "bg-[#111] hover:bg-[#161616] border-white/5 hover:border-purple-500/50" : "bg-[#0a0a0a] border-white/5 opacity-50 grayscale"}`}
+                                >
+                                    {/* Selection Glow */}
+                                    <div className="absolute inset-0 bg-linear-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+
+                                    <div className="relative flex items-center justify-between z-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-white/5 rounded-xl border border-white/5 group-hover:border-purple-500/30 transition-colors">
+                                                <TrendingUp className="text-purple-400" size={24} />
+                                            </div>
+                                            <div className="text-left">
+                                                <h3 className="font-bold text-white text-lg group-hover:text-purple-300 transition-colors">Growth</h3>
+                                                <p className="text-xs text-gray-500 group-hover:text-gray-400">Perfect for building a track record.</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xl font-black text-white">$0</div>
+                                            <div className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded uppercase font-bold tracking-wider">Free</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* FOOTER ACTION */}
+                                <div className="space-y-4">
+                                    {/* ⚠️ LEGAL CONSENT UI */}
+                                    <div className="bg-[#111] p-3 rounded-xl border border-white/5 flex items-start gap-3">
+                                        <div className="relative flex items-center pt-1">
+                                            <input
+                                                type="checkbox"
+                                                checked={isLegalAgreed}
+                                                onChange={(e) => setIsLegalAgreed(e.target.checked)}
+                                                className="peer h-4 w-4 bg-black border-2 border-gray-600 rounded checked:bg-purple-500 checked:border-purple-500 transition-all cursor-pointer appearance-none shrink-0"
+                                            />
+                                            <CheckCircle2 size={10} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[30%] text-white opacity-0 peer-checked:opacity-100 pointer-events-none" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] text-gray-400 leading-tight">
+                                                I confirm that I am providing <strong className="text-gray-300">technical signals only</strong> via Technical Cloud Infrastructure. I am NOT providing financial advice or holding client funds.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center space-y-3">
+                                        <p className="text-[11px] text-gray-500">
+                                            By activating, you agree to our <a href="/legal/terms-of-service" target="_blank" className="text-gray-400 underline decoration-gray-600 underline-offset-2 hover:text-white">Master Terms & Conditions</a>.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {isClient && userRole === "MASTER" && viewMode === "FOLLOWER" && (
                     <div className="mb-4 bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3">
                         <Eye className="text-purple-400" size={20} />
@@ -2645,7 +2889,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                                     // We let the Page Unmount handle the cleanup.
                                 } else {
                                     // Otherwise clear param (legacy/ID mode)
-                                    setViewingProfile(null);
+                                    // setViewingProfile(null); // Removed to prevent race condition. Effect handles cleanup.
                                     router.push(pathname + "?" + createQueryString([{ name: "profile", value: null }]));
                                 }
                             }}
@@ -2659,6 +2903,7 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                             onOpenSettings={() => requireAuth(() => { setStartOnBroker(true); setShowSettings(true); })}
                             dailyTicketUsed={dailyTicketUsed}
                             isOwner={viewingProfile.id === 9999 || Boolean(session?.user?.id && viewingProfile.userId === session.user.id)}
+                            initialAnalytics={(initialMaster && viewingProfile.userId === initialMaster.userId) ? initialAnalytics : null}
                         />
                     ) : (
                         <FollowerFlow
@@ -2690,6 +2935,8 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                             masterProfile={masterProfile} // ✅ Pass Master Profile
                             defaultTab={initialTab}
                             onTabChange={(tab) => router.push(pathname + "?" + createQueryString([{ name: "tab", value: toUrlTab(tab) }]))}
+                            realTimePositions={stats?.positions} // ✅ Pass Real-Time PnL Source
+                            masterPnLMap={masterPnLMap} // 🆕 Pass Master PnL Map
                         />
                     )
                 ) : isClient ? (
@@ -2742,19 +2989,19 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                                 }
                             }}
                         />
-                ) : null}
+                ) : null
+                }
             </div>
 
             {showSettings && <SettingsModal onClose={() => { setShowSettings(false); setStartOnBroker(false); }} status={accountStatus} setStatus={setAccountStatus} role={userRole} setRole={setUserRole} setViewMode={setViewMode} onLogout={handleLogout}
-                activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={handleBrokerUpdate} />}
+                activeSessions={activeSessions} onStopAll={() => setShowStopAll(true)} profile={masterProfile} setProfile={handleUpdateMasterProfile} onRequestActivation={() => setShowActivationModal(true)} openConfirm={openGlobalModal} defaultShowBroker={startOnBroker} user={session?.user} brokerAccount={brokerAccount} onConnectionSuccess={handleBrokerUpdate} />
+            }
 
-            {showActivationModal && <MasterActivationModal onClose={() => setShowActivationModal(false)} onConfirm={confirmActivation} />}
-
-            {showActivationModal && <MasterActivationModal onClose={() => setShowActivationModal(false)} onConfirm={confirmActivation} />}
             {/* VIP Modal Removed */}
 
             {showLogin && <LoginModal onClose={() => setShowLogin(false)} onLoginSuccess={() => { setIsLoggedIn(true); setShowLogin(false); }} />}
             {showStopAll && <StopAllModal onClose={() => setShowStopAll(false)} onConfirm={confirmStopAll} count={activeSessions.length} />}
+            {showLimitModal && <LimitReachedModal onClose={() => setShowLimitModal(false)} onUpgrade={() => { setShowLimitModal(false); setShowSettings(true); }} />}
             {showWallet && <MasterWalletModal onClose={() => setShowWallet(false)} balance={0} transactions={masterTransactions} onWithdraw={handleWithdrawal} savedBank={savedBankAccount} onSaveBank={setSavedBankAccount} onCancelWithdrawal={handleCancelWithdrawal} />}
 
             {/* Global Confirmation Modal */}
@@ -2767,6 +3014,6 @@ export function SocialTradingApp({ initialSlug, initialBrokerAccount, initialMas
                 type={globalModal.type}
             />
             <Toaster position="top-center" />
-        </div>
+        </div >
     );
 }

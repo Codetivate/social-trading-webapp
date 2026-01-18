@@ -8,6 +8,11 @@ import { MasterProfileEditor } from "@/features/social/components/MasterProfileE
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+    InputOTP,
+    InputOTPGroup,
+    InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 interface SettingsModalProps {
     onClose: () => void;
@@ -42,6 +47,8 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
     const [showBrokerForm, setShowBrokerForm] = useState(defaultShowBroker);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [showOtpInput, setShowOtpInput] = useState(false);
     const brokerSectionRef = React.useRef<HTMLDivElement>(null);
 
     // 🟢 Auto-Scroll to Broker Section if opened via Redirect
@@ -166,11 +173,39 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
             const res = await fetch("/api/user/broker", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server: serverToUse, login: loginId, password })
+                body: JSON.stringify({ server: serverToUse, login: loginId, password, otp: showOtpInput ? otp : undefined })
             });
 
             if (!res.ok) {
                 const errorData = await res.json();
+
+                // 🛡️ DETECT OTP REQUIREMENT (Broaden for generic Auth Failures)
+                // 🛡️ DETECT OTP REQUIREMENT (Broaden for generic Auth Failures)
+                const errorMessage = errorData.error?.toLowerCase() || "";
+                const isAuthError = errorData.error && (
+                    errorMessage.includes("one-time password") ||
+                    errorData.error.includes("OTP") || // Explicit OTP mention (Error -7)
+                    errorMessage.includes("authorization failed") ||
+                    errorMessage.includes("invalid login") ||
+                    errorMessage.includes("unsupported authorization mode")
+                );
+
+                if (isAuthError) {
+                    if (showOtpInput && otp) {
+                        // 🔄 CASE: User submitted OTP but it was WRONG
+                        // Show actual server error for debugging
+                        toast.error("Invalid OTP / Login Failed", { description: errorData.error || "The code you entered was incorrect. Please try again." });
+                        setOtp(""); // Clear for quick retry
+                        setIsConnecting(false);
+                        return; // Keep Input Visible
+                    }
+
+                    setShowOtpInput(true);
+                    toast.error("OTP Required", { description: "Broker requires 2FA. Please enter your One-Time Password." });
+                    setIsConnecting(false);
+                    return;
+                }
+
                 throw new Error(errorData.error || "Failed to connect");
             }
 
@@ -208,7 +243,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
 
     return (
         <div
-            className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200"
+            className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-200"
         >
             {/* 🎨 Main Modal Card with Neon Glow */}
             <Card
@@ -219,7 +254,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-neon-purple/50 blur-lg pointer-events-none"></div>
 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-white/2">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-white/5 rounded-full ring-1 ring-white/10">
                             <Settings className="w-4 h-4 text-white" />
@@ -235,11 +270,11 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                 <div className="flex border-b border-white/5">
                     <button onClick={() => setActiveTab("ACCOUNT")} className={`flex-1 py-4 text-xs font-bold transition-all relative ${activeTab === "ACCOUNT" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}>
                         Account
-                        {activeTab === "ACCOUNT" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
+                        {activeTab === "ACCOUNT" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-linear-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
                     </button>
                     <button onClick={() => setActiveTab("PROFILE")} className={`flex-1 py-4 text-xs font-bold transition-all relative ${activeTab === "PROFILE" ? "text-white" : "text-gray-500 hover:text-gray-300"}`}>
                         Public Profile
-                        {activeTab === "PROFILE" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
+                        {activeTab === "PROFILE" && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-linear-to-r from-neon-purple to-neon-cyan shadow-[0_0_10px_rgba(139,92,246,0.5)]"></span>}
                     </button>
                 </div>
 
@@ -272,7 +307,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                                 <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider pl-1">Broker Account</label>
 
                                 {status === "CONNECTED" && brokerAccount ? (
-                                    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0F1115] to-[#13151C] border border-white/5 hover:border-green-500/20 transition-all duration-300">
+                                    <div className="group relative overflow-hidden rounded-2xl bg-linear-to-br from-[#0F1115] to-[#13151C] border border-white/5 hover:border-green-500/20 transition-all duration-300">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-green-500/10 transition-all"></div>
 
                                         <div className="relative p-5">
@@ -414,6 +449,31 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                                                 </div>
                                             </div>
 
+                                            {showOtpInput && (
+                                                <div className="space-y-1 animate-in fade-in slide-in-from-top-2">
+                                                    <label className="text-[10px] text-orange-400 font-bold uppercase flex items-center gap-1">
+                                                        <div className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse"></div>
+                                                        One-Time Password
+                                                    </label>
+                                                    <div className="flex justify-center py-2">
+                                                        <InputOTP
+                                                            maxLength={6}
+                                                            value={otp}
+                                                            onChange={(val) => setOtp(val)}
+                                                        >
+                                                            <InputOTPGroup>
+                                                                <InputOTPSlot index={0} />
+                                                                <InputOTPSlot index={1} />
+                                                                <InputOTPSlot index={2} />
+                                                                <InputOTPSlot index={3} />
+                                                                <InputOTPSlot index={4} />
+                                                                <InputOTPSlot index={5} />
+                                                            </InputOTPGroup>
+                                                        </InputOTP>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <button onClick={handleConnectBroker} disabled={isConnecting} className="w-full bg-green-600 hover:bg-green-500 text-white text-xs font-bold py-3.5 rounded-xl shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 transform active:scale-[0.98] transition-all">
                                                 {isConnecting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Connect Now"}
                                             </button>
@@ -425,7 +485,7 @@ export function SettingsModal({ onClose, status, setStatus, role, setRole, setVi
                             <div className="space-y-3">
                                 <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider pl-1">Role</label>
                                 {role === "FOLLOWER" ? (
-                                    <div className="bg-gradient-to-br from-purple-900/20 to-purple-900/10 border border-purple-500/20 p-5 rounded-2xl relative overflow-hidden group">
+                                    <div className="bg-linear-to-br from-purple-900/20 to-purple-900/10 border border-purple-500/20 p-5 rounded-2xl relative overflow-hidden group">
                                         <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20 transition-all"></div>
                                         <div className="flex items-center gap-4 mb-4 relative z-10">
                                             <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">

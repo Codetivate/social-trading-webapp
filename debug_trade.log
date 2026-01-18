@@ -86,3 +86,63 @@ TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
 Type: DAILY
 TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
 -------------------
+[2026-01-15T06:41:00.612Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T06:46:16.770Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T06:46:45.326Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T06:48:03.456Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T06:48:45.052Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T08:30:58.769Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-15T08:33:12.292Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-15T08:36:06.702Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-15T08:54:44.940Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-15T09:37:07.370Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-15T09:44:45.928Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"EQUITY"}
+-------------------
+[2026-01-18T04:35:49.932Z] startCopySession
+Type: TRIAL_7DAY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-18T04:35:57.880Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-18T04:36:09.219Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------
+[2026-01-18T04:36:18.769Z] startCopySession
+Type: DAILY
+TimeConfig: {"mode":"24/7","start":"09:00","end":"17:00","copyMode":"FIXED"}
+-------------------

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { encryptPassword, decryptPassword } from "@/lib/crypto";
 
 export const dynamic = 'force-dynamic'; // ⚡ FORCE NO CACHING
 export const revalidate = 0;
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { server, login, password } = body;
+        const { server, login, password, otp } = body;
 
         if (!server || !login || !password) {
             return NextResponse.json({ error: "Missing fields" }, { status: 400 });
@@ -27,25 +28,38 @@ export async function POST(req: NextRequest) {
         let verificationResult: any = {};
         try {
             const { spawn } = require('child_process');
-            const pythonProcess = spawn('python', [
+            const args = [
                 'src/engine/verify.py',
                 '--login', login,
                 '--password', password,
                 '--server', server
-            ]);
+            ];
+            if (otp) {
+                args.push('--otp', otp);
+            }
+
+            const pythonProcess = spawn('python', args);
 
             verificationResult = await new Promise((resolve) => {
                 let dataString = '';
+
+                // ⏱️ TIMEOUT SAFETY (60s)
+                const timeout = setTimeout(() => {
+                    pythonProcess.kill();
+                    resolve({ success: false, error: "Verification Timed Out (Engine Busy)" });
+                }, 60000);
+
                 pythonProcess.stdout.on('data', (data: any) => {
                     dataString += data.toString();
                 });
 
                 pythonProcess.on('close', (code: number) => {
+                    clearTimeout(timeout);
                     try {
                         resolve(JSON.parse(dataString));
                     } catch (e) {
                         // Fallback for non-JSON output
-                        resolve({ success: code === 0, error: "Validation Script Failed" });
+                        resolve({ success: code === 0, error: "Validation Script Failed or Output Invalid" });
                     }
                 });
             });
@@ -80,7 +94,7 @@ export async function POST(req: NextRequest) {
                 data: {
                     server,
                     login,
-                    password,
+                    password: encryptPassword(password), // 🔐 ENCRYPTED (AES-256-GCM)
                     status: "CONNECTED",
                     balance: balance,
                     equity: equity,
@@ -94,7 +108,7 @@ export async function POST(req: NextRequest) {
                     userId: session.user.id,
                     server,
                     login,
-                    password,
+                    password: encryptPassword(password), // 🔐 ENCRYPTED (AES-256-GCM)
                     status: "CONNECTED",
                     balance: balance,
                     equity: equity,
@@ -217,6 +231,12 @@ export async function GET(req: NextRequest) {
                 login: true,
                 password: true, // ⚠️ Sending password to trusted local bridge only
                 userId: true,   // ✅ Fetch Owner ID for session lookup
+                id: true,       // ✅ Needed for positions
+                balance: true,
+                equity: true,
+                leverage: true,
+                totalDeposits: true,
+                totalWithdrawals: true
             }
         });
 
@@ -229,6 +249,12 @@ export async function GET(req: NextRequest) {
                     login: true,
                     password: true,
                     userId: true,
+                    id: true,
+                    balance: true,
+                    equity: true,
+                    leverage: true,
+                    totalDeposits: true,
+                    totalWithdrawals: true
                 }
             });
         }
@@ -248,7 +274,23 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "No Broker Account Found" }, { status: 404 });
         }
 
-        return NextResponse.json({ ...account, activeSessions });
+        // 3. ⚡ FETCH OPEN POSITIONS (Real-Time PnL)
+        const positions = await prisma.position.findMany({
+            where: { brokerAccountId: account.id }
+        });
+
+        // Convert BigInt tickets to string
+        const safePositions = positions.map(p => ({
+            ...p,
+            ticket: String(p.ticket)
+        }));
+
+        return NextResponse.json({
+            ...account,
+            password: account.password ? decryptPassword(account.password) : '', // 🔓 DECRYPTED for Engine
+            activeSessions,
+            positions: safePositions
+        });
     } catch (error) {
         console.error("Bridge fetch error:", error);
         return NextResponse.json({ error: "Internal Error" }, { status: 500 });

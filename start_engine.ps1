@@ -41,11 +41,13 @@ Write-Host "Launching Antigravity Engine (Executor Architecture)..." -Foreground
 $env:CONTAINER_ID = "node-default"
 
 # A. The Eyes (Orchestrator - Masters)
+# Broadcasts Master signals and Master PnL to Redis
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/orchestrator.py"
 
 # B. The Muscle (Executor - Followers / Turbo Mode)
-# Runs in TURBO mode to handle ALL followers dynamically + High Frequency Loop
-# We explicitly pass the MT5 Path ensuring it connects to the right terminal.
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/executor.py --mode TURBO --mt5-path '$MT5'"
+# Executes trades for Followers and records trade history
+# ⚠️ IMPORTANT: Use a DIFFERENT terminal than the Orchestrator to avoid account switching conflicts
+$MT5_FOLLOWER = "C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "& python src/engine/executor.py --mode TURBO --mt5-path '$MT5_FOLLOWER'"
 
-Write-Host "Done! Orchestrator and Executor are live." -ForegroundColor Green
+Write-Host "Done! Orchestrator + Executor are now live." -ForegroundColor Green

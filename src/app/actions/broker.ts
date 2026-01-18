@@ -2,23 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth"; // Server-side auth helper
-import crypto from "crypto";
+import { encryptPassword } from "@/lib/crypto"; // 🔐 Banking-grade AES-256-GCM
 import { revalidatePath } from "next/cache";
-
-
-// 🔐 ENCRYPTION CONFIG
-const ALGORITHM = "aes-256-cbc";
-const ENCRYPTION_KEY = process.env.BROKER_SECRET || "01234567890123456789012345678901"; // Must be 32 chars
-const IV_LENGTH = 16;
-
-function encrypt(text: string) {
-    if (!text) return "";
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY), iv);
-    let encrypted = cipher.update(text);
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString("hex") + ":" + encrypted.toString("hex");
-}
 
 export async function connectBroker(formData: FormData) {
     const session = await auth();
@@ -45,8 +30,8 @@ export async function connectBroker(formData: FormData) {
             return { error: "Broker account already connected" };
         }
 
-        // 2. Encrypt Password
-        const encryptedPassword = encrypt(password);
+        // 2. Encrypt Password (AES-256-GCM)
+        const encryptedPassword = encryptPassword(password);
 
         // 3. Save to DB
         const newAccount = await prisma.brokerAccount.create({

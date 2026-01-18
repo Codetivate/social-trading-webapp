@@ -19,7 +19,7 @@ export const description = "A linear line chart"
 const chartConfig = {
     equity: {
         label: "Equity",
-        color: "#22d3ee", // Neon Cyan (cyan-400)
+        color: "#10B981", // ✅ Green for Growth
     },
 } satisfies ChartConfig
 
@@ -61,7 +61,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
                 </div>
                 <div className="flex items-center justify-between gap-4">
                     <span className="text-xs font-bold text-gray-300">Growth</span>
-                    <span className={`text-base font-black tracking-tight whitespace-nowrap ${isPositive ? "text-[#22d3ee] drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]" : "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]"}`}>
+                    <span className={`text-base font-black tracking-tight whitespace-nowrap ${isPositive ? "text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]" : "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.3)]"}`}>
                         {value}%
                     </span>
                 </div>
@@ -71,7 +71,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     return null
 }
 
-export function MasterEquityChart({ data, height = 60, showAxes = false, color = "#22d3ee" }: MasterEquityChartProps) {
+export function MasterEquityChart({ data, height = 60, showAxes = false, color = "#10B981" }: MasterEquityChartProps) {
     // If no data, return empty or skeleton
     if (!data || data.length === 0) return <div className="h-full w-full bg-white/5 animate-pulse rounded-lg" />;
 
@@ -103,7 +103,7 @@ export function MasterEquityChart({ data, height = 60, showAxes = false, color =
                     />
                     <Line
                         dataKey="value"
-                        type="linear"
+                        type="linear" // ✅ Explicit Linear for "Slope Swing"
                         stroke={color}
                         strokeWidth={2}
                         dot={false}

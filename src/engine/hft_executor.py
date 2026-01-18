@@ -16,7 +16,9 @@ _HFT_POOL = None
 import redis
 r_client_hft = None
 try:
-    r_client_hft = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
+    # 🔒 STRICT POOLING: Limit to 5 connections max
+    _hft_redis_pool = redis.ConnectionPool.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), max_connections=5, decode_responses=True)
+    r_client_hft = redis.Redis(connection_pool=_hft_redis_pool)
 except Exception as e:
     print(f"[HFT] ⚠️ Redis Connection Failed: {e}")
 
@@ -43,7 +45,7 @@ if follower_paths:
     print(f"[HFT]    - Reserved for Followers (Isolation Active)")
 else:
     # Single Machine Mode (Wait for Override)
-    print(f"[HFT] ⚠️ Single Machine Detected. Waiting for Configuration...")
+    print(f"[HFT] Single Machine Detected. Waiting for Configuration...")
     TERMINAL_PATHS = [] # Will be populated by configure_swarm
 
 # 🧠 SMART SYMBOL NORMALIZATION (Ported from executor.py)

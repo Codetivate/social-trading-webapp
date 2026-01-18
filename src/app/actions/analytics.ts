@@ -67,11 +67,17 @@ export async function getAnalytics(masterId: string, startDate?: Date, endDate?:
             if (endDate) where.closeTime.lte = endDate;
         }
 
+        // 🔍 DEBUG: Log what we're querying
+        console.log(`[ANALYTICS] Querying TradeHistory for followerId: ${masterId}`);
+
         // Fetch all trade history for this master
         const trades = await prisma.tradeHistory.findMany({
             where,
             orderBy: { closeTime: 'asc' }
         });
+
+        // 🔍 DEBUG: Log results
+        console.log(`[ANALYTICS] Found ${trades.length} trades for masterId: ${masterId}`);
 
         // 🏦 Fetch Current Balance for Growth/DD Calc
         const account = await prisma.brokerAccount.findFirst({

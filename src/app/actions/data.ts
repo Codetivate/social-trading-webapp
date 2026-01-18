@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { UserRole } from "@prisma/client";
 import { Master } from "@/types";
 import { unstable_cache } from 'next/cache';
+import { getAssetClassesFromSymbols } from "@/lib/market-utils";
 
 // 📥 FETCH MASTERS (Public)
 // 📥 FETCH MASTERS (Public)
@@ -28,16 +29,21 @@ export const fetchMasters = unstable_cache(async (): Promise<Master[]> => {
             let roi = m.roi;
             let rr = 0;
             let chartData: { date: string; value: number }[] = [];
+            let firstTradeDate: Date | null = null;
+
+            let assetClasses: string[] = [];
 
             try {
                 // 1. Fetch ENTIRE History for Accuracy (as requested)
                 const trades = await prisma.tradeHistory.findMany({
                     where: { masterId: m.userId },
                     orderBy: { closeTime: 'asc' }, // Oldest first for accumulation
-                    select: { netProfit: true, closeTime: true, createdAt: true }
+                    select: { netProfit: true, closeTime: true, createdAt: true, symbol: true } // ✅ Fetch Symbol
                 });
 
                 if (trades.length > 0) {
+                    assetClasses = getAssetClassesFromSymbols(trades.map(t => t.symbol));
+                    firstTradeDate = trades[0].closeTime;
                     const wins = trades.filter(t => t.netProfit > 0);
                     const losses = trades.filter(t => t.netProfit < 0);
 
@@ -107,16 +113,15 @@ export const fetchMasters = unstable_cache(async (): Promise<Master[]> => {
                 avatar: m.avatar || "/avatars/default.png",
                 desc: m.desc || "",
                 tags: m.tags,
-                joined: m.createdAt.toISOString(), // ✅ Real Full Date
+                joined: firstTradeDate ? firstTradeDate.toISOString() : m.createdAt.toISOString(), // ✅ Real First Trade Date
                 currentOrders: [],
                 monthlyFee: m.monthlyFee,
                 minDeposit: m.minDeposit,
                 isPremium: m.monthlyFee > 0,
                 isPublic: m.isPublic,
                 leverage: (m.brokerAccount?.equity && m.brokerAccount.equity > 0) ? (m.brokerAccount.leverage || 0) : 0,
-                riskReward: rr,
-                username: m.username || undefined,
-                sparklineData: chartData.length > 0 ? chartData : generateDeterministicSparkline(m.userId) // ✅ Real Data or Seeded Fallback
+                sparklineData: chartData.length > 0 ? chartData : generateDeterministicSparkline(m.userId), // ✅ Real Data or Seeded Fallback
+                assetTypes: assetClasses // ✅ Auto-Categorize
             };
         }));
     } catch (error) {
@@ -147,6 +152,7 @@ export async function fetchMasterByUsername(username: string): Promise<Master | 
         // 📊 Real Stats Calculation for Profile
         let chartData: { date: string; value: number }[] = [];
         let roi = m.roi;
+        let firstTradeDate: Date | null = null;
 
         try {
             const trades = await prisma.tradeHistory.findMany({
@@ -156,6 +162,7 @@ export async function fetchMasterByUsername(username: string): Promise<Master | 
             });
 
             if (trades.length > 0 && m.brokerAccount?.balance) {
+                firstTradeDate = trades[0].closeTime;
                 const totalProfit = trades.reduce((sum, t) => sum + t.netProfit, 0);
                 let runningBalance = m.brokerAccount.balance - totalProfit;
                 if (runningBalance <= 0) runningBalance = 1000;
@@ -200,7 +207,7 @@ export async function fetchMasterByUsername(username: string): Promise<Master | 
             avatar: m.avatar || "/avatars/default.png",
             desc: m.desc || "",
             tags: m.tags,
-            joined: m.createdAt.toISOString(), // ✅ Real Full Date
+            joined: firstTradeDate ? firstTradeDate.toISOString() : m.createdAt.toISOString(), // ✅ Real Full Date
             currentOrders: [],
             monthlyFee: m.monthlyFee,
             minDeposit: m.minDeposit,

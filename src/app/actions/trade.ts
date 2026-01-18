@@ -538,6 +538,7 @@ export async function refreshMasterStats(masterId: string) {
         // 📊 Calculate Stats for Formula
         let maxDrawdown = 0;
         let riskScore = 1; // Default Safe
+        let roi = 0; // Performance (Cumulative Growth %)
 
         if (trades.length > 0) {
             // 1. Calculate Total Realized Profit to Back-Calculate Starting Balance
@@ -594,6 +595,10 @@ export async function refreshMasterStats(masterId: string) {
 
             // 5. Calculate AI Score
             riskScore = calculateRiskScore(maxDrawdown, dailyReturns);
+
+            // 6. Calculate ROI (Cumulative Growth %)
+            // Same formula as data.ts: ((currentBalance - startBalance) / startBalance) * 100
+            roi = startBalance > 0 ? parseFloat((((currentBalance - startBalance) / startBalance) * 100).toFixed(2)) : 0;
         }
 
         const stats = await prisma.$transaction(async (tx) => {
@@ -623,7 +628,8 @@ export async function refreshMasterStats(masterId: string) {
                     followersCount: followersCount,
                     aum: trueAum._sum.allocation || 0,
                     riskScore: riskScore, // 🧠 AI Update
-                    drawdown: parseFloat(maxDrawdown.toFixed(2)) // Persist DD too
+                    drawdown: parseFloat(maxDrawdown.toFixed(2)), // Persist DD too
+                    roi: roi // ✅ Performance (Cumulative Growth %)
                 }
             });
 
@@ -636,7 +642,9 @@ export async function refreshMasterStats(masterId: string) {
         }
 
         revalidatePath('/');
-        return { success: true, ...stats };
+        // ✅ Return 'joined' as the first trade date if available
+        const firstTradeDate = (trades.length > 0 && trades[0].closeTime) ? trades[0].closeTime.toISOString() : null;
+        return { success: true, ...stats, joined: firstTradeDate };
     } catch (error) {
         console.error("Refresh Stats Error:", error);
         return { success: false, error: "Failed to refresh stats" };

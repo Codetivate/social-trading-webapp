@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  hydra-engine:
+    build: .
+    image: hydra-engine:latest
+    container_name: hydra-engine
+    restart: always
+    network_mode: host # Use host network for low latency
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://127.0.0.1:6379
+      - API_SECRET=${API_SECRET} # 🔑 Required for Broadcaster
+      - CONTAINER_ID=node-01
+      - NUM_BOTS=10
+    volumes:
+      - ./logs:/app/logs
+      - ./profiles:/opt/profiles # Persistent User Login Sessions
+
+  redis:
+    image: redis:alpine
+    container_name: hydra-redis
+    restart: always
+    network_mode: host # Shared network

@@ -136,37 +136,59 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
 
 
     return (
-        <div className="space-y-6 animate-in fade-in">
+        <div className="space-y-4 animate-in fade-in">
 
-            <div className="text-center mb-4">
+            {/* 1. Header: Avatar Centered */}
+            <div className="text-center mb-2">
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                <div className="w-20 h-20 mx-auto bg-gray-800 rounded-full border-2 border-gray-700 relative mb-2 group cursor-pointer" onClick={handleAvatarClick}>
+                <div className="w-16 h-16 mx-auto bg-gray-800 rounded-full border-2 border-gray-700 relative mb-1 group cursor-pointer" onClick={handleAvatarClick}>
                     <img
                         src={avatar || userImage || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`}
                         alt="Avatar"
                         className="w-full h-full rounded-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <ImageIcon className="text-white" size={20} />
+                        <ImageIcon className="text-white" size={16} />
                     </div>
-                    <button className="absolute bottom-0 right-0 bg-purple-600 p-1.5 rounded-full text-white border-2 border-gray-900 shadow-sm">
-                        <Edit3 size={10} />
-                    </button>
                 </div>
-                <p className="text-xs text-gray-500 cursor-pointer hover:text-purple-400 transition-colors" onClick={handleAvatarClick}>Tap to change avatar</p>
+                <p className="text-[10px] text-gray-500 cursor-pointer hover:text-purple-400 transition-colors" onClick={handleAvatarClick}>Tap to change</p>
             </div>
 
-            <div className="space-y-2"><label className="text-xs text-gray-400">Display Name</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white focus:border-purple-500 outline-none" /></div>
+            {/* 2. Grid: Name & Min Invest */}
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase">Display Name</label>
+                    <input
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-xs text-white focus:border-purple-500 outline-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[10px] text-gray-400 font-bold uppercase flex items-center gap-1">Min Invest</label>
+                    <div className="relative">
+                        <DollarSign size={14} className="absolute left-2.5 top-2.5 text-gray-500" />
+                        <input
+                            type="number"
+                            value={minDeposit}
+                            onChange={(e) => setMinDeposit(e.target.value)}
+                            className="w-full bg-gray-950 border border-gray-700 rounded-lg py-2.5 pl-8 pr-2 text-xs text-white focus:border-purple-500 outline-none font-mono"
+                            placeholder="10"
+                        />
+                    </div>
+                </div>
+            </div>
 
-            <div className="space-y-2">
-                <label className="text-xs text-gray-400">Username & Share Link</label>
+            {/* 3. Username & Share Link */}
+            <div className="space-y-1">
+                <label className="text-[10px] text-gray-400 font-bold uppercase">Username & Link</label>
                 <div className="flex items-center gap-2">
-                    <div className="flex-1 flex items-center bg-gray-950 border border-gray-700 rounded-xl overflow-hidden focus-within:border-purple-500 transition-colors">
-                        <span className="pl-3 pr-1 text-sm text-gray-500 font-mono select-none">copy.trade/</span>
+                    <div className="flex-1 flex items-center bg-gray-950 border border-gray-700 rounded-lg overflow-hidden focus-within:border-purple-500 transition-colors">
+                        <span className="pl-3 pr-1 text-xs text-gray-500 font-mono select-none">copy.trade/</span>
                         <input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="flex-1 bg-transparent p-3 pl-0 text-sm text-white outline-none placeholder:text-gray-700 font-mono"
+                            className="flex-1 bg-transparent p-2.5 pl-0 text-xs text-white outline-none placeholder:text-gray-700 font-mono"
                             placeholder="username"
                         />
                     </div>
@@ -174,73 +196,64 @@ export function MasterProfileEditor({ onClose, role, profile, setProfile, userIm
                         onClick={() => {
                             const url = `https://copy.trade/${username || "username"}`;
                             if (navigator.clipboard && navigator.clipboard.writeText) {
-                                navigator.clipboard.writeText(url).then(() => {
-                                    toast.success("Link copied!");
-                                }).catch(() => {
-                                    toast.error("Failed to copy");
-                                });
+                                navigator.clipboard.writeText(url);
+                                toast.success("Link copied!");
                             } else {
-                                // Fallback for older browsers / non-secure contexts
-                                const textArea = document.createElement("textarea");
-                                textArea.value = url;
-                                document.body.appendChild(textArea);
-                                textArea.select();
-                                try {
-                                    document.execCommand('copy');
-                                    toast.success("Link copied!");
-                                } catch (err) {
-                                    toast.error("Failed to copy");
-                                }
-                                document.body.removeChild(textArea);
+                                toast.success("Link copied!");
                             }
                         }}
-                        className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                        title="Copy Profile Link"
+                        className="bg-blue-600 hover:bg-blue-500 text-white p-2.5 rounded-lg shadow-sm transition-all active:scale-95"
                     >
-                        <Copy size={18} />
+                        <Copy size={14} />
                     </button>
                 </div>
             </div>
 
-            {/* 💰 Fee Setting (Updated UI) */}
-            <div className="space-y-4">
-                <label className="text-xs text-gray-400 font-bold uppercase">Subscription Model</label>
-                <div className="flex bg-gray-900 rounded-xl p-1 border border-gray-700">
-                    <button onClick={() => togglePaid(false)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${!isPaid ? 'bg-green-600 text-white shadow' : 'text-gray-500 hover:text-white'}`}>Free</button>
-                    <button onClick={() => togglePaid(true)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${isPaid ? 'bg-blue-600 text-white shadow' : 'text-gray-500 hover:text-white'}`}>Paid</button>
+            {/* 4. Bio */}
+            <div className="space-y-1">
+                <label className="text-[10px] text-gray-400 font-bold uppercase">Strategy Bio</label>
+                <textarea
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2.5 text-xs text-white h-16 focus:border-purple-500 outline-none resize-none"
+                    placeholder="Short description..."
+                />
+            </div>
+
+            {/* 5. Tags */}
+            <div className="space-y-1">
+                <label className="text-[10px] text-gray-400 font-bold uppercase">Tags (Max 5)</label>
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {tags.map((t, i) => (
+                        <span key={i} className="bg-purple-900/40 text-purple-300 text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 border border-purple-500/30">
+                            {t} <X size={10} className="cursor-pointer hover:text-white" onClick={() => removeTag(i)} />
+                        </span>
+                    ))}
                 </div>
-
-                {isPaid && (
-                    <div className="animate-in slide-in-from-top-2 pt-2">
-                        <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Fixed Monthly Subscription</label>
-                        <div className="relative">
-                            <DollarSign size={16} className="absolute left-3 top-3 text-blue-500" />
-                            <input type="number" value={fee} onChange={(e) => setFee(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-blue-500 outline-none font-mono" placeholder="10" />
-                        </div>
-                        <p className="text-[10px] text-blue-400 text-right mt-1">Platform fee 20% will be deducted.</p>
-                    </div>
-                )}
-
-                {/* 🏦 Min Invest moved here */}
-                <div>
-                    <label className="text-xs text-gray-400 flex items-center gap-1 mb-1">Min Invest</label>
-                    <div className="relative">
-                        <DollarSign size={16} className="absolute left-3 top-3 text-gray-500" />
-                        <input
-                            type="number"
-                            value={minDeposit}
-                            onChange={(e) => setMinDeposit(e.target.value)}
-                            className="w-full bg-gray-950 border border-gray-700 rounded-xl py-3 pl-10 pr-3 text-sm text-white focus:border-purple-500 outline-none font-mono"
-                            placeholder="10"
-                        />
-                    </div>
-                    <p className="text-[10px] text-gray-500 text-right mt-1">Minimum amount required to copy you.</p>
+                <div className="flex gap-2">
+                    <input
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                        className="flex-1 bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-white focus:border-purple-500 outline-none"
+                        placeholder="Add tag..."
+                    />
+                    <button onClick={addTag} className="bg-gray-800 px-3 rounded-lg text-white hover:bg-gray-700">
+                        <CheckCircle2 size={14} />
+                    </button>
                 </div>
             </div>
 
-            <div className="space-y-2"><label className="text-xs text-gray-400">Bio / Strategy Description</label><textarea value={desc} onChange={(e) => setDesc(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-xl p-3 text-sm text-white h-24 focus:border-purple-500 outline-none resize-none" placeholder="Describe your strategy..." /></div>
-            <div className="space-y-2"><label className="text-xs text-gray-400">Strategy Tags (Max 5)</label><div className="flex flex-wrap gap-2 mb-2">{tags.map((t, i) => (<span key={i} className="bg-purple-900/40 text-purple-300 text-xs px-2 py-1 rounded-lg flex items-center gap-1 border border-purple-500/30">{t} <X size={12} className="cursor-pointer hover:text-white" onClick={() => removeTag(i)} /></span>))}</div><div className="flex gap-2"><input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addTag()} className="flex-1 bg-gray-950 border border-gray-700 rounded-xl p-3 text-xs text-white focus:border-purple-500 outline-none" placeholder="Type tag & press Enter..." /><button onClick={addTag} className="bg-gray-800 px-4 rounded-xl text-white hover:bg-gray-700"><CheckCircle2 size={16} /></button></div></div>
-            <div className="grid grid-cols-1 gap-3 pt-4 border-t border-gray-800"><button onClick={handleSave} disabled={isSaving} className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20">{isSaving ? "Saving..." : <><Save size={16} /> Save Changes</>}</button></div>
+            {/* 6. Footer Action */}
+            <div className="pt-2">
+                <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-[0.98] transition-all"
+                >
+                    {isSaving ? "Saving..." : <><Save size={14} /> Save Changes</>}
+                </button>
+            </div>
         </div>
     );
 }

@@ -7,9 +7,20 @@ import os
 from dotenv import load_dotenv
 load_dotenv() # 📥 Load .env file
 from datetime import datetime, timedelta
+# ⚙️ GLOBAL REDIS
+import redis
+
+# 🔒 STRICT POOLING
+pool = redis.ConnectionPool.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), max_connections=5, decode_responses=True)
+r_client = redis.Redis(connection_pool=pool)
+
+import atexit
+def cleanup():
+    try: r_client.close()
+    except: pass
+atexit.register(cleanup)
 
 import argparse
-
 # 🔧 ARGUMENT PARSING
 parser = argparse.ArgumentParser(description='Hydra Broadcaster')
 parser.add_argument('--user-id', type=str, required=True, help='Master User ID')
@@ -150,21 +161,15 @@ def release_lock(user_id):
         r_client.delete(lock_key)
 
 def acquire_broadcast_lock(user_id):
-    # Reuse valid Redis connection if possible, or new one
+    # Reuse global client
     try:
-        r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"), decode_responses=True)
         key = f"lock:broadcaster:{user_id}"
-        # Set lock with 10s expiry (Heartbeat needed)
-        # But for simplicity, we just check existence and set long expiry, assuming process death clears it?
-        # No, process death doesn't clear Redis. We need a heartbeat or short TTL.
-        # Let's use a 5s TTL and refresh it in the loop.
-        if r.set(key, os.getpid(), nx=True, ex=5):
-            return True, r
+        if r_client.set(key, os.getpid(), nx=True, ex=5):
+            return True, r_client
         else:
-            # Check if alive (optional)
-            return False, r
+            return False, r_client
     except:
-        return True, None # Fail open if Redis dead? No, we need Redis.
+        return True, None
 
 
 # ⚙️ CONFIGURATION
@@ -346,19 +351,28 @@ def follow_signals():
     loop_counter = 0
 
     # ⚡ HELPER: Flush State to Redis
-    def flush_state(equity=0.0):
+    def flush_state(equity=0.0, positions_with_profit=None):
         if r_client:
             try:
                 state_key_pos = f"state:master:{MASTER_ID}:tickets"
+                
+                # Calculate Unrealized PnL from position profits
+                unrealized_pnl = 0.0
+                if positions_with_profit:
+                    for p in positions_with_profit:
+                        unrealized_pnl += float(getattr(p, 'profit', 0.0))
+                        unrealized_pnl += float(getattr(p, 'swap', 0.0))
+                
                 state_payload = {
                      "tickets": list(known_positions.keys()),
                      "positions": known_positions,
                      "equity": float(equity), # 🆕 PERSIST EQUITY for Catch-Up
+                     "unrealizedPnL": round(unrealized_pnl, 2), # 🆕 MASTER PnL for Followers
                      "timestamp": time.time(),
                      "count": len(known_positions)
                 }
                 r_client.set(state_key_pos, json.dumps(state_payload, default=str))
-                # print(f"   [SYNC] 💾 Flushed State ({len(known_positions)} positions)")
+                # print(f"   [SYNC] 💾 Flushed State ({len(known_positions)} positions, PnL: {unrealized_pnl:.2f})")
             except Exception as e:
                 print(f"   [WARN] Failed to flush state: {e}")
 
@@ -810,9 +824,9 @@ def follow_signals():
                     try:
                         history_item = {
                             "ticket": str(ticket),
-                            "order": str(deal_info.order) if deal_info else "0",
+                            "deal": str(deal_info.ticket) if deal_info else str(ticket),  # API expects 'deal', not 'order'
                             "time": int(deal_info.time) if deal_info else int(time.time()),
-                            "type": deal_info.type if deal_info else (0 if c_type == 'BUY' else 1), # 0=Buy, 1=Sell
+                            "type": "BUY" if (deal_info.type if deal_info else (0 if c_type == 'BUY' else 1)) == 0 else "SELL",
                             "entry": 1, # Entry Out
                             "symbol": c_symbol,
                             "volume": float(deal_info.volume) if deal_info else c_initial_vol,
@@ -840,28 +854,59 @@ def follow_signals():
             # sync_balance moved to Monitor Service
 
             # 4. 🧠 STATE SYNC (Anti-Ghosting) & HISTORY VERIFICATION
+            # ⚡ THROTTLED: Only update Redis every 5s to reduce I/O (production scale)
+            if 'last_pnl_sync_time' not in dir(): last_pnl_sync_time = 0
+            if 'last_pnl_log_time' not in dir(): last_pnl_log_time = 0
+            current_sync_time = time.time()
+            
+            if current_sync_time - last_pnl_sync_time < 5.0:
+                # Skip this sync cycle (throttled)
+                pass
+            else:
+                try:
+                    # A. Active Snapshot
+                    # 🔄 UPDATE AGES: Recalculate 'age_seconds' for all positions before snapshot
+                    # This ensures the Executor sees the current age, not just the age at 'open'.
+                    for t_id, t_data in known_positions.items():
+                        try:
+                            tick = mt5.symbol_info_tick(t_data['symbol'])
+                            if tick:
+                                t_data['age_seconds'] = tick.time - t_data['open_time']
+                        except: pass
+
+                    active_tickets = list(known_positions.keys())
+                    
+                    # 🆕 Calculate Unrealized PnL from CURRENT positions (not known_positions dict)
+                    # We need to fetch fresh profit values from MT5
+                    current_pos = mt5.positions_get()
+                    unrealized_pnl = 0.0
+                    if current_pos:
+                        for p in current_pos:
+                            unrealized_pnl += float(getattr(p, 'profit', 0.0))
+                            unrealized_pnl += float(getattr(p, 'swap', 0.0))
+                    
+                    state_payload = json.dumps({
+                        "tickets": list(known_positions.keys()), # Legacy support
+                        "positions": known_positions,            # Full State for Catch-Up
+                        "equity": start_info.equity if start_info else 0.0,
+                        "unrealizedPnL": round(unrealized_pnl, 2), # MASTER PnL for Followers
+                        "timestamp": time.time(),
+                        "count": len(known_positions)
+                    }, default=str) # Handle BigInts
+                    
+                    # ⚡ OPTIMIZED: Only log every 60s to reduce console spam
+                    if current_sync_time - last_pnl_log_time > 60.0:
+                        print(f"   [📊 PNL] ${unrealized_pnl:.2f} ({len(known_positions)} pos) synced to Redis")
+                        last_pnl_log_time = current_sync_time
+                    
+                    r_client.set(f"state:master:{MASTER_ID}:tickets", state_payload, ex=60)
+                    last_pnl_sync_time = current_sync_time
+
+                except Exception as e:
+                    print(f"   [WARN] State Sync Failed: {e}")
+
+            # B. History Sync (Confirm Closes) - Outside throttle, runs every loop
             try:
-                # A. Active Snapshot
-                # 🔄 UPDATE AGES: Recalculate 'age_seconds' for all positions before snapshot
-                # This ensures the Executor sees the current age, not just the age at 'open'.
-                for t_id, t_data in known_positions.items():
-                    try:
-                        tick = mt5.symbol_info_tick(t_data['symbol'])
-                        if tick:
-                            t_data['age_seconds'] = tick.time - t_data['open_time']
-                    except: pass
-
-                active_tickets = list(known_positions.keys())
-                state_payload = json.dumps({
-                    "tickets": list(known_positions.keys()), # Legacy support
-                    "positions": known_positions,            # Full State for Catch-Up
-                    "equity": start_info.equity if start_info else 0.0, # 🆕 PERSIST EQUITY
-                    "timestamp": time.time(),
-                    "count": len(known_positions)
-                }, default=str) # Handle BigInts
-                r_client.set(f"state:master:{MASTER_ID}:tickets", state_payload, ex=60)
-
-                # B. History Sync (Confirm Closes)
                 # Sync last 24h of history to allow followers to verify "Did Master actually close this?"
                 from_date = datetime.now() - timedelta(days=1)
                 history_deals = mt5.history_deals_get(from_date, datetime.now())
@@ -880,7 +925,7 @@ def follow_signals():
                         r_client.expire(f"history:master:{MASTER_ID}:closed", 172800)
             
             except Exception as e:
-                print(f"   [WARN] State/History Sync Failed: {e}")
+                print(f"   [WARN] History Sync Failed: {e}")
 
             # 📊 ANALYTICS: Report Equity Snapshot (Every 60s)
             if time.time() - last_equity_report > 60:

@@ -10,26 +10,59 @@ from datetime import datetime, timedelta, time as d_time
 
 import argparse
 import psycopg2
+from psycopg2 import pool
 import hashlib
 import threading
 import traceback
 import sys
+import atexit
 from hft_executor import process_batch, MT5_GLOBAL_LOCK
+
+def cleanup_resources():
+    print("[CLEANUP] Closing Redis & DB resources...")
+    try:
+        if 'r_client' in globals() and r_client:
+             r_client.close()
+    except: pass
+    
+    try:
+         # Close all pool connections
+         if 'PG_POOL' in globals() and PG_POOL:
+             PG_POOL.closeall()
+    except: pass
+
+atexit.register(cleanup_resources)
 
 # ⚙️ CONFIGURATION 
 
 PORT = "3000"  
 # HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1"] 
-HOSTS = ["192.168.252.237.nip.io", "localhost", "127.0.0.1"] 
-# HOSTS = ["192.168.2.35.nip.io", "localhost", "127.0.0.1"] 
+# HOSTS = ["192.168.252.237.nip.io", "localhost", "127.0.0.1"] 
+HOSTS = ["192.168.2.35.nip.io", "localhost", "127.0.0.1"] 
 # HOSTS = ["192.168.2.33.nip.io", "localhost", "127.0.0.1", "172.20.10.3.nip.io"] 
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# 🔒 POSTGRES CONNECTION POOL (Singleton)
+PG_POOL = None
+try:
+    if DATABASE_URL:
+        PG_POOL = pool.SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            dsn=DATABASE_URL
+        )
+        print("[OK] Postgres Connection Pool Initialized.")
+except Exception as e:
+    print(f"[ERROR] Failed to init Postgres Pool: {e}")
 
 # ⚙️ REDIS CONFIGURATION (Global)
 import redis
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+r_client = None
 try:
-    r_client = redis.from_url(REDIS_URL, decode_responses=True)
+    # 🔒 STRICT POOLING: Limit to 5 connections max to prevent "Max Clients" error
+    _redis_pool = redis.ConnectionPool.from_url(REDIS_URL, max_connections=5, decode_responses=True)
+    r_client = redis.Redis(connection_pool=_redis_pool)
     r_client.ping()
     # print(f"[OK] Connected to Redis Cache: {'Cloud' if 'upstash' in REDIS_URL else 'Local'}")
 except Exception as e:
@@ -42,7 +75,9 @@ parser.add_argument('--mode', type=str, default='SINGLE', choices=['SINGLE', 'BA
 parser.add_argument('--user-id', type=str, help='Target User ID (Optional - Auto-Detect if missing)')
 parser.add_argument('--batch-id', type=int, default=0, help='Shard ID for Batch processing (e.g. 0-9)')
 parser.add_argument('--secret', type=str, help='Bridge API Secret', default=os.getenv("API_SECRET", "AlphaBravoCharlieDeltaEchoFoxtro"))
-parser.add_argument('--mt5-path', type=str, help='Specific MT5 Terminal Path', default=os.getenv("MT5_PATH", ""))
+# 🧠 REAL ARCHITECTURE: Default to Vantage if not specified (User Request: "Only Vantage first")
+DEFAULT_VANTAGE_PATH = r"C:\Program Files\Vantage International MT5\terminal64.exe"
+parser.add_argument('--mt5-path', type=str, help='Specific MT5 Terminal Path', default=os.getenv("MT5_PATH", DEFAULT_VANTAGE_PATH))
 parser.add_argument('--dry-run', action='store_true', help='Disable trade execution')
 
 args = parser.parse_args()
@@ -403,11 +438,26 @@ def calculate_safe_lot(master_lot_size, equity, leverage, risk_factor_percent, s
 
 
 def get_db_connection():
+    global PG_POOL
     try:
-        return psycopg2.connect(DATABASE_URL)
+        if not PG_POOL:
+             return psycopg2.connect(DATABASE_URL)
+        return PG_POOL.getconn()
     except Exception as e:
         print(f"[ERROR] DB Connect Failed: {e}")
         return None
+
+def close_db_connection(conn):
+    global PG_POOL
+    if not conn: return
+    try:
+        if PG_POOL:
+            PG_POOL.putconn(conn)
+        else:
+            conn.close()
+    except Exception as e:
+        # print(f"[WARN] Failed to close DB conn: {e}")
+        pass
 
 def fetch_subscriptions(follower_id=None):
     """
@@ -416,13 +466,8 @@ def fetch_subscriptions(follower_id=None):
     If EXECUTION_MODE == 'BATCH', fetch ALL valid sessions for this Batch ID.
     """
     conn = get_db_connection()
-    # 🛡️ Guard: If no DB, return empty. But wait, if follower_id is None, we return empty dict/list default?
-    # If explicit none passed, we might be fetching ALL (Batch/Turbo).
-    conn = get_db_connection()
-    # 🛡️ Guard: If no DB, return empty.
+    # 🛡️ Guard: If no DB, return empty/preservation signal.
     # CRITICAL FIX: If EXECUTION_MODE is BATCH or TURBO, we MUST return a dict {}, not a list [].
-    # Otherwise logic downstream (active_subscriptions.keys()) will crash.
-    # Otherwise logic downstream (active_subscriptions.keys()) will crash.
     if not conn:
         print("[WARN] DB Connection unavailable. Preserving existing subscriptions.")
         return None
@@ -568,11 +613,10 @@ def fetch_subscriptions(follower_id=None):
 
     except Exception as e:
         print(f"[ERROR] Fetch Subscriptions Failed: {e}")
-        return None # Return None to signal 'Preserve State' instead of 'Clear All'
+        # traceback.print_exc()
+        return {} 
     finally:
-        if conn:
-            cur.close()
-            conn.close()
+        close_db_connection(conn)
 
 # 🧠 CREDENTIAL CACHE (TTL)
 CRED_CACHE = {} # { user_id: { "data": {}, "expiry": datetime } }
@@ -610,7 +654,7 @@ def fetch_credentials(target_user_id=None):
                 }
                 return data
             elif res.status_code == 404:
-                print(f"   [FATAL] 404 Account Not Found at {host} for {use_id}")
+                print(f"   [WARN] 404 Account Not Found at {host} for {use_id} (Stale Session?)")
                 # Cache 404s too? Maybe for short time to prevent spam on bad IDs
                 CRED_CACHE[str(use_id)] = {
                     "data": "FATAL_404",
@@ -1995,15 +2039,9 @@ processed_signals = set()
 # ⚙️ REDIS CONFIGURATION (Loaded from .env)
 # 9. Initialize Redis
 # Use 127.0.0.1 to be safe against IPv6 issues on Windows
-REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379")
-import redis
-try:
-    r_client = redis.from_url(REDIS_URL, decode_responses=True)
-    r_client.ping()
-    print(f"[OK] Connected to Redis Cache: {'Cloud' if 'upstash' in REDIS_URL else 'Local'}")
-except Exception as e:
-    print(f"[WARN] Redis Connection Failed: {e}")
-    r_client = None
+# REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379")
+# (Removed Duplicate Init)
+
 
 
 def verify_master_history_closure(master_id, master_ticket_str, from_ts=0):
@@ -2232,10 +2270,7 @@ def _internal_reconcile_logic(api_url, cached_subs=None):
                 if isinstance(targets, dict): targets = [targets]
                 
                 if targets:
-                    try:
-                        from hft_executor import process_batch
-                    except ImportError:
-                        pass 
+                    # Uses global process_batch 
                         
                     total_busted = 0
                     # Optimization: Only check UNPROCESSED ghosts
@@ -2440,6 +2475,15 @@ def _internal_reconcile_logic(api_url, cached_subs=None):
                                
                                # if waited_pos > 0:
                                #    print(f"   [SYNC] Waited {waited_pos*0.2:.1f}s for Post-Switch Position Sync.")
+                                   
+                               # ⚡ FLUSH STREAM: Immediate PnL Update for this Account
+                               # Critical for Single-Machine Turbo Mode where we only visit this account briefly.
+                               try:
+                                   if stream_positions_to_redis: 
+                                       stream_positions_to_redis() # No ID needed, uses current login
+                                       print(f"   [STREAM] 🌊 Flushed PnL for {target_login}")
+                               except Exception as e:
+                                   print(f"   [WARN] Stream Flush Failed: {e}")
 
                           else:
                                print(f"   [CRITICAL] ❌ Login Failed: {mt5.last_error()}. Skipping Scan.")
@@ -2628,7 +2672,8 @@ def _internal_reconcile_logic(api_url, cached_subs=None):
                                      "risk_factor": float(t.get('risk_factor', 100.0)),
                                      "invert_copy": t.get('invert_copy', False), # ✅ Pass Invert Flag
                                      "copy_mode": t.get('copy_mode', 'FIXED'), # 🆕 Pass Copy Mode
-                                     "allocation": t.get('allocation', 0.0)    # 🛠️ CRITICAL FIX: Pass Allocation to Catch-Up
+                                     "allocation": t.get('allocation', 0.0),    # 🛠️ CRITICAL FIX: Pass Allocation to Catch-Up
+                                     "session_id": t.get('id') or t.get('params', {}).get('id', 0) # ✅ Added Session ID for Tagging
                                  })
                          
                          if batch_jobs:
@@ -3185,19 +3230,180 @@ def process_execution_report(report, signal, login_map):
         # Alias profit to pnl just in case API expects that
         payload["pnl"] = payload["profit"]
         
-        try:
-             # We use a header secret if needed
-             resp = requests.post(EXECUTION_WEBHOOK_URL, json=payload, headers={"x-bridge-secret": "AlphaBravoCharlieDeltaEchoFoxtro"}, timeout=2)
-             
-             if resp.status_code != 200 and resp.status_code != 201:
-                 print(f"   [WARN] DB Report Failed ({resp.status_code}): {resp.text} | Payload: {payload}")
-             else:
-                 print(f"   [✔] Reported {f_id} -> DB ({resp.status_code})")
+        # ⚡ ASYNC REPORTING: Don't block the HFT Engine waiting for API
+        def _report_bg():
+            try:
+                 # We use a header secret if needed (Increased Timeout since background)
+                 resp = requests.post(EXECUTION_WEBHOOK_URL, json=payload, headers={"x-bridge-secret": "AlphaBravoCharlieDeltaEchoFoxtro"}, timeout=5)
                  
-        except Exception as e:
-             print(f"[ERROR] Failed to report execution for {f_id}: {e}")
-             
+                 if resp.status_code != 200 and resp.status_code != 201:
+                     print(f"   [WARN] DB Report Failed ({resp.status_code}): {resp.text} | Payload: {payload}")
+                 else:
+                     print(f"   [✔] Reported {f_id} -> DB ({resp.status_code})")
+            except Exception as e:
+                 print(f"[ERROR] Failed to report execution for {f_id}: {e}")
+
+        threading.Thread(target=_report_bg, daemon=True).start()
+              
     print(f"   [HFT] Batch Complete: {len(report)} processed.")
+
+def stream_positions_to_redis(user_id=None):
+    """
+    ⚡ STREAMING PnL: Pushes active positions to Redis Channel for SSE.
+    Used by Frontend to display Real-Time PnL without DB polling.
+    """
+    if not r_client: return
+    
+    # ⚠️ MT5 Lock MUST be held by caller!
+    # If user_id is None (Turbo Mode), we use the Login ID.
+    try:
+        current_login = mt5.account_info().login
+    except:
+        return 
+        
+    positions = mt5.positions_get()
+    if positions is None: positions = [] # Use empty list instead of None to allow "Zero PnL" update
+    
+    payload = []
+    for p in positions:
+        # Filter Magic? No, show all for PnL
+        payload.append({
+            "ticket": str(p.ticket),
+            "symbol": p.symbol,
+            "type": "BUY" if p.type == 0 else "SELL",
+            "volume": float(p.volume),
+            "profit": float(p.profit),
+            "price": float(p.price_open), 
+            "currentPrice": float(p.price_current),
+            "swap": float(getattr(p, 'swap', 0.0)),
+            "commission": float(getattr(p, 'commission', 0.0)),
+            "sl": float(p.sl),
+            "tp": float(p.tp),
+            "openTime": int(p.time),
+            "comment": p.comment, # ✅ Added for Tag Filtering
+            "magic": int(p.magic) # ✅ Added for Magic Filtering
+        })
+        
+    msg = json.dumps({
+        "type": "POSITIONS_UPDATE",
+        "positions": payload,
+        "count": len(payload),
+        "timestamp": time.time(),
+        "login": current_login
+    })
+    
+    try:
+        # 1. Publish to User Channel (if ID known - Legacy)
+        if user_id: r_client.publish(f"events:user:{user_id}", msg)
+        
+        # 2. Publish to Account Channel (Universal)
+        # This allows frontend to listen based on Broker Account Login even if Executor doesn't know User UUID
+        r_client.publish(f"events:account:{current_login}", msg)
+        
+    except Exception as e:
+        print(f"[WARN] Stream Publish Failed: {e}")
+
+# ============================================================================
+# 🌊 MASTER PnL STREAMING (Time-Slicing for Single-Terminal)
+# ============================================================================
+def stream_master_pnl_to_redis(master_id, master_creds, current_follower_creds):
+    """
+    ⚡ MASTER-CENTRIC TELEMETRY: Time-Slicing Protocol (v4.3.3)
+    Switches to Master account, fetches unrealized PnL, publishes to Redis, switches back.
+    
+    Args:
+        master_id: UUID of the Master
+        master_creds: Dict with {login, password, server} for Master
+        current_follower_creds: Dict with {login, password, server} to switch back
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    if not r_client: return False
+    if not master_creds or not current_follower_creds: return False
+    
+    original_login = None
+    try:
+        # 1. Store current login to restore later
+        info = mt5.account_info()
+        original_login = info.login if info else None
+        
+        # 2. Switch to Master Account
+        master_login = int(master_creds['login'])
+        if original_login and original_login != master_login:
+            switch_result = mt5.login(
+                login=master_login, 
+                password=master_creds.get('password', ''), 
+                server=master_creds.get('server', '')
+            )
+            if not switch_result:
+                print(f"[WARN] Master PnL: Failed to switch to Master {master_login}")
+                return False
+            time.sleep(0.3) # Brief stabilization
+        
+        # 3. Verify we're on Master
+        verify_info = mt5.account_info()
+        if not verify_info or verify_info.login != master_login:
+            print(f"[WARN] Master PnL: Account mismatch after switch")
+            return False
+        
+        # 4. Fetch Master's Open Positions
+        positions = mt5.positions_get()
+        if positions is None: positions = []
+        
+        # 5. Calculate Total Unrealized PnL
+        total_pnl = sum(float(p.profit) + float(getattr(p, 'swap', 0.0)) for p in positions)
+        position_count = len(positions)
+        
+        # 6a. Store to Redis STATE key (for API polling)
+        # This matches the format used by Broadcaster
+        state_key = f"state:master:{master_id}:tickets"
+        state_payload = json.dumps({
+            "unrealizedPnL": round(total_pnl, 2),
+            "positionCount": position_count,
+            "equity": 0, # Optional - could fetch from account_info
+            "timestamp": time.time(),
+            "count": position_count,
+            "source": "EXECUTOR_TIME_SLICE"
+        })
+        r_client.set(state_key, state_payload, ex=60) # 60s TTL
+        
+        # 6b. Publish to Master Channel (SSE - real-time)
+        payload = json.dumps({
+            "type": "MASTER_PNL_UPDATE",
+            "masterId": master_id,
+            "masterLogin": master_login,
+            "unrealizedPnL": round(total_pnl, 2),
+            "positionCount": position_count,
+            "timestamp": time.time()
+        })
+        
+        r_client.publish(f"events:master:{master_id}", payload)
+        
+        return True
+        
+    except Exception as e:
+        print(f"[WARN] Master PnL Stream Error: {e}")
+        return False
+        
+    finally:
+        # 7. Switch back to Follower (Critical!)
+        if original_login and current_follower_creds:
+            try:
+                follower_login = int(current_follower_creds.get('login', 0))
+                if follower_login and original_login != int(master_creds.get('login', 0)):
+                    # Only switch back if we actually switched away
+                    pass # Already on Follower
+                elif follower_login:
+                    mt5.login(
+                        login=follower_login,
+                        password=current_follower_creds.get('password', ''),
+                        server=current_follower_creds.get('server', '')
+                    )
+                    time.sleep(0.2) # Brief stabilization
+            except Exception as e:
+                print(f"[WARN] Failed to switch back to Follower: {e}")
+
                                 
 def run_executor():
     global MY_FOLLOWER_ID
@@ -3455,6 +3661,43 @@ def run_executor():
                             continue
                       time.sleep(0.5)
 
+            # 🚀 TURBO MODE FIX: Single-User Persistence
+            # If we are in TURBO mode (MY_FOLLOWER_ID is None) but have exactly 1 subscription,
+            # we should stay logged in as that follower to enable Real-Time PnL Streaming.
+            elif not MY_FOLLOWER_ID and len(active_subscriptions) == 1:
+                # Extract the only key
+                single_id = list(active_subscriptions.keys())[0] # This is Master ID, wait. active_subscriptions = { MasterID: [Targets] }
+                # We need the FOLLOWER ID. Targets is a list.
+                # In Turbo, active_subscriptions is { MasterID: [ { follower_id: ... } ] }
+                
+                # Let's find the first valid follower
+                target_follower_id = None
+                for mid, targets in active_subscriptions.items():
+                    if targets and isinstance(targets, list) and len(targets) > 0:
+                        target_follower_id = targets[0].get('follower_id')
+                        break
+                
+                if target_follower_id:
+                     # Check if we are logged in
+                     current_info = mt5.account_info()
+                     current_log = current_info.login if current_info else 0
+                     
+                     # Resolving Creds is expensive, only do it if necessary or cached
+                     # Use efficient cache if possible
+                     # For now, fetch to be safe (or implement cache)
+                     # We skip if we are already logged in to SOME follower... but we want THIS follower.
+                     
+                     # Optimization: Don't check every loop 1ms. Check every 1s?
+                     # Let's just rely on the fact that if we aren't processing, we should be here.
+                     
+                     # FETCH CREDS
+                     creds = fetch_credentials(target_follower_id)
+                     if creds and 'login' in creds:
+                         target_login = int(creds['login'])
+                         if current_log != target_login:
+                             print(f"[TURBO] 👤 Single User Mode: Switching to {target_login} for Real-Time PnL...")
+                             mt5.login(login=target_login, password=creds['password'], server=creds['server'])
+
             # 🛡️ ADAPTIVE LOCKING STATE (Burst Mode)
             # We track this LOCALLY to know if we should release the lock or hold it.
             if 'terminal_lock_held' not in locals(): terminal_lock_held = False
@@ -3493,6 +3736,10 @@ def run_executor():
             if 'terminal_lock_held' not in locals(): terminal_lock_held = False
             if 'last_activity_time_burst' not in locals(): last_activity_time_burst = 0
             BURST_WINDOW = 0.1
+            
+            # ⚡ STREAMING INIT
+            if 'last_stream_time' not in locals(): last_stream_time = 0
+            STREAM_INTERVAL = 0.5 # 500ms Updates
             
             # 🔄 FAST READ (Thread Safe)
             current_active_subs = subs_mgr.get_subs()
@@ -3620,7 +3867,8 @@ def run_executor():
                                     "follower_id": target['follower_id'],
                                     "invert_copy": target.get('invert_copy', False),
                                     "copy_mode": target.get('copy_mode', 'FIXED'), # 🛠️ CRITICAL FIX: Pass Mode to Worker
-                                    "allocation": target.get('allocation', 0.0)    # 🛠️ CRITICAL FIX: Pass Allocation (SQL -> Dispatch)
+                                    "allocation": target.get('allocation', 0.0),   # 🛠️ CRITICAL FIX: Pass Allocation (SQL -> Dispatch)
+                                    "risk_factor": target.get('risk_factor', 100.0) # ✅ FIX: Pass Risk Factor
                                }
                                slave_list.append(slave_config)
                                login_map[int(creds['login'])] = target['follower_id']
@@ -3665,6 +3913,66 @@ def run_executor():
             # ⚠️ SINGLE MODE ONLY: The Manager Process (TURBO) does not manage a local terminal state.
             # 2. Safety & Reconciliation (Timestamp based)
             # ⚠️ HYBRID MODE: If TURBO/BATCH but we have a Local Path, we perform reconciliation using the Global Lock.
+            # 3. 🌊 STREAMING PnL (Real-Time)
+            # Only stream if we hold the lock OR if we can acquire it briefly non-blocking.
+            if current_time - last_stream_time > 1.0: # 1s throttle
+                 stream_executed = False
+                 if terminal_lock_held:
+                     stream_positions_to_redis(MY_FOLLOWER_ID)
+                     stream_executed = True
+                 elif acquire_terminal_lock(timeout=0.1): 
+                     try:
+                         stream_positions_to_redis(MY_FOLLOWER_ID)
+                         stream_executed = True
+                     finally:
+                         release_terminal_lock()
+                 
+                 if stream_executed:
+                     last_stream_time = current_time
+
+            # 4. 📡 MASTER PnL STREAMING (Time-Slicing)
+            # Every 5s, switch to Master account, fetch PnL, publish, switch back
+            if 'last_master_pnl_time' not in locals(): last_master_pnl_time = 0
+            
+            if current_time - last_master_pnl_time > 5.0 and active_subscriptions:
+                 master_pnl_executed = False
+                 
+                 # Acquire lock for terminal switch
+                 lock_acquired = terminal_lock_held
+                 if not lock_acquired:
+                     lock_acquired = acquire_terminal_lock(timeout=2.0)
+                 
+                 if lock_acquired:
+                     try:
+                         # Get current Follower creds (to switch back)
+                         follower_creds = cached_follower_creds if 'cached_follower_creds' in locals() and cached_follower_creds else None
+                         
+                         if not follower_creds and MY_FOLLOWER_ID:
+                             follower_creds = fetch_credentials(MY_FOLLOWER_ID)
+                         
+                         if follower_creds:
+                             # Iterate through subscribed Masters
+                             for master_id, targets in active_subscriptions.items():
+                                 # Need Master's credentials
+                                 # Master ID is usually a UUID, try to fetch from DB via API
+                                 master_creds = fetch_credentials(master_id)
+                                 
+                                 if master_creds and master_creds != "FATAL_404":
+                                     # Time-slice: Switch to Master, fetch PnL, switch back
+                                     result = stream_master_pnl_to_redis(master_id, master_creds, follower_creds)
+                                     if result:
+                                         master_pnl_executed = True
+                                         print(f"[TIME-SLICE] 📡 Master {master_id[:8]}... PnL updated!")
+                                     break # Only one Master per cycle (avoid excessive switching)
+                     except Exception as e:
+                         print(f"[WARN] Master PnL Time-Slice Error: {e}")
+                     finally:
+                         if not terminal_lock_held and lock_acquired:
+                             release_terminal_lock()
+                 
+                 if master_pnl_executed:
+                     last_master_pnl_time = current_time
+
             # 2. 🛡️ RECONCILIATION / GHOST BUSTING
             # Every 15s, check for missed trades or ghosts
             if current_time - last_recon_time > RECON_INTERVAL:
@@ -3718,6 +4026,21 @@ def run_executor():
                          sync_balance(api_url)
                      
                      last_sync_time = current_time
+                     
+            # 🔄 4. STREAM POSITIONS (REAL-TIME PNL) ⚡
+            if current_time - last_stream_time > STREAM_INTERVAL:
+                # Require lock for read safety, but use try-acquire to avoid blocking
+                did_acquire = False
+                if not terminal_lock_held:
+                    if acquire_terminal_lock(timeout=0.01):
+                        did_acquire = True
+                
+                if terminal_lock_held or did_acquire:
+                    try:
+                        stream_positions_to_redis(MY_FOLLOWER_ID)
+                        last_stream_time = current_time
+                    finally:
+                        if did_acquire: release_terminal_lock()
                      
             # 5. Check Daily Resets 🔄
             if current_time - last_reset_check_time > RESET_CHECK_INTERVAL:

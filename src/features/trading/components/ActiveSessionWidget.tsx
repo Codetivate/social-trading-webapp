@@ -11,9 +11,10 @@ interface ActiveSessionWidgetProps {
     session: CopySession;
     onClick?: () => void;
     currencySymbol?: string;
+    realTimePnL?: number; // ✅ Real-Time Override
 }
 
-export function ActiveSessionWidget({ master, time, risk, allocation, onStop, session, onClick, currencySymbol = "$" }: ActiveSessionWidgetProps) {
+export function ActiveSessionWidget({ master, time, risk, allocation, onStop, session, onClick, currencySymbol = "$", realTimePnL }: ActiveSessionWidgetProps) {
     const [timeDisplay, setTimeDisplay] = useState("Loading...");
 
     // Time countdown logic
@@ -43,10 +44,11 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, se
     const timeConfig = (session as any).timeConfig as any;
     const is247 = !timeConfig || timeConfig?.mode === "24/7";
 
-    // Parse Risk - Prop passed is usually the risk factor/level
     const riskValue = typeof risk === 'number' ? `${risk}%` : risk;
 
-    const pnl = session.unrealizedPnL || session.pnl || 0;
+    // ✅ Prioritize Real-Time PnL (from Open Positions) -> Cached Unrealized -> Last Closed PnL
+    // FIX: explicitly check undefined because 0 is falsy
+    const pnl = realTimePnL !== undefined ? realTimePnL : (session.unrealizedPnL || session.pnl || 0);
     const isProfit = pnl >= 0;
 
     return (
@@ -115,7 +117,9 @@ export function ActiveSessionWidget({ master, time, risk, allocation, onStop, se
                             <div className="bg-blue-500/10 p-1.5 rounded-lg"><Target size={14} className="text-blue-400" /></div>
                             <div>
                                 <p className="text-[9px] text-gray-500 font-bold uppercase">Lot Sizing</p>
-                                <p className="text-blue-400 text-[10px] font-bold">Equity Ratio ({riskValue})</p>
+                                <p className="text-blue-400 text-[10px] font-bold">
+                                    {timeConfig?.copyMode === "FIXED" ? "Fixed Ratio" : "Equity Ratio"} ({riskValue})
+                                </p>
                             </div>
                         </div>
                         {/* Trading Mode */}

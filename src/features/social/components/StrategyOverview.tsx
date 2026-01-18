@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { TrendingUp, TrendingDown, Clock, Wallet, ArrowDownLeft, ArrowUpRight, Trophy, AlertTriangle, Users } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, Wallet, ArrowDownLeft, ArrowUpRight, Trophy, AlertTriangle, Users, Eye, EyeOff } from "lucide-react";
 import { AnalyticStats } from "@/app/actions/analytics";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -14,6 +14,8 @@ interface StrategyOverviewProps {
 }
 
 export function StrategyOverview({ stats, balance, equity, currency = "USD" }: StrategyOverviewProps) {
+    const [showAccountDetails, setShowAccountDetails] = useState(false); // Hidden by default (Bitkub style)
+
     if (!stats) return null;
 
     const lastTradeAgo = stats.lastTradeDate && stats.lastTradeDate !== "-"
@@ -32,7 +34,7 @@ export function StrategyOverview({ stats, balance, equity, currency = "USD" }: S
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg group hover:border-[#2dd4bf]/20 transition-colors relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-teal-500/5 blur-2xl rounded-full pointer-events-none"></div>
                     <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-2 group-hover:text-teal-400 transition-colors">Total Growth</span>
-                    <span className={cn("text-2xl md:text-3xl font-black", stats.growth > 0 ? "text-teal-400" : "text-rose-400")}>
+                    <span className={cn("text-2xl md:text-3xl font-black", stats.growth > 0 ? "text-teal-400" : stats.growth < 0 ? "text-rose-400" : "text-white")}>
                         {stats.growth > 0 ? "+" : ""}{stats.growth.toFixed(2)}%
                     </span>
                 </div>
@@ -40,7 +42,7 @@ export function StrategyOverview({ stats, balance, equity, currency = "USD" }: S
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg group hover:border-rose-500/20 transition-colors relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-rose-500/5 blur-2xl rounded-full pointer-events-none"></div>
                     <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-2 group-hover:text-rose-400 transition-colors">Max Drawdown</span>
-                    <span className="text-2xl md:text-3xl font-black text-rose-400">
+                    <span className={cn("text-2xl md:text-3xl font-black", stats.maxDrawdown > 0 ? "text-rose-400" : "text-white")}>
                         {stats.maxDrawdown.toFixed(2)}%
                     </span>
                 </div>
@@ -48,7 +50,7 @@ export function StrategyOverview({ stats, balance, equity, currency = "USD" }: S
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg group hover:border-green-500/20 transition-colors relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/5 blur-2xl rounded-full pointer-events-none"></div>
                     <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-2 group-hover:text-green-400 transition-colors">Monthly Profit</span>
-                    <span className={cn("text-2xl md:text-3xl font-black", stats.totalProfit > 0 ? "text-green-400" : "text-red-400")}>
+                    <span className={cn("text-2xl md:text-3xl font-black", stats.totalProfit > 0 ? "text-green-400" : stats.totalProfit < 0 ? "text-red-400" : "text-white")}>
                         {stats.totalProfit > 0 ? "+" : ""}{((stats.totalProfit / (balance || 1)) * 10).toFixed(2)}%
                     </span>
                 </div>
@@ -56,7 +58,7 @@ export function StrategyOverview({ stats, balance, equity, currency = "USD" }: S
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center text-center shadow-lg group hover:border-purple-500/20 transition-colors relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/5 blur-2xl rounded-full pointer-events-none"></div>
                     <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mb-2 group-hover:text-purple-400 transition-colors">Win Rate</span>
-                    <span className="text-2xl md:text-3xl font-black text-purple-400">{stats.winRate.toFixed(1)}%</span>
+                    <span className={cn("text-2xl md:text-3xl font-black", stats.winRate > 0 ? "text-purple-400" : "text-white")}>{stats.winRate.toFixed(1)}%</span>
                     <Progress value={stats.winRate} className="h-1 mt-3 w-2/3 bg-gray-800 [&>div]:bg-purple-500 shadow-[0_0_10px_#a855f7]" />
                 </div>
             </div>
@@ -67,26 +69,47 @@ export function StrategyOverview({ stats, balance, equity, currency = "USD" }: S
                 {/* LEFT COL: Account Health */}
                 <div className="bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
                     <div className="p-6 space-y-4">
-                        <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                            <span className="w-1 h-4 bg-gray-500 rounded-full"></span>
-                            Account Health
+                        <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="w-1 h-4 bg-gray-500 rounded-full"></span>
+                                Account Health
+                            </div>
+                            <button
+                                onClick={() => setShowAccountDetails(!showAccountDetails)}
+                                className="text-gray-500 hover:text-white transition-colors p-1"
+                                title={showAccountDetails ? "Hide details" : "Show details"}
+                            >
+                                {showAccountDetails ? (
+                                    <Eye className="w-4 h-4" />
+                                ) : (
+                                    <EyeOff className="w-4 h-4" />
+                                )}
+                            </button>
                         </h3>
 
                         <div className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 group hover:bg-white/2 px-2 rounded-lg transition-colors">
                             <span className="text-sm font-medium text-gray-400">Balance</span>
-                            <span className="text-sm font-bold text-white font-mono">{fmt(balance)}</span>
+                            <span className="text-sm font-bold text-white font-mono">
+                                {showAccountDetails ? fmt(balance) : "•••••••"}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 group hover:bg-white/2 px-2 rounded-lg transition-colors">
                             <span className="text-sm font-medium text-gray-400">Equity</span>
-                            <span className="text-sm font-bold text-white font-mono">{fmt(equity)}</span>
+                            <span className="text-sm font-bold text-white font-mono">
+                                {showAccountDetails ? fmt(equity) : "•••••••"}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 group hover:bg-white/2 px-2 rounded-lg transition-colors">
                             <span className="text-sm font-medium text-gray-400">Total Deposits</span>
-                            <span className="text-sm font-bold text-emerald-400 font-mono">{fmt(stats.estDeposit)}</span>
+                            <span className="text-sm font-bold font-mono text-white">
+                                {showAccountDetails ? fmt(stats.estDeposit) : "•••••••"}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center py-3 border-b border-white/5 last:border-0 group hover:bg-white/2 px-2 rounded-lg transition-colors">
                             <span className="text-sm font-medium text-gray-400">Withdrawals</span>
-                            <span className="text-sm font-bold text-gray-400 font-mono">{stats.estWithdrawal === 0 ? "-" : fmt(stats.estWithdrawal)}</span>
+                            <span className="text-sm font-bold text-gray-400 font-mono">
+                                {showAccountDetails ? (stats.estWithdrawal === 0 ? "-" : fmt(stats.estWithdrawal)) : "•••••••"}
+                            </span>
                         </div>
                     </div>
                 </div>
